@@ -1,0 +1,70 @@
+server:
+  port: 8080
+  servlet:
+   session:
+     tracking-modes: cookie
+     persistent: false
+
+auth:
+  server:
+    issuer-url: http://localhost:8080
+    mobile-client-secret: $2a$10$8Xr/8v58z91sUKQcD.wmqupNP3azgAm/FFVshnq9xs9irAbHlr7Ea
+    server-client-secret: $2a$10$9u/FK6u3hyYv6LfiahN.ceeKhyToICqCvxOcJgH11EzB2YcKInwta
+
+spring:
+  datasource:
+    username: sa
+    password:
+    url: jdbc:h2:mem:deneme
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+
+      ddl-auto: none
+      show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            clientId: 288830956764-22nplnlfceqg5m4a09mq9dvrrjvaae88.apps.googleusercontent.com
+            clientSecret: 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
+            redirect-uri: http://localhost:8080/login/oauth2/code/google
+            scope:
+              - email
+              - profile
+
+logging:
+  level:
+    root: info
+#    org.springframework.web: info
+#    org.springframework.security: info
+#    org.springframework.security.oauth2: info
+#    org.springframework.security.oauth2.server: info
+#    org.springframework.security.oauth2.server.authorization : info
+#    org.springframework.security.oauth2.server.authorization.authentication : info
+
+management:
+  security:
+    enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: health, info, env
+
+parafusion:
+  rsa-jwk:
+    key: "FD7pr&.f!my?k#8:"
+    file: "rsa-jwk"
+
+---
+
+---
+

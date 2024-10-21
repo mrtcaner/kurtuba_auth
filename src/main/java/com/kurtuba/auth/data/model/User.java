@@ -1,0 +1,78 @@
+package com.parafusion.auth.data.model;
+
+import jakarta.annotation.Nullable;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.io.Serializable;
+import java.time.LocalDateTime;
+
+@Entity
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Table(name = "users")
+public class User implements Serializable {
+    private static final long serialVersionUID = 1L;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @NotEmpty
+    @Size(min = 2, max = 100, message = "Name must be between 2-100 characters.")
+    private String name;
+
+    @Nullable//Can be null for different providers but not for parafusion
+    private String surname;
+
+    @NotEmpty
+    @Pattern(regexp = "^(?=.{2,20}$)(?![_.])(?!.*[_.]{2})[a-z0-9._]+(?<![_.])$")
+    private String username;
+
+    @NotEmpty
+    @Pattern(regexp = "^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@"
+            + "[^-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$")
+    private String email;
+
+    @NotEmpty
+    private String password;
+
+    @NotNull
+    private boolean activated;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    private AuthProvider authProvider;
+
+    @NotNull
+    private boolean locked;
+
+    @NotNull
+    private int failedLoginCount;
+
+    @NotNull
+    private boolean showCaptcha;
+
+    @Nullable
+    private String emailValidationCode;
+
+    @NotNull
+    private boolean emailValidated;
+
+    @Nullable
+    private LocalDateTime lastloginAttempt;
+
+    @NotNull
+    private LocalDateTime dateCreated;
+
+
+}
+
