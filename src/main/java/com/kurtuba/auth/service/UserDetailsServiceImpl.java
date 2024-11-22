@@ -1,6 +1,6 @@
 package com.kurtuba.auth.service;
 
-import com.kurtuba.auth.data.model.MyUserDetails;
+import com.kurtuba.auth.data.model.KurtubaUserDetails;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +22,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 			throw new UsernameNotFoundException("Could not find user");
 		}
 		
-		return new MyUserDetails(user);
+		return new KurtubaUserDetails(user);
 	}
 
 }

@@ -1,11 +1,11 @@
 package com.kurtuba.auth.config;
 
+import com.kurtuba.auth.data.model.CustomOAuth2User;
+import com.kurtuba.auth.service.UserService;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import com.kurtuba.auth.data.model.CustomOAuth2User;
-import com.kurtuba.auth.service.UserService;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.keys.PbkdfKey;
 import org.jose4j.lang.JoseException;
@@ -13,57 +13,81 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
-import org.springframework.security.config.Customizer;
+import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.oauth2.jwt.*;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.*;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 @Configuration
 public class AuthorizationServerConfig {
 
-    @Value( "${kurtuba.rsa-jwk.key}" )
-    private String rsaJwkKey;
     @Value("classpath:rsa-jwk")
     Resource rsaJwkFile;
+    RegisteredClient mobileClient;
+    @Value("${kurtuba.rsa-jwk.key}")
+    private String rsaJwkKey;
     @Value("${auth.server.issuer-url}")
     private String authServerIssuerUrl;
     @Value("${auth.server.mobile-client-secret}")
     private String mobileClientSecret;
     @Value("${auth.server.server-client-secret}")
     private String serverClientSecret;
-
     @Autowired
     private UserService userService;
 
-    RegisteredClient mobileClient;
-
     @Bean
-    @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
+            throws Exception {
+
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-        return http.formLogin(Customizer.withDefaults()).build();//.oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt) to add resource server capability
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = http.getConfigurer(OAuth2AuthorizationServerConfigurer.class);
+
+        http
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, (authorizationServer) ->
+                        authorizationServer.authorizationServerSettings(AuthorizationServerSettings.builder().build())    // Enable OpenID Connect 1.0
+                )
+                // Redirect to the login page when not authenticated from the
+                // authorization endpoint
+                .exceptionHandling((exceptions) -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
+                );
+
+        return http.build();
     }
+
 
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
@@ -74,7 +98,7 @@ public class AuthorizationServerConfig {
                 .clientSecret(mobileClientSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                //.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .tokenSettings(tokenSettings())
                 .redirectUri("http://localhost:8080/login/oauth2/code/articles-client-oidc")
                 .redirectUri("http://localhost:8080/authorized")
@@ -96,16 +120,16 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public TokenSettings tokenSettings(){
+    public TokenSettings tokenSettings() {
         return TokenSettings.builder()
                 .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
                 .accessTokenTimeToLive(Duration.ofDays(10000))
-                .refreshTokenTimeToLive(Duration.ofDays(10000))
+                //.refreshTokenTimeToLive(Duration.ofDays(10000))
                 .build();
     }
 
     @Bean
-    public JwtEncoder jwtEncoder(){
+    public JwtEncoder jwtEncoder() {
         return new NimbusJwtEncoder(jwkSource());
     }
 
@@ -135,6 +159,7 @@ public class AuthorizationServerConfig {
                     .getAuthentication().getPrincipal());
             OAuth2TokenClaimsSet.Builder claims = context.getClaims();
             claims.claim("sub", userService.getUserByUsernameOrEmail(oauthUser.getEmail()).getId());
+            claims.claim("jti", UUID.randomUUID());
         };
     }
 
@@ -160,7 +185,7 @@ public class AuthorizationServerConfig {
             String payload = decryptingJwe.getPayload();
             //PublicJsonWebKey publicJsonWebKey = PublicJsonWebKey.Factory.newPublicJwk(payload);
             // share the public part with whomever/whatever needs to verify the signatures
-            JWKSet jwkSet = JWKSet.parse("{'keys':[" + payload + "]}");
+            JWKSet jwkSet = JWKSet.parse("{\"keys\":[" + payload + "]}");
             return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
         } catch (IOException | JoseException e) {
             throw new RuntimeException(e);
@@ -205,10 +230,6 @@ public class AuthorizationServerConfig {
                 .issuer(authServerIssuerUrl)
                 .build();
     }
-
-
-
-
 
 
 }

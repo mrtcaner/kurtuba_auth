@@ -1,6 +1,15 @@
 package com.kurtuba.auth.utils;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.kurtuba.auth.data.model.AuthProvider;
 import com.kurtuba.auth.data.model.ClientType;
+import com.kurtuba.auth.data.model.dto.UserRegistrationDto;
+import com.nimbusds.jose.shaded.gson.JsonObject;
+import com.nimbusds.jose.shaded.gson.JsonParser;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.jwk.PublicJsonWebKey;
@@ -12,9 +21,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.Map;
+import java.security.GeneralSecurityException;
+import java.util.*;
 
 @Component
 public class TokenUtils {
@@ -28,12 +36,18 @@ public class TokenUtils {
 
     private PublicJsonWebKey publicJsonWebKey;
 
-    //todo: Add user device id to the token. User's each device must get a seperate token. Tokens cannot be shared among devices.
+    /**
+     * Generates an access token for login via rest request
+     * @param userId
+     * @param clientType
+     * @return Access token
+     */
     public String generateToken(String userId, ClientType clientType) {
         if (publicJsonWebKey == null) {
             //System.out.println("key null!");
             publicJsonWebKey = decrypJwk();
         }
+        // set expiration date to 5 years later
         Calendar cal = Calendar.getInstance();
         cal.add(Calendar.YEAR,5);
         return Jwts.builder()
@@ -41,11 +55,17 @@ public class TokenUtils {
                 .setIssuer(authServerIssuerUrl)
                 .setSubject(userId)
                 .setAudience(clientType.getClientTypeName())
+                .claim("jti", UUID.randomUUID())
                 .setIssuedAt(new Date())
                 .setNotBefore(new Date())
                 .setExpiration(cal.getTime())
+                //.claim("role", "user")
                 .signWith(publicJsonWebKey.getPrivateKey())
                 .compact();
+    }
+
+    public Claims getTokenClaims(String token){
+        return Jwts.parserBuilder().build().parseClaimsJwt(token).getBody();
     }
 
     private PublicJsonWebKey decrypJwk() {
@@ -62,6 +82,82 @@ public class TokenUtils {
             throw new RuntimeException(e);
         }
 
+    }
+
+    /**
+     * Decodes and verifies google access token
+     *
+     * @param idTokenString token given by google
+     * @param clientId      clientId used to get the token(Android clientId or iOS clientId)
+     * @throws GeneralSecurityException
+     * @throws IOException
+     */
+    public static UserRegistrationDto decodeGoogleToken(String idTokenString, String clientId) throws GeneralSecurityException, IOException {
+        UserRegistrationDto newUser = new UserRegistrationDto();
+        GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                // Specify the CLIENT_ID of the app that accesses the backend:
+                .setAudience(Collections.singletonList(clientId))
+                // Or, if multiple clients access the backend:
+                //.setAudience(Arrays.asList(CLIENT_ID_1, CLIENT_ID_2, CLIENT_ID_3))
+                .build();
+
+        // (Receive idTokenString by HTTPS POST)
+
+        GoogleIdToken idToken = verifier.verify(idTokenString);
+        if (idToken != null) {
+            GoogleIdToken.Payload payload = idToken.getPayload();
+
+            // Print user identifier
+            String userId = payload.getSubject();
+            System.out.println("User ID: " + userId);
+
+            // Get profile information from payload
+            String email = payload.getEmail();
+            String familyName = (String) payload.get("family_name");
+            String givenName = (String) payload.get("given_name");
+            newUser.setEmail(email);
+            newUser.setName(givenName);
+            newUser.setSurname(familyName);
+            newUser.setAuthProvider(AuthProvider.GOOGLE);
+
+        } else {
+            System.out.println("Invalid ID token.");
+        }
+
+        return newUser;
+    }
+
+    /**
+     * Generic token decoder
+     *
+     * @param idTokenString
+     * @return JsonObject
+     */
+    public static JsonObject decodeToken(String idTokenString) {
+        String jwtToken = idTokenString;
+        System.out.println("------------ Decode JWT ------------");
+        String[] split_string = jwtToken.split("\\.");
+        String base64EncodedHeader = split_string[0];
+        String base64EncodedBody = split_string[1];
+        String base64EncodedSignature = split_string[2];
+
+        System.out.println("~~~~~~~~~ JWT Header ~~~~~~~");
+        Base64.Decoder base64Url = Base64.getDecoder();
+        String header = new String(base64Url.decode(base64EncodedHeader));
+        System.out.println("JWT Header : " + header);
+
+        System.out.println("~~~~~~~~~ JWT Body ~~~~~~~");
+        String body = new String(base64Url.decode(base64EncodedBody));
+        System.out.println("JWT Body : " + body);
+
+        JsonObject jsonObject = JsonParser.parseString(body).getAsJsonObject();
+
+        return jsonObject;
+    }
+
+    public static void main(String[] args) {
+        String idToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Ijg1MmI0Yzc0MTM1MWVlZGM2ZWM4YWU3ODNiOThlZWFiZTIxNTdkYWEifQ.eyJpc3MiOiJodHRwczpcL1wvd3d3LmZhY2Vib29rLmNvbSIsImF1ZCI6IjE3ODg1Nzc5ODA3Njc1NiIsInN1YiI6IjEwMTU5MjAxMTgwNTI3Nzk3IiwiaWF0IjoxNjg2ODMxMTU4LCJleHAiOjE2ODY4MzQ3NTgsImp0aSI6IlJ5VWMuNGM5ZWZlY2NjYTAyOWZjNjFmZDU5ZWUwZDBlODdmM2Q4ZTA0ZTgwNDU2MjUyMjE3OTZhNDBhODBiMDJkYjhiZiIsIm5vbmNlIjoiIiwiYXRfaGFzaCI6IlV1Q3V5eXNPQmsxRE1wSTY0TWppbEEiLCJlbWFpbCI6Im11cmF0Y2FuZXJcdTAwNDB5bWFpbC5jb20iLCJnaXZlbl9uYW1lIjoiTXVyYXQiLCJmYW1pbHlfbmFtZSI6IkNhbmVyIiwibmFtZSI6Ik11cmF0IENhbmVyIiwicGljdHVyZSI6Imh0dHBzOlwvXC9wbGF0Zm9ybS1sb29rYXNpZGUuZmJzYnguY29tXC9wbGF0Zm9ybVwvcHJvZmlsZXBpY1wvP2FzaWQ9MTAxNTkyMDExODA1Mjc3OTcmaGVpZ2h0PTEwMCZ3aWR0aD0xMDAmZXh0PTE2ODk0MjMxNTkmaGFzaD1BZVFVRk5PbC02eUo5cndKU2w0In0.tC1fqzT7E_gJlSAYq9PXJYs7bQ2R03RbB2jP1iVSZf8Hf51OuYSQSd1WzipxwRe-Y0NZQDch0S1khqV1lTMG6BrSU6O6tKbeeDHhWKab4D-c1Rhe_z5PmnBF0BPI5jiPXLtD7bGv6qd-v2xOVw2UNcGOEPwXKQlFkDQBmwVojZmiuo9Bq1yjAc2UtTBGYOZ_QUMvEUXWEXMuWQAtoy5BNHfBpOZUYbDp7233aSc2_onUqRa";
+        decodeToken(idToken);
     }
 
 }

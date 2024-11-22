@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
+@Table(name = "user")
 public class User implements Serializable {
     private static final long serialVersionUID = 1L;
     @Id
@@ -34,8 +34,14 @@ public class User implements Serializable {
     private String surname;
 
     @NotEmpty
-    @Pattern(regexp = "^(?=.{2,20}$)(?![_.])(?!.*[_.]{2})[a-z0-9._]+(?<![_.])$")
+    @Pattern(regexp = "^(?=.{2,32}$)(?![_.])(?!.*[_.]{2})[a-z0-9._]+(?<![_.])$")
     private String username;
+
+    @Nullable
+    private LocalDateTime birthdate;
+
+    @Nullable
+    private String phone;
 
     @NotEmpty
     @Pattern(regexp = "^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@"
@@ -45,26 +51,32 @@ public class User implements Serializable {
     @NotEmpty
     private String password;
 
-    @NotNull
+    @Column
+    String bio;
+
+    @Column
+    String profilePic;
+
+    @Column
+    String profileCover;
+
+    boolean canChangeUsername;
+
     private boolean activated;
 
     @NotNull
     @Enumerated(EnumType.STRING)
     private AuthProvider authProvider;
 
-    @NotNull
     private boolean locked;
 
-    @NotNull
     private int failedLoginCount;
 
-    @NotNull
     private boolean showCaptcha;
 
     @Nullable
     private String emailValidationCode;
 
-    @NotNull
     private boolean emailValidated;
 
     @Nullable
@@ -75,4 +87,3 @@ public class User implements Serializable {
 
 
 }
-

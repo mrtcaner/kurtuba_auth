@@ -1,7 +1,6 @@
 package com.kurtuba.auth.data.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,21 +14,17 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "user_token")
-public class UserToken {
+@Table(name = "user_token_block")
+public class UserTokenBlock {
 
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @NotEmpty
-    private String userId;
-
-    @NotEmpty
-    private String jti;
-
-    private String clientId;
+    @OneToOne
+    @JoinColumn(name = "user_token_id", nullable = false)
+    private UserToken userToken;
 
     @NotNull
     private LocalDateTime createdDate;
