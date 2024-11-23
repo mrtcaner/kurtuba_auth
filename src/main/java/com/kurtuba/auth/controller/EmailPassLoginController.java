@@ -1,7 +1,6 @@
 package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.model.dto.LoginCredentialsDto;
-import com.kurtuba.auth.data.model.dto.TokenDto;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,9 +15,14 @@ public class EmailPassLoginController {
     @Autowired
     UserService userService;
 
-    @PostMapping("/auth/login")
+    @PostMapping("/login")
     @ResponseBody
-    public ResponseEntity<TokenDto> login(@Valid @RequestBody LoginCredentialsDto loginCredentials){
-        return ResponseEntity.status(HttpStatus.OK).body(userService.authenticate(loginCredentials.getEmailUsername(),loginCredentials.getPass(), loginCredentials.getClientType()));
+    public ResponseEntity login(@Valid @RequestBody LoginCredentialsDto loginCredentials) {
+        //throws exception if authentication fails
+        userService.authenticate(loginCredentials.getEmailUsername(), loginCredentials.getPass());
+        //no exception means successful authentication. Generate token and return
+        return ResponseEntity.status(HttpStatus.OK).body(userService.generateAccessTokenForLoginByRestRequest(loginCredentials.getEmailUsername(), loginCredentials.getClientType()));
+
+
     }
 }

@@ -23,7 +23,7 @@ public class UserTokenBlock {
     private String id;
 
     @OneToOne
-    @JoinColumn(name = "user_token_id", nullable = false)
+    @JoinColumn(name = "jti", nullable = false)
     private UserToken userToken;
 
     @NotNull

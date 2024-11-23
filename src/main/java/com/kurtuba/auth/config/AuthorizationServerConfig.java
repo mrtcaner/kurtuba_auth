@@ -1,15 +1,19 @@
 package com.kurtuba.auth.config;
 
 import com.kurtuba.auth.data.model.CustomOAuth2User;
+import com.kurtuba.auth.data.model.UserToken;
+import com.kurtuba.auth.data.repository.UserTokenRepository;
 import com.kurtuba.auth.service.UserService;
-import com.nimbusds.jose.JOSEException;
+import com.kurtuba.auth.utils.TokenUtils;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.shaded.gson.JsonObject;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.keys.PbkdfKey;
 import org.jose4j.lang.JoseException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,15 +29,18 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AccessTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.*;
+import org.springframework.security.oauth2.server.authorization.web.authentication.OAuth2AccessTokenResponseAuthenticationSuccessHandler;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -42,6 +49,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -60,8 +70,18 @@ public class AuthorizationServerConfig {
     private String mobileClientSecret;
     @Value("${auth.server.server-client-secret}")
     private String serverClientSecret;
-    @Autowired
-    private UserService userService;
+
+    private final UserService userService;
+
+    private final UserTokenRepository userTokenRepository;
+
+    private final SessionFactory sessionFactory;
+
+    public AuthorizationServerConfig(UserService userService, UserTokenRepository userTokenRepository, SessionFactory sessionFactory) {
+        this.userService = userService;
+        this.userTokenRepository = userTokenRepository;
+        this.sessionFactory = sessionFactory;
+    }
 
     @Bean
     @Order(1)
@@ -73,8 +93,49 @@ public class AuthorizationServerConfig {
 
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) ->
-                        authorizationServer.authorizationServerSettings(AuthorizationServerSettings.builder().build())    // Enable OpenID Connect 1.0
+                .with(authorizationServerConfigurer, (authorizationServer) -> {
+                            authorizationServer.authorizationServerSettings(AuthorizationServerSettings.builder().build());
+                            authorizationServer.tokenEndpoint(oAuth2TokenEndpointConfigurer -> oAuth2TokenEndpointConfigurer
+                                    .accessTokenResponseHandler((request, response, authentication) -> {
+
+                                        JsonObject tokenObj = TokenUtils.decodeTokenPayload(((OAuth2AccessTokenAuthenticationToken) authentication).getAccessToken().getTokenValue());
+                                        /*
+                                            "sub" -> {JsonPrimitive@24061} ""3f29802a-64fa-41e0-be86-82f3c24ea982""
+                                            "aud" -> {JsonPrimitive@24063} ""mobile-client""
+                                            "nbf" -> {JsonPrimitive@24065} "1732304516"
+                                            "iss" -> {JsonPrimitive@24067} ""http://localhost:8080""
+                                            "exp" -> {JsonPrimitive@24069} "2596304516"
+                                            "iat" -> {JsonPrimitive@24071} "1732304516"
+                                            "jti" -> {JsonPrimitive@24073} ""73d69d7e-dfc5-45b0-9130-975e5644e0d9""
+                                         */
+
+                                        Instant instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get("exp").getAsString()));
+                                        ZoneId zoneId = ZoneId.systemDefault();
+                                        LocalDateTime expirationDate = instant.atZone(zoneId).toLocalDateTime();
+                                        //System.out.println("instant1:" + instant);
+                                        instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get("iat").getAsString()));
+                                        LocalDateTime issuedAt = instant.atZone(zoneId).toLocalDateTime();
+                                        //System.out.println("instant2:" + instant);
+
+                                        UserToken userToken = UserToken.builder()
+                                                .userId(tokenObj.get("sub").getAsString())
+                                                .clientId(tokenObj.get("aud").getAsString())
+                                                .jti(tokenObj.get("jti").getAsString())
+                                                .expirationDate(expirationDate)
+                                                .createdDate(issuedAt)
+                                                .build();
+
+                                        Session session = sessionFactory.openSession();
+                                        session.beginTransaction();
+                                        userTokenRepository.save(userToken);
+                                        session.getTransaction().commit();
+                                        session.close();
+                                        //fill the response
+                                        OAuth2AccessTokenResponseAuthenticationSuccessHandler handler = new OAuth2AccessTokenResponseAuthenticationSuccessHandler();
+                                        handler.onAuthenticationSuccess(request, response, authentication);
+                                    }));
+                        }
+
                 )
                 // Redirect to the login page when not authenticated from the
                 // authorization endpoint
@@ -98,7 +159,7 @@ public class AuthorizationServerConfig {
                 .clientSecret(mobileClientSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                //.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .tokenSettings(tokenSettings())
                 .redirectUri("http://localhost:8080/login/oauth2/code/articles-client-oidc")
                 .redirectUri("http://localhost:8080/authorized")
@@ -123,7 +184,7 @@ public class AuthorizationServerConfig {
     public TokenSettings tokenSettings() {
         return TokenSettings.builder()
                 .accessTokenFormat(OAuth2TokenFormat.SELF_CONTAINED)
-                .accessTokenTimeToLive(Duration.ofDays(10000))
+                .accessTokenTimeToLive(Duration.ofDays(1825))//5 years
                 //.refreshTokenTimeToLive(Duration.ofDays(10000))
                 .build();
     }
@@ -139,7 +200,7 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public OAuth2TokenGenerator<?> tokenGenerator() throws JOSEException {
+    public OAuth2TokenGenerator<?> tokenGenerator() {
         JwtEncoder jwtEncoder = jwtEncoder();
         JwtGenerator jwtGenerator = new JwtGenerator(jwtEncoder);
         jwtGenerator.setJwtCustomizer(jwtCustomizer());
@@ -187,9 +248,7 @@ public class AuthorizationServerConfig {
             // share the public part with whomever/whatever needs to verify the signatures
             JWKSet jwkSet = JWKSet.parse("{\"keys\":[" + payload + "]}");
             return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
-        } catch (IOException | JoseException e) {
-            throw new RuntimeException(e);
-        } catch (ParseException e) {
+        } catch (IOException | JoseException | ParseException e) {
             throw new RuntimeException(e);
         }
     }

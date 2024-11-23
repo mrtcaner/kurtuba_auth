@@ -13,7 +13,6 @@ import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TokenUtils;
 import com.kurtuba.auth.utils.Utils;
-import io.jsonwebtoken.Jwts;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.hibernate.Session;
@@ -24,6 +23,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
@@ -85,9 +85,12 @@ public class UserService {
 
 
 	/**
+	 * Used by both authorization server login(CustomAuthenticationProvider) and
+	 * custom rest request login(EmailPassLoginController)
+	 *
 	 * transaction is managed manually because we may save data to db and then throw BusinessLogicException
 	 */
-    public TokenDto authenticate(String emailUsername, String pass, ClientType clientType) {
+    public void authenticate(String emailUsername, String pass) {
 		User user = userRepository.getUserByEmailOrUsername(emailUsername);
 		if(user == null){
 			throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
@@ -128,23 +131,35 @@ public class UserService {
 		user.setLocked(false);
 		userRepository.save(user);
 
-		TokenDto tokenDto = TokenDto.builder().access_token(tokenUtils.generateToken(user.getId(), clientType)).build();
-		LocalDateTime expirationDate = tokenUtils.getTokenClaims(tokenDto.getAccess_token()).getExpiration().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+		//save user and token
+		session.getTransaction().commit();
+		session.close();
+	}
 
-		Jwts.parserBuilder().build().parse(tokenDto.getAccess_token());
+	@Transactional
+	public TokenDto generateAccessTokenForLoginByRestRequest(String emailUsername, ClientType clientType){
+		User user = userRepository.getUserByEmailOrUsername(emailUsername);
+		if(user == null){
+			throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
+		}
+
+		TokenDto tokenDto = TokenDto.builder().access_token(tokenUtils.generateToken(user.getId(), clientType)).build();
+
+		JsonObject decodeTokenPayload = TokenUtils.decodeTokenPayload(tokenDto.getAccess_token());
+		//Extract exp date
+		Instant instant = Instant.ofEpochSecond(Long.parseLong(decodeTokenPayload.get("exp").getAsString()));
+		ZoneId zoneId = ZoneId.systemDefault();
+		LocalDateTime expirationDate = instant.atZone(zoneId).toLocalDateTime();
+
 		UserToken userToken = UserToken.builder()
 				.userId(user.getId())
-				.clientId("")
-				.jti(TokenUtils.decodeToken(tokenDto.getAccess_token()).get("jti").getAsString())
+				.clientId(decodeTokenPayload.get("aud").getAsString())
+				.jti(decodeTokenPayload.get("jti").getAsString())
 				.createdDate(LocalDateTime.now())
 				.expirationDate(expirationDate)
 				.build();
 
 		userTokenRepository.save(userToken);
-
-		//save user and token
-		session.getTransaction().commit();
-		session.close();
 
 		return tokenDto;
 	}
@@ -222,7 +237,7 @@ public class UserService {
 		if(newUserByOtherProvider.getProvider().equals(AuthProvider.FACEBOOK)) {
 			try {
 
-				JsonObject jsonUser = TokenUtils.decodeToken(newUserByOtherProvider.getToken());
+				JsonObject jsonUser = TokenUtils.decodeTokenPayload(newUserByOtherProvider.getToken());
 				decodedUser = new UserRegistrationDto();
 				decodedUser.setEmail(jsonUser.get("email").getAsString());
 				decodedUser.setName(jsonUser.get("given_name").getAsString());
