@@ -43,9 +43,9 @@ public class DefaultSecurityConfig {
             throws Exception {
         http.authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("login", "/error", "/actuator/**", "/auth/**", "/favicon.ico").permitAll()
-                        .requestMatchers("/h2/**").permitAll()
                         .anyRequest()
-                        .authenticated()).csrf(AbstractHttpConfigurer::disable)
+                        .authenticated())
+                .csrf(AbstractHttpConfigurer::disable)
                 // Form login handles the redirect to the login page from the
                 // authorization server filter chain
                 .formLogin(Customizer.withDefaults());

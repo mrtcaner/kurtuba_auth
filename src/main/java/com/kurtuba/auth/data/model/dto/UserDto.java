@@ -3,12 +3,14 @@ package com.kurtuba.auth.data.model.dto;
 
 import com.kurtuba.auth.data.model.AuthProvider;
 import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.data.model.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -20,6 +22,7 @@ public class UserDto {
     private String surname;
     private String email;
     private String username;
+    private List<UserRole> userRoles;
     private String bio;
     private String profilePicture;
     private String profileCover;
@@ -33,7 +36,7 @@ public class UserDto {
     private boolean showCaptcha;
     private String emailValidationCode;
     private boolean emailValidated;
-    private LocalDateTime lastloginAttempt;
+    private LocalDateTime lastLoginAttempt;
     private LocalDateTime dateCreated;
 
     public User toUser() {
@@ -43,6 +46,7 @@ public class UserDto {
                 .surname(surname)
                 .email(email)
                 .username(username)
+                .userRoles(userRoles)
                 .bio(bio)
                 .profilePic(profilePicture)
                 .profileCover(profileCover)
@@ -56,8 +60,8 @@ public class UserDto {
                 .showCaptcha(showCaptcha)
                 .emailValidationCode(emailValidationCode)
                 .emailValidated(emailValidated)
-                .lastloginAttempt(lastloginAttempt)
-                .dateCreated(dateCreated)
+                .lastLoginAttempt(lastLoginAttempt)
+                .createdDate(dateCreated)
                 .build();
     }
 
@@ -68,6 +72,7 @@ public class UserDto {
                 .surname(user.getSurname())
                 .email(user.getEmail())
                 .username(user.getUsername())
+                .userRoles(user.getUserRoles())
                 .bio(user.getBio())
                 .profilePicture(user.getProfilePic())
                 .profileCover(user.getProfileCover())
@@ -81,8 +86,8 @@ public class UserDto {
                 .showCaptcha(user.isShowCaptcha())
                 .emailValidationCode(user.getEmailValidationCode())
                 .emailValidated(user.isEmailValidated())
-                .lastloginAttempt(user.getLastloginAttempt())
-                .dateCreated(user.getDateCreated())
+                .lastLoginAttempt(user.getLastLoginAttempt())
+                .dateCreated(user.getCreatedDate())
                 .build();
     }
 

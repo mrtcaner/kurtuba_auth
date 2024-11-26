@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -51,6 +52,10 @@ public class User implements Serializable {
     @NotEmpty
     private String password;
 
+    @OneToMany(fetch = FetchType.EAGER)
+    @JoinColumn(referencedColumnName = "id", name = "user_id")
+    private List<UserRole> userRoles;
+
     @Column
     String bio;
 
@@ -80,10 +85,10 @@ public class User implements Serializable {
     private boolean emailValidated;
 
     @Nullable
-    private LocalDateTime lastloginAttempt;
+    private LocalDateTime lastLoginAttempt;
 
     @NotNull
-    private LocalDateTime dateCreated;
+    private LocalDateTime createdDate;
 
 
 }
