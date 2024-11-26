@@ -166,6 +166,8 @@ public class AuthorizationServerConfig {
                 .redirectUri("http://localhost:8081/products")
                 .redirectUri("parafusion-callback:/")
                 .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .scope("USER")
+                .scope("ADMIN")
                 .build();
         clientList.add(mobileClient);
 
@@ -174,6 +176,7 @@ public class AuthorizationServerConfig {
                 .clientSecret(serverClientSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .scope("SERVICE")
                 .build();
         clientList.add(serverClient);
 

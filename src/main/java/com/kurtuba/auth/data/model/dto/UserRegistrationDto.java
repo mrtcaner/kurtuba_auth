@@ -59,7 +59,7 @@ public class UserRegistrationDto {
                 .failedLoginCount(0)
                 .showCaptcha(false)
                 .emailValidated(false)
-                .dateCreated(LocalDateTime.now())
+                .createdDate(LocalDateTime.now())
                 .build();
     }
 

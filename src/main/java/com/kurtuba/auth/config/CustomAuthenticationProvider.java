@@ -2,7 +2,6 @@ package com.kurtuba.auth.config;
 
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,11 +14,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class CustomAuthenticationProvider implements AuthenticationProvider {
 
-    @Autowired
+    final
     UserDetailsService userDetailsService;
 
-    @Autowired
+    final
     UserService userService;
+
+    public CustomAuthenticationProvider(UserDetailsService userDetailsService, UserService userService) {
+        this.userDetailsService = userDetailsService;
+        this.userService = userService;
+    }
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
