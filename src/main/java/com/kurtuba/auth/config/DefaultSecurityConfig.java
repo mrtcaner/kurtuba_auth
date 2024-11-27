@@ -43,6 +43,8 @@ public class DefaultSecurityConfig {
             throws Exception {
         http.authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("login", "/error", "/actuator/**", "/auth/**", "/favicon.ico").permitAll()
+                        .requestMatchers("/.well-known/openid-configuration").permitAll() //If openid is not enabled,
+                        // a call to this end point must return a 4xx. Otherwise, resource servers receive a login page as response and cannot get jwks
                         .anyRequest()
                         .authenticated())
                 .csrf(AbstractHttpConfigurer::disable)

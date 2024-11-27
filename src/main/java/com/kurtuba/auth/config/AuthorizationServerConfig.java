@@ -94,7 +94,9 @@ public class AuthorizationServerConfig {
         http
                 .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
                 .with(authorizationServerConfigurer, (authorizationServer) -> {
-                            authorizationServer.authorizationServerSettings(AuthorizationServerSettings.builder().build());
+                    /*authorizationServer
+                            .oidc(Customizer.withDefaults());	// Enable OpenID Connect 1.0*/
+                            authorizationServer.authorizationServerSettings(AuthorizationServerSettings.builder().issuer(authServerIssuerUrl).build());
                             authorizationServer.tokenEndpoint(oAuth2TokenEndpointConfigurer -> oAuth2TokenEndpointConfigurer
                                     .accessTokenResponseHandler((request, response, authentication) -> {
 
@@ -293,13 +295,6 @@ public class AuthorizationServerConfig {
         }
         return keyPair;
     }*/
-
-    @Bean
-    public AuthorizationServerSettings authorizationServerSettings() {
-        return AuthorizationServerSettings.builder()
-                .issuer(authServerIssuerUrl)
-                .build();
-    }
 
 
 }
