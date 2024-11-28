@@ -110,28 +110,32 @@ public class AuthorizationServerConfig {
                                             "iat" -> {JsonPrimitive@24071} "1732304516"
                                             "jti" -> {JsonPrimitive@24073} ""73d69d7e-dfc5-45b0-9130-975e5644e0d9""
                                          */
+                                        // no need to save short-lived service-client tokens
+                                        if(!tokenObj.get("sub").getAsString().contains("service-client")) {
 
-                                        Instant instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get("exp").getAsString()));
-                                        ZoneId zoneId = ZoneId.systemDefault();
-                                        LocalDateTime expirationDate = instant.atZone(zoneId).toLocalDateTime();
-                                        //System.out.println("instant1:" + instant);
-                                        instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get("iat").getAsString()));
-                                        LocalDateTime issuedAt = instant.atZone(zoneId).toLocalDateTime();
-                                        //System.out.println("instant2:" + instant);
 
-                                        UserToken userToken = UserToken.builder()
-                                                .userId(tokenObj.get("sub").getAsString())
-                                                .clientId(tokenObj.get("aud").getAsString())
-                                                .jti(tokenObj.get("jti").getAsString())
-                                                .expirationDate(expirationDate)
-                                                .createdDate(issuedAt)
-                                                .build();
+                                            Instant instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get("exp").getAsString()));
+                                            ZoneId zoneId = ZoneId.systemDefault();
+                                            LocalDateTime expirationDate = instant.atZone(zoneId).toLocalDateTime();
+                                            //System.out.println("instant1:" + instant);
+                                            instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get("iat").getAsString()));
+                                            LocalDateTime issuedAt = instant.atZone(zoneId).toLocalDateTime();
+                                            //System.out.println("instant2:" + instant);
 
-                                        Session session = sessionFactory.openSession();
-                                        session.beginTransaction();
-                                        userTokenRepository.save(userToken);
-                                        session.getTransaction().commit();
-                                        session.close();
+                                            UserToken userToken = UserToken.builder()
+                                                    .userId(tokenObj.get("sub").getAsString())
+                                                    .clientId(tokenObj.get("aud").getAsString())
+                                                    .jti(tokenObj.get("jti").getAsString())
+                                                    .expirationDate(expirationDate)
+                                                    .createdDate(issuedAt)
+                                                    .build();
+
+                                            Session session = sessionFactory.openSession();
+                                            session.beginTransaction();
+                                            userTokenRepository.save(userToken);
+                                            session.getTransaction().commit();
+                                            session.close();
+                                        }
                                         //fill the response
                                         OAuth2AccessTokenResponseAuthenticationSuccessHandler handler = new OAuth2AccessTokenResponseAuthenticationSuccessHandler();
                                         handler.onAuthenticationSuccess(request, response, authentication);
@@ -168,19 +172,16 @@ public class AuthorizationServerConfig {
                 .redirectUri("http://localhost:8081/products")
                 .redirectUri("parafusion-callback:/")
                 .redirectUri("https://oauth.pstmn.io/v1/callback")
-                .scope("USER")
-                .scope("ADMIN")
                 .build();
         clientList.add(mobileClient);
 
-        RegisteredClient serverClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("server-client")
+        RegisteredClient admServiceClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("adm-service-client")
                 .clientSecret(serverClientSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope("SERVICE")
                 .build();
-        clientList.add(serverClient);
+        clientList.add(admServiceClient);
 
         return new InMemoryRegisteredClientRepository(clientList);
     }
@@ -243,7 +244,17 @@ public class AuthorizationServerConfig {
         return context -> {
             //Make sure it is not a refresh token
             if (context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) {
-                context.getClaims().claim("sub", userService.getUserByUsernameOrEmail(context.getClaims().build().getClaim("sub")).getId());
+
+                if(context.getAuthorizationGrantType().equals(AuthorizationGrantType.CLIENT_CREDENTIALS)){
+                    //a service is asking for an access token to call another service
+                    // make it a short-lived token
+                    context.getClaims().claim("exp", Instant.now().plus(Duration.ofMinutes(1)));
+
+                }else{
+                    //a user is logging in. replace username/email with userId
+                    context.getClaims().claim("sub", userService.getUserByUsernameOrEmail(context.getClaims().build().getClaim("sub")).getId());
+                }
+
             }
         };
     }

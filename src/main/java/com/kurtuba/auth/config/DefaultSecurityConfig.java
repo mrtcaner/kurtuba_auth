@@ -47,6 +47,7 @@ public class DefaultSecurityConfig {
                         // a call to this end point must return a 4xx. Otherwise, resource servers receive a login page as response and cannot get jwks
                         .anyRequest()
                         .authenticated())
+                .oauth2ResourceServer(oauth2-> oauth2.jwt(Customizer.withDefaults()))//will require token for certain endpoints
                 .csrf(AbstractHttpConfigurer::disable)
                 // Form login handles the redirect to the login page from the
                 // authorization server filter chain

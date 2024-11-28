@@ -36,7 +36,6 @@ spring:
     password: postgres
 
   security:
-    oauth2:
       client:
         registration:
           google:
