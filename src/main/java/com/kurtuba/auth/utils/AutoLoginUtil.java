@@ -49,7 +49,7 @@ public class AutoLoginUtil {
     public String getOauth2AccessToken(String email, String pass){
         MultiValueMap<String, String> tempCookies = new LinkedMultiValueMap<String, String>();
 
-        DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory("http://localhost:8080"); //Here comes your base url
+        DefaultUriBuilderFactory factory = new DefaultUriBuilderFactory("http://localhost:8080");
         factory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.NONE);
 
         WebClient client = WebClient.builder()
@@ -88,7 +88,7 @@ public class AutoLoginUtil {
                 .header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE)
                 .cookies(cookies -> cookies.addAll(tempCookies))
                 .exchange().flatMap(clientResponse1 -> {
-                    //must be login page, lest login!
+                    //must be login page, lets login!
                     System.out.println("get login cookie:" + clientResponse1.cookies().get("JSESSIONID"));
                     for (CharSequence key: clientResponse1.cookies().keySet()) {
                         tempCookies.put(String.valueOf(key), Arrays.asList(clientResponse1.cookies().get(key).stream().toList().get(0).getValue()));
@@ -101,8 +101,8 @@ public class AutoLoginUtil {
                 .header(HttpHeaders.ACCEPT, MediaType.TEXT_HTML_VALUE)
                 .header(HttpHeaders.REFERER, "http://localhost:8080" + OAUTH2_URI)
                 .cookies(cookies -> cookies.addAll(tempCookies))
-                .body(BodyInserters.fromFormData("email", email)
-                        .with("pass", pass))
+                .body(BodyInserters.fromFormData("username", email)
+                        .with("password", pass))
                 .exchange()
                 .flatMap(clientResponse2 -> {
                     //another redirect to "uri"&continue!? Let's get the url and see!

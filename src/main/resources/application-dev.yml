@@ -1,9 +1,9 @@
 server:
   port: 8080
-  servlet:
-   session:
-     persistent: false
-     tracking-modes: cookie
+  #servlet:
+   #session:
+     #tracking-modes: cookie
+     #persistent: false
 
 
 auth:
@@ -13,7 +13,7 @@ auth:
     server-client-secret: $2a$10$9u/FK6u3hyYv6LfiahN.ceeKhyToICqCvxOcJgH11EzB2YcKInwta
     ip: 192.168.1.2
     port: 8080
-    email-password-login-endpoint: http://${auth.server.ip}:${auth.server.port}/auth/login
+    email-password-login-endpoint: http://${auth.server.ip}:${auth.server.port}/login
 
 logging:
   level:

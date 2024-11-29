@@ -28,14 +28,14 @@ public class UserController {
     @GetMapping("/{id}")
     @ResponseBody
     public ResponseEntity getUserById(@PathVariable @NotEmpty String id, JwtAuthenticationToken principal) {
-        if(!isAuthorized(principal)){
+        if(!isServiceRequest(principal)){
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
         }
         return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(id));
     }
 
     /**
-     * anyone with a valid token can access
+     * users with a valid token can access
      * todo only certain info must be shared through a DTO
      * @param principal
      * @return
@@ -46,10 +46,14 @@ public class UserController {
         if(principal == null){
            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
         }
+        if(isServiceRequest(principal)){
+            // SERVICEs are not users
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).body("");
+        }
         return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(principal.getName()));
     }
 
-    private boolean isAuthorized(JwtAuthenticationToken principal){
+    private boolean isServiceRequest(JwtAuthenticationToken principal){
         // only authenticated users are allowed
         if(principal == null){
             return false;

@@ -30,6 +30,7 @@ public class ResgistrationController {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(userService.register(newUser));
     }
 
+    //todo generate token rather than faking login
     @PostMapping("/register/other-provider")
     @ResponseBody
     private ResponseEntity registerViaAnotherProvider(@Valid @RequestBody UserRegistrationOtherProviderDto newUser) {
