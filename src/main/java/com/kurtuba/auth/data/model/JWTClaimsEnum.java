@@ -9,7 +9,7 @@ public enum  JWTClaimsEnum {
     EXP(5,"exp"),
     IAT(6,"iat"),
     JTI(7,"jti"),
-    ROLE(8,"role"),;
+    SCOPE(8,"scope");
 
     JWTClaimsEnum(int id, String displayName){
         this.id = id;

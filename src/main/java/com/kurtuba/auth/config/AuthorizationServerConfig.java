@@ -1,9 +1,6 @@
 package com.kurtuba.auth.config;
 
-import com.kurtuba.auth.data.model.CustomOAuth2User;
-import com.kurtuba.auth.data.model.JWTClaimsEnum;
-import com.kurtuba.auth.data.model.RoleEnum;
-import com.kurtuba.auth.data.model.UserToken;
+import com.kurtuba.auth.data.model.*;
 import com.kurtuba.auth.data.repository.UserTokenRepository;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.TokenUtils;
@@ -235,10 +232,12 @@ public class AuthorizationServerConfig {
                 //a service is asking for an access token to call another service
                 // make it a short-lived token
                 context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(1)));
-                context.getClaims().claim(JWTClaimsEnum.ROLE.getDisplayName(), "SERVICE");
+                context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), "SERVICE");
             }else{
                 //a user is logging in. replace username/email with userId
-                context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), userService.getUserByUsernameOrEmail(oauthUser.getEmail()).getId());
+                User user = userService.getUserByUsernameOrEmail(oauthUser.getEmail());
+                context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
+                context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList());
             }
         };
     }
@@ -259,11 +258,18 @@ public class AuthorizationServerConfig {
                     //a service is asking for an access token to call another service
                     // make it a short-lived token
                     context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(1)));
-                    context.getClaims().claim(JWTClaimsEnum.ROLE.getDisplayName(), RoleEnum.SERVICE.name());
+                    context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), AuthoritiesEnum.SERVICE.name());
 
                 }else{
                     //a user is logging in. replace username/email with userId
-                    context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), userService.getUserByUsernameOrEmail(context.getClaims().build().getClaim("sub")).getId());
+                    User user = userService.getUserByUsernameOrEmail(context.getClaims().build().getClaim("sub"));
+                    context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
+                    List<String> roles =  user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
+                    if(roles.contains(AuthoritiesEnum.ADMIN.name())){
+                        //if user has admin role them make his token short-lived
+                        context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(3)));
+                    }
+                    context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), roles);
                 }
 
             }

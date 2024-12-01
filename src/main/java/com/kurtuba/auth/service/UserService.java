@@ -193,7 +193,7 @@ public class UserService {
         user.setUserRoles(List.of(
                 UserRole.builder()
                         .userId(user.getId())
-                        .role(RoleEnum.USER)
+                        .role(AuthoritiesEnum.USER)
                         .build()));
         userRoleRepository.saveAll(user.getUserRoles());
 
@@ -285,7 +285,7 @@ public class UserService {
             user.setUserRoles(List.of(
                     UserRole.builder()
                             .userId(user.getId())
-                            .role(RoleEnum.USER)
+                            .role(AuthoritiesEnum.USER)
                             .build()));
             userRoleRepository.saveAll(user.getUserRoles());
             decodedUser.setPassword(pass);

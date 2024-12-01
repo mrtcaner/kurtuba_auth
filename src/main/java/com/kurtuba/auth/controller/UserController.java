@@ -2,12 +2,12 @@ package com.kurtuba.auth.controller;
 
 
 import com.kurtuba.auth.data.model.JWTClaimsEnum;
-import com.kurtuba.auth.data.model.RoleEnum;
+import com.kurtuba.auth.data.model.AuthoritiesEnum;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,13 +24,11 @@ public class UserController {
 
     /**
      * this method is for internal use only
+     * token must have SERVICE in scope claim
      */
     @GetMapping("/{id}")
-    @ResponseBody
-    public ResponseEntity getUserById(@PathVariable @NotEmpty String id, JwtAuthenticationToken principal) {
-        if(!isServiceRequest(principal)){
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
-        }
+    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
+    public ResponseEntity getUserById(@PathVariable @NotEmpty String id) {
         return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(id));
     }
 
@@ -41,32 +39,15 @@ public class UserController {
      * @return
      */
     @GetMapping("/info")
-    @ResponseBody
     public ResponseEntity getUserInfo(JwtAuthenticationToken principal) {
         if(principal == null){
            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
         }
-        if(isServiceRequest(principal)){
+        if(principal.getAuthorities().contains(JWTClaimsEnum.SCOPE.name() + "_" +AuthoritiesEnum.SERVICE.name())){
             // SERVICEs are not users
             return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).body("");
         }
         return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(principal.getName()));
     }
 
-    private boolean isServiceRequest(JwtAuthenticationToken principal){
-        // only authenticated users are allowed
-        if(principal == null){
-            return false;
-        }
-        // token must have a role claim
-        if(principal.getTokenAttributes().get(JWTClaimsEnum.ROLE.getDisplayName()) == null){
-            return false;
-        }
-        // role has to be "SERVICE"
-        if(!principal.getTokenAttributes().get(JWTClaimsEnum.ROLE.getDisplayName()).equals(RoleEnum.SERVICE.name())){
-            return false;
-        }
-
-        return true;
-    }
 }

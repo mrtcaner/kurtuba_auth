@@ -29,7 +29,7 @@ public class UserRole {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    private RoleEnum role;
+    private AuthoritiesEnum role;
 
     @NotNull
     LocalDateTime createdDate;
