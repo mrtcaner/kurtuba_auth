@@ -60,15 +60,16 @@ public class AuthorizationServerConfig {
 
     @Value("classpath:rsa-jwk")
     Resource rsaJwkFile;
-    RegisteredClient mobileClient;
     @Value("${kurtuba.rsa-jwk.key}")
     private String rsaJwkKey;
     @Value("${auth.server.issuer-url}")
     private String authServerIssuerUrl;
     @Value("${auth.server.mobile-client-secret}")
     private String mobileClientSecret;
-    @Value("${auth.server.server-client-secret}")
-    private String serverClientSecret;
+    @Value("${auth.server.adm-web-client-secret}")
+    private String admWebClientSecret;
+    @Value("${auth.server.adm-service-client-secret}")
+    private String admServiceClientSecret;
 
     private final UserService userService;
 
@@ -159,14 +160,13 @@ public class AuthorizationServerConfig {
     public RegisteredClientRepository registeredClientRepository() {
 
         List<RegisteredClient> clientList = new ArrayList<>();
-        mobileClient = RegisteredClient.withId(UUID.randomUUID().toString())
+        RegisteredClient mobileClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("mobile-client")
                 .clientSecret(mobileClientSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .tokenSettings(tokenSettings())
-                .redirectUri("http://localhost:8080/login/oauth2/code/articles-client-oidc")
                 .redirectUri("http://localhost:8080/authorized")
                 .redirectUri("http://localhost:8081/products")
                 .redirectUri("parafusion-callback:/")
@@ -174,9 +174,24 @@ public class AuthorizationServerConfig {
                 .build();
         clientList.add(mobileClient);
 
+        RegisteredClient admWebClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("adm-web-client")
+                .clientSecret(admWebClientSecret)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .tokenSettings(tokenSettings())
+                .redirectUri("http://localhost:8080/authorized")
+                .redirectUri("http://localhost:8081/products")
+                .redirectUri("parafusion-callback:/")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .build();
+
+        clientList.add(admWebClient);
+
         RegisteredClient admServiceClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("adm-service-client")
-                .clientSecret(serverClientSecret)
+                .clientSecret(admServiceClientSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .build();
@@ -237,7 +252,17 @@ public class AuthorizationServerConfig {
                 //a user is logging in. replace username/email with userId
                 User user = userService.getUserByUsernameOrEmail(oauthUser.getEmail());
                 context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
-                context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList());
+
+                List<String> roles =  user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
+                // use userId for sub
+                context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
+
+                if(roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientName()
+                        .equals("adm-web-client")){
+                    //if user has admin role and asks for a token for the web client then make his token short-lived
+                    context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(3)));
+                    context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), roles);
+                }
             }
         };
     }
@@ -263,13 +288,17 @@ public class AuthorizationServerConfig {
                 }else{
                     //a user is logging in. replace username/email with userId
                     User user = userService.getUserByUsernameOrEmail(context.getClaims().build().getClaim("sub"));
-                    context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
                     List<String> roles =  user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
-                    if(roles.contains(AuthoritiesEnum.ADMIN.name())){
-                        //if user has admin role them make his token short-lived
+                    // use userId for sub
+                    context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
+
+                    if(roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientName()
+                            .equals("adm-web-client")){
+                        //if user has admin role and asks for a token for the web client then make his token short-lived
                         context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(3)));
+                        context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), roles);
                     }
-                    context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), roles);
+
                 }
 
             }
