@@ -292,7 +292,7 @@ public class AuthorizationServerConfig {
                     // use userId for sub
                     context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
 
-                    if(roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientName()
+                    if(roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientId()
                             .equals("adm-web-client")){
                         //if user has admin role and asks for a token for the web client then make his token short-lived
                         context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(3)));
