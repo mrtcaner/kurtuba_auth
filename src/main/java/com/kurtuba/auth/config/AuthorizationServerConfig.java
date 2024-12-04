@@ -8,8 +8,6 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.shaded.gson.JsonObject;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.keys.PbkdfKey;
 import org.jose4j.lang.JoseException;
@@ -76,14 +74,11 @@ public class AuthorizationServerConfig {
 
     private final UserTokenService userTokenService;
 
-    private final SessionFactory sessionFactory;
-
     private final TokenUtils tokenUtils;
 
-    public AuthorizationServerConfig(UserService userService, UserTokenService userTokenService, SessionFactory sessionFactory, TokenUtils tokenUtils) {
+    public AuthorizationServerConfig(UserService userService, UserTokenService userTokenService, TokenUtils tokenUtils) {
         this.userService = userService;
         this.userTokenService = userTokenService;
-        this.sessionFactory = sessionFactory;
         this.tokenUtils = tokenUtils;
     }
 
@@ -137,11 +132,8 @@ public class AuthorizationServerConfig {
                                                     .createdDate(issuedAt)
                                                     .build();
 
-                                            Session session = sessionFactory.openSession();
-                                            session.beginTransaction();
                                             userTokenService.save(userToken);
-                                            session.getTransaction().commit();
-                                            session.close();
+
                                             customHandler = new CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(refreshToken);
                                         }else{
                                             customHandler = new CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler();
