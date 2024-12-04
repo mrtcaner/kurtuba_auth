@@ -12,14 +12,14 @@ import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TokenUtils;
 import com.kurtuba.auth.utils.Utils;
 import com.nimbusds.jose.shaded.gson.JsonObject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityTransaction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -37,16 +37,21 @@ public class UserService {
 
     private final UserTokenService userTokenService;
 
-    private final SessionFactory sessionFactory;
-
     private final EmailService emailService;
 
-    public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository, UserTokenService userTokenService, SessionFactory sessionFactory, EmailService emailService) {
+    private final EntityManagerFactory entityManagerFactory;
+
+    private EntityManager em() {
+        return entityManagerFactory.createEntityManager();
+    }
+
+    public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository,
+                       UserTokenService userTokenService, EmailService emailService, EntityManagerFactory entityManagerFactory) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.userTokenService = userTokenService;
-        this.sessionFactory = sessionFactory;
         this.emailService = emailService;
+        this.entityManagerFactory = entityManagerFactory;
     }
 
 
@@ -93,7 +98,8 @@ public class UserService {
      * <p>
      * transaction is managed manually because we may save data to db and then throw BusinessLogicException
      */
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+
+
     public User authenticate(String emailUsername, String pass) {
         User user = userRepository.getUserByEmailOrUsername(emailUsername);
         if (user == null) {
@@ -106,48 +112,47 @@ public class UserService {
 
         user.setLastLoginAttempt(LocalDateTime.now());
         String dbPass = user.getPassword();
-        Session session = sessionFactory.openSession();
-        session.beginTransaction();
-        if (!BCrypt.checkpw(pass, dbPass)) {
-            user.setFailedLoginCount(user.getFailedLoginCount() + 1);
+        EntityTransaction transaction = null;
+        try (EntityManager em = em()) {
+            transaction = em.getTransaction();
+            transaction.begin();
+            user = em.find(User.class,user.getId());
+            if (!BCrypt.checkpw(pass, dbPass)) {
+                user.setFailedLoginCount(user.getFailedLoginCount() + 1);
 
-            if (user.getFailedLoginCount() >= 5) {
-                user.setShowCaptcha(true);
-            }
+                if (user.getFailedLoginCount() >= 5) {
+                    user.setShowCaptcha(true);
+                }
 
-            if (user.getFailedLoginCount() >= 10) {
-                user.setLocked(true);
-                userRepository.save(user);
-                session.getTransaction().commit();
-                session.close();
-                timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 15;
-                throw new BusinessLogicException(ErrorEnum.LOGIN_USER_LOCKED.getCode(), "Account locked until " + user.getLastLoginAttempt().plusMinutes(timeToWait));
+                if (user.getFailedLoginCount() >= 10) {
+                    user.setLocked(true);
+                    em.persist(user);
+                    transaction.commit();
+                    timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 15;
+                    throw new BusinessLogicException(ErrorEnum.LOGIN_USER_LOCKED.getCode(), "Account locked until " + user.getLastLoginAttempt().plusMinutes(timeToWait));
+                }
+                em.persist(user);
+                transaction.commit();
+                throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
+
             }
-            userRepository.save(user);
-            session.getTransaction().commit();
-            session.close();
-            throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
+            user.setFailedLoginCount(0);
+            user.setShowCaptcha(false);
+            user.setLocked(false);
+            em.persist(user);
+            transaction.commit();
+            return user;
 
         }
 
-        user.setFailedLoginCount(0);
-        user.setShowCaptcha(false);
-        user.setLocked(false);
-        userRepository.save(user);
-
-        //save user and token
-        session.getTransaction().commit();
-        session.close();
-
-        return user;
     }
 
     @Transactional
     public TokensDto generateTokensForLoginByRestRequest(String emailUsername, String pass, ClientType clientType) {
 
-        User user = authenticate(emailUsername,pass);
+        User user = authenticate(emailUsername, pass);
 
-        return userTokenService.createAndSaveTokens(user.getId(),clientType);
+        return userTokenService.createAndSaveTokens(user.getId(), clientType);
     }
 
     @Transactional
