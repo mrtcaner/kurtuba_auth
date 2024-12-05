@@ -90,5 +90,18 @@ public class User implements Serializable {
     @NotNull
     private LocalDateTime createdDate;
 
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof User) {
+            return id.equals( ((User) obj).getId());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return id != null ? id.hashCode() : 0;
+    }
+
 
 }

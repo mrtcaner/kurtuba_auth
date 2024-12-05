@@ -8,6 +8,8 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jose.shaded.gson.JsonObject;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.jose4j.jwe.JsonWebEncryption;
 import org.jose4j.keys.PbkdfKey;
 import org.jose4j.lang.JoseException;
@@ -18,6 +20,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -97,52 +100,7 @@ public class AuthorizationServerConfig {
                             .oidc(Customizer.withDefaults());	// Enable OpenID Connect 1.0*/
                             authorizationServer.authorizationServerSettings(AuthorizationServerSettings.builder().issuer(authServerIssuerUrl).build());
                             authorizationServer.tokenEndpoint(oAuth2TokenEndpointConfigurer -> oAuth2TokenEndpointConfigurer
-                                    .accessTokenResponseHandler((request, response, authentication) -> {
-
-                                        JsonObject tokenObj = TokenUtils.decodeTokenPayload(((OAuth2AccessTokenAuthenticationToken) authentication).getAccessToken().getTokenValue());
-                                        /*
-                                            "sub" -> {JsonPrimitive@24061} ""3f29802a-64fa-41e0-be86-82f3c24ea982""
-                                            "aud" -> {JsonPrimitive@24063} ""mobile-client""
-                                            "nbf" -> {JsonPrimitive@24065} "1732304516"
-                                            "iss" -> {JsonPrimitive@24067} "http://localhost:8080"
-                                            "exp" -> {JsonPrimitive@24069} "2596304516"
-                                            "iat" -> {JsonPrimitive@24071} "1732304516"
-                                            "jti" -> {JsonPrimitive@24073} "73d69d7e-dfc5-45b0-9130-975e5644e0d9"
-                                         */
-                                        CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler customHandler;
-                                        // no need to save short-lived service-client tokens
-                                        if(!tokenObj.get(JWTClaimsEnum.SUB.getDisplayName()).getAsString().contains("service-client")) {
-
-                                            Instant instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get(JWTClaimsEnum.EXP.getDisplayName()).getAsString()));
-                                            ZoneId zoneId = ZoneId.systemDefault();
-                                            LocalDateTime expirationDate = instant.atZone(zoneId).toLocalDateTime();
-                                            //System.out.println("instant1:" + instant);
-                                            instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get(JWTClaimsEnum.IAT.getDisplayName()).getAsString()));
-                                            LocalDateTime issuedAt = instant.atZone(zoneId).toLocalDateTime();
-                                            //System.out.println("instant2:" + instant);
-
-                                            String refreshToken = tokenUtils.generateRefreshToken();
-                                            UserToken userToken = UserToken.builder()
-                                                    .userId(tokenObj.get(JWTClaimsEnum.SUB.getDisplayName()).getAsString())
-                                                    .clientId(tokenObj.get(JWTClaimsEnum.AUD.getDisplayName()).getAsString())
-                                                    .jti(tokenObj.get(JWTClaimsEnum.JTI.getDisplayName()).getAsString())
-                                                    .expirationDate(expirationDate)
-                                                    .refreshToken(new BCryptPasswordEncoder().encode(new String(Base64.getDecoder().decode(refreshToken))))
-                                                    .refreshTokenExp(LocalDateTime.now().plusMonths(3))//todo to properties file
-                                                    .createdDate(issuedAt)
-                                                    .build();
-
-                                            userTokenService.save(userToken);
-
-                                            customHandler = new CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(refreshToken);
-                                        }else{
-                                            customHandler = new CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler();
-                                        }
-
-                                        //fill the response
-                                        customHandler.onAuthenticationSuccess(request, response, authentication);
-
-                                    }));
+                                    .accessTokenResponseHandler(this::onAuthenticationSuccess));
                         }
 
                 )
@@ -238,6 +196,7 @@ public class AuthorizationServerConfig {
     /**
      * Alternate token customizer
      * Works for OAuth2TokenFormat.REFERENCE
+     *
      * @return
      */
     @Bean
@@ -246,22 +205,22 @@ public class AuthorizationServerConfig {
             CustomOAuth2User oauthUser = new CustomOAuth2User((OAuth2User) SecurityContextHolder.getContext()
                     .getAuthentication().getPrincipal());
 
-            if(context.getAuthorizationGrantType().equals(AuthorizationGrantType.CLIENT_CREDENTIALS)){
+            if (context.getAuthorizationGrantType().equals(AuthorizationGrantType.CLIENT_CREDENTIALS)) {
                 //a service is asking for an access token to call another service
                 // make it a short-lived token
                 context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(1)));
                 context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), "SERVICE");
-            }else{
+            } else {
                 //a user is logging in. replace username/email with userId
                 User user = userService.getUserByUsernameOrEmail(oauthUser.getEmail());
                 context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
 
-                List<String> roles =  user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
+                List<String> roles = user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
                 // use userId for sub
                 context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
 
-                if(roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientName()
-                        .equals("adm-web-client")){
+                if (roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientName()
+                        .equals("adm-web-client")) {
                     //if user has admin role and asks for a token for the web client then make his token short-lived
                     context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(3)));
                     context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), roles);
@@ -271,8 +230,9 @@ public class AuthorizationServerConfig {
     }
 
     /**
-     *  Default token customizer
-     *  Works for OAuth2TokenFormat.SELF_CONTAINED which is the default token setting
+     * Default token customizer
+     * Works for OAuth2TokenFormat.SELF_CONTAINED which is the default token setting
+     *
      * @return
      */
     @Bean
@@ -282,21 +242,21 @@ public class AuthorizationServerConfig {
             //Make sure it is not a refresh token
             if (context.getTokenType().equals(OAuth2TokenType.ACCESS_TOKEN)) {
 
-                if(context.getAuthorizationGrantType().equals(AuthorizationGrantType.CLIENT_CREDENTIALS)){
+                if (context.getAuthorizationGrantType().equals(AuthorizationGrantType.CLIENT_CREDENTIALS)) {
                     //a service is asking for an access token to call another service
                     // make it a short-lived token
                     context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(1)));
                     context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), AuthoritiesEnum.SERVICE.name());
 
-                }else{
+                } else {
                     //a user is logging in. replace username/email with userId
                     User user = userService.getUserByUsernameOrEmail(context.getClaims().build().getClaim("sub"));
-                    List<String> roles =  user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
+                    List<String> roles = user.getUserRoles().stream().map(userRole -> userRole.getRole().name()).toList();
                     // use userId for sub
                     context.getClaims().claim(JWTClaimsEnum.SUB.getDisplayName(), user.getId());
 
-                    if(roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientId()
-                            .equals("adm-web-client")){
+                    if (roles.contains(AuthoritiesEnum.ADMIN.name()) && context.getRegisteredClient().getClientId()
+                            .equals("adm-web-client")) {
                         //if user has admin role and asks for a token for the web client then make his token short-lived
                         context.getClaims().claim(JWTClaimsEnum.EXP.getDisplayName(), Instant.now().plus(Duration.ofMinutes(3)));
                         context.getClaims().claim(JWTClaimsEnum.SCOPE.getDisplayName(), roles);
@@ -324,6 +284,61 @@ public class AuthorizationServerConfig {
         } catch (IOException | JoseException | ParseException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
+
+        JsonObject tokenObj = TokenUtils.decodeTokenPayload(((OAuth2AccessTokenAuthenticationToken) authentication).getAccessToken().getTokenValue());
+        /*
+            "sub" -> {JsonPrimitive@24061} ""3f29802a-64fa-41e0-be86-82f3c24ea982""
+            "aud" -> {JsonPrimitive@24063} ""mobile-client""
+            "nbf" -> {JsonPrimitive@24065} "1732304516"
+            "iss" -> {JsonPrimitive@24067} "http://localhost:8080"
+            "exp" -> {JsonPrimitive@24069} "2596304516"
+            "iat" -> {JsonPrimitive@24071} "1732304516"
+            "jti" -> {JsonPrimitive@24073} "73d69d7e-dfc5-45b0-9130-975e5644e0d9"
+         */
+
+        // no need to save short-lived service-client tokens
+        if (!tokenObj.get(JWTClaimsEnum.SUB.getDisplayName()).getAsString().contains("service-client")) {
+
+            Instant instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get(JWTClaimsEnum.EXP.getDisplayName()).getAsString()));
+            ZoneId zoneId = ZoneId.systemDefault();
+            LocalDateTime expirationDate = instant.atZone(zoneId).toLocalDateTime();
+            //System.out.println("instant1:" + instant);
+            instant = Instant.ofEpochSecond(Long.parseLong(tokenObj.get(JWTClaimsEnum.IAT.getDisplayName()).getAsString()));
+            LocalDateTime issuedAt = instant.atZone(zoneId).toLocalDateTime();
+            //System.out.println("instant2:" + instant);
+
+            String refreshToken = tokenUtils.generateRefreshToken();
+            UserToken userToken = UserToken.builder()
+                    .userId(tokenObj.get(JWTClaimsEnum.SUB.getDisplayName()).getAsString())
+                    .clientId(tokenObj.get(JWTClaimsEnum.AUD.getDisplayName()).getAsString())
+                    .jti(tokenObj.get(JWTClaimsEnum.JTI.getDisplayName()).getAsString())
+                    .expirationDate(expirationDate)
+                    .refreshToken(new BCryptPasswordEncoder().encode(new String(Base64.getDecoder().decode(refreshToken))))
+                    .refreshTokenExp(LocalDateTime.now().plusMonths(3))//todo to properties file
+                    .createdDate(issuedAt)
+                    .build();
+
+            userTokenService.save(userToken);
+
+            // web-clients get only accessToken in the httpOnly cookie
+            // a refresh token is also created but not handed to web-client
+            if (tokenObj.get(JWTClaimsEnum.AUD.getDisplayName()).getAsString().contains("adm-web-client")) {
+                new CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandler()
+                        .onAuthenticationSuccess(request, response, authentication);
+            } else {
+                // mobile clients get both access and refresh tokens
+                new CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(refreshToken)
+                        .onAuthenticationSuccess(request, response, authentication);
+            }
+        } else {
+            //service clients won't get refresh tokens and their tokens won't be saved
+            new CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler()
+                    .onAuthenticationSuccess(request, response, authentication);
+        }
+
     }
 
     /*@Bean

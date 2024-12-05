@@ -14,6 +14,10 @@ public class KurtubaUserDetails implements UserDetails {
         this.user = user;
     }
 
+    public String getId(){
+        return user.getId();
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return user.getUserRoles().stream()
@@ -27,7 +31,7 @@ public class KurtubaUserDetails implements UserDetails {
 
     @Override
     public String getUsername() {
-        return user.getEmail();
+        return user.getUsername();
     }
 
     @Override
@@ -46,6 +50,19 @@ public class KurtubaUserDetails implements UserDetails {
     @Override
     public boolean isEnabled() {
         return user.isActivated();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof KurtubaUserDetails) {
+            return user.getId().equals( ((KurtubaUserDetails) obj).getId());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return user.getId() != null ? user.getId().hashCode() : 0;
     }
 
 }

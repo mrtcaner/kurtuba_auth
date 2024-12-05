@@ -10,10 +10,10 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
 @EnableWebSecurity
@@ -40,17 +40,23 @@ public class DefaultSecurityConfig {
     }
 
     @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
+    }
+
+    @Bean
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http)
             throws Exception {
-        http.authorizeHttpRequests(authorize -> authorize
+        http.sessionManagement(conf->conf.maximumSessions(1))
+                .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("login", "/error", "/actuator/**", "/auth/**", "/favicon.ico").permitAll()
                         .requestMatchers("/.well-known/openid-configuration").permitAll() //If openid is not enabled,
                         // a call to this end point must return a 4xx. Otherwise, resource servers receive a login page as response and cannot get jwks
                         .anyRequest()
                         .authenticated())
-                .oauth2ResourceServer(oauth2-> oauth2.jwt(Customizer.withDefaults()))//will require token for certain endpoints
-                .csrf(AbstractHttpConfigurer::disable)
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()))//will require token for certain endpoints
+                //.csrf(AbstractHttpConfigurer::disable)
                 // Form login handles the redirect to the login page from the
                 // authorization server filter chain
                 .formLogin(Customizer.withDefaults());
