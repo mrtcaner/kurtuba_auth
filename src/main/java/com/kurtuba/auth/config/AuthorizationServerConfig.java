@@ -1,5 +1,7 @@
 package com.kurtuba.auth.config;
 
+import com.kurtuba.auth.config.handler.CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler;
+import com.kurtuba.auth.config.handler.CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandler;
 import com.kurtuba.auth.data.model.*;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.service.UserTokenService;

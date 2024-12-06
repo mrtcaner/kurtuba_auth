@@ -1,6 +1,7 @@
 package com.kurtuba.auth.config;
 
 
+import com.kurtuba.auth.config.provider.CustomAuthenticationProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;

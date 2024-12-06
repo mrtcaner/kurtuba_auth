@@ -1,4 +1,4 @@
-package com.kurtuba.auth.config;
+package com.kurtuba.auth.config.customizer;
 
 import org.springframework.session.config.SessionRepositoryCustomizer;
 import org.springframework.session.jdbc.JdbcIndexedSessionRepository;

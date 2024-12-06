@@ -1,4 +1,4 @@
-package com.kurtuba.auth.config;
+package com.kurtuba.auth.config.handler;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,11 +31,11 @@ public class CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler impleme
 
 	private String customRefreshToken;
 
-	CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(){
+	public CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(){
 
 	}
 
-	CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(String customRefreshToken){
+	public CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler(String customRefreshToken){
 		this.customRefreshToken = customRefreshToken;
 	}
 

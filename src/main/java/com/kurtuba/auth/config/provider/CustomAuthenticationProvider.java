@@ -1,4 +1,4 @@
-package com.kurtuba.auth.config;
+package com.kurtuba.auth.config.provider;
 
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;

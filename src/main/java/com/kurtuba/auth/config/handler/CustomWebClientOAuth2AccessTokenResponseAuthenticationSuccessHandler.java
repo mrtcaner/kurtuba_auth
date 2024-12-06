@@ -1,4 +1,4 @@
-package com.kurtuba.auth.config;
+package com.kurtuba.auth.config.handler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -33,11 +33,12 @@ public class CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandle
 		}
 
 		OAuth2AccessToken accessToken = accessTokenAuthentication.getAccessToken();
-		ResponseCookie cookie = ResponseCookie.from("accessToken", accessToken.getTokenValue())
+		ResponseCookie cookie = ResponseCookie.from("jwt", accessToken.getTokenValue())
 				.httpOnly(true)
 				.secure(false)
 				.path("/")
 				.maxAge(1800)// seconds-30 minutes. todo May be different for different web-clients. For adm-web-client 180 seconds
+				//todo max age must be same with refreshToken exp date
 				.build();
 		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 

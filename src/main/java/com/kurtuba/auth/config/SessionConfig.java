@@ -1,5 +1,6 @@
 package com.kurtuba.auth.config;
 
+import com.kurtuba.auth.config.customizer.TableNameCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.session.jdbc.config.annotation.web.http.EnableJdbcHttpSession;
