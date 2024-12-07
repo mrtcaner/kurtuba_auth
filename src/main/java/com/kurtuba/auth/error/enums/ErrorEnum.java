@@ -13,7 +13,8 @@ public enum ErrorEnum {
     USER_EMAIL_ALREADY_EXISTS("A user with email address already exists",1008),
     USER_USERNAME_ALREADY_EXISTS("A user with username already exists",1009),
     USER_OTHER_PROVIDER_INVALID_TOKEN("Invalid provider token",1010),
-    AUTH_REFRESH_TOKEN_INVALID("Invalid token",1011);
+    AUTH_REFRESH_TOKEN_INVALID("Invalid token",1011),
+    USER_INVALID_STATE("Invalid user state",1012);
 
     private String message;
     private Integer code;
