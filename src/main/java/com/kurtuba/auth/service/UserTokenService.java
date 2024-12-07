@@ -4,6 +4,7 @@ import com.kurtuba.auth.data.model.ClientType;
 import com.kurtuba.auth.data.model.JWTClaimsEnum;
 import com.kurtuba.auth.data.model.UserToken;
 import com.kurtuba.auth.data.model.dto.TokensDto;
+import com.kurtuba.auth.data.model.dto.UserDto;
 import com.kurtuba.auth.data.repository.UserTokenRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
@@ -28,9 +29,13 @@ public class UserTokenService {
     final
     TokenUtils tokenUtils;
 
-    public UserTokenService(UserTokenRepository userTokenRepository, TokenUtils tokenUtils) {
+    final
+    UserService userService;
+
+    public UserTokenService(UserTokenRepository userTokenRepository, TokenUtils tokenUtils, UserService userService) {
         this.userTokenRepository = userTokenRepository;
         this.tokenUtils = tokenUtils;
+        this.userService = userService;
     }
 
     @Transactional
@@ -41,7 +46,11 @@ public class UserTokenService {
     @Transactional
     public TokensDto refreshUserTokens(TokensDto tokenDto){
         Claims claims = verifyTokens(tokenDto);
-        return createAndSaveTokens(claims.getSubject(),ClientType.MOBILE_CLIENT);
+        UserDto userDto = userService.getUserById(claims.getSubject());
+        if(userDto.isActivated() && userDto.isEmailValidated() && !userDto.isLocked() && !userDto.isShowCaptcha()){
+            return createAndSaveTokens(claims.getSubject(),ClientType.fromName(claims.getAudience().toString()));
+        }
+        throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
     }
 
     /**
