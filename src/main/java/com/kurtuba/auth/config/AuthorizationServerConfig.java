@@ -2,6 +2,7 @@ package com.kurtuba.auth.config;
 
 import com.kurtuba.auth.config.handler.CustomOAuth2AccessTokenResponseAuthenticationSuccessHandler;
 import com.kurtuba.auth.config.handler.CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandler;
+import com.kurtuba.auth.config.resolver.CustomBearerTokenResolver;
 import com.kurtuba.auth.data.model.*;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.service.UserTokenService;
@@ -43,6 +44,7 @@ import org.springframework.security.oauth2.server.authorization.settings.ClientS
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.*;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -54,10 +56,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 @Configuration
 public class AuthorizationServerConfig {
@@ -342,6 +341,12 @@ public class AuthorizationServerConfig {
         }
 
     }
+
+    @Bean
+    public BearerTokenResolver bearerTokenResolver() {
+        return new CustomBearerTokenResolver();
+    }
+
 
     /*@Bean
     public JWKSource<SecurityContext> jwkSource() {
