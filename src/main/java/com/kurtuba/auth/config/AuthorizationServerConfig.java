@@ -33,6 +33,8 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.authentication.OAuth2AccessTokenAuthenticationToken;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -57,7 +59,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.UUID;
 
 @Configuration
 public class AuthorizationServerConfig {
@@ -116,6 +120,18 @@ public class AuthorizationServerConfig {
                 );
 
         return http.build();
+    }
+
+    @Bean
+    public JdbcOAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate,
+                                                               RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+    }
+
+    @Bean
+    public JdbcOAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate,
+                                                                             RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
     }
 
     @Bean
@@ -304,9 +320,9 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate){
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
         JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
-        if (registeredClientRepository.findByClientId("mobile-client") == null){
+        if (registeredClientRepository.findByClientId("mobile-client") == null) {
             RegisteredClient mobileClient = RegisteredClient.withId(UUID.randomUUID().toString())
                     .clientId("mobile-client")
                     .clientSecret(mobileClientSecret)
@@ -322,7 +338,7 @@ public class AuthorizationServerConfig {
             registeredClientRepository.save(mobileClient);
         }
 
-        if (registeredClientRepository.findByClientId("adm-web-client") == null){
+        if (registeredClientRepository.findByClientId("adm-web-client") == null) {
             RegisteredClient admWebClient = RegisteredClient.withId(UUID.randomUUID().toString())
                     .clientId("adm-web-client")
                     .clientSecret(admWebClientSecret)
@@ -338,7 +354,7 @@ public class AuthorizationServerConfig {
             registeredClientRepository.save(admWebClient);
         }
 
-        if (registeredClientRepository.findByClientId("adm-service-client") == null){
+        if (registeredClientRepository.findByClientId("adm-service-client") == null) {
             RegisteredClient admServiceClient = RegisteredClient.withId(UUID.randomUUID().toString())
                     .clientId("adm-service-client")
                     .clientSecret(admServiceClientSecret)
