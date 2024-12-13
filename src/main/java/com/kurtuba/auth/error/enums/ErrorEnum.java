@@ -14,7 +14,9 @@ public enum ErrorEnum {
     USER_USERNAME_ALREADY_EXISTS("A user with username already exists",1009),
     USER_OTHER_PROVIDER_INVALID_TOKEN("Invalid provider token",1010),
     AUTH_REFRESH_TOKEN_INVALID("Invalid token",1011),
-    USER_INVALID_STATE("Invalid user state",1012);
+    USER_INVALID_STATE("Invalid user state",1012),
+    USER_PASSWORD_CHANGE_WRONG_PASSWORD("Old password wrong",1013),
+    USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH("New passwords don't match",1014);
 
     private String message;
     private Integer code;

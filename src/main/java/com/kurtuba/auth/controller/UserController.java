@@ -3,13 +3,17 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.model.JWTClaimsEnum;
 import com.kurtuba.auth.data.model.AuthoritiesEnum;
+import com.kurtuba.auth.data.model.dto.PasswordChangeDto;
 import com.kurtuba.auth.service.UserService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
 
 
 @RestController
@@ -48,6 +52,13 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).body("");
         }
         return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(principal.getName()));
+    }
+
+    @PutMapping("/password")
+    public ResponseEntity getUserInfo(@Valid @RequestBody PasswordChangeDto passwordChangeDto,Principal principal) {
+        userService.changePassword(passwordChangeDto, principal.getName());
+
+        return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
 }
