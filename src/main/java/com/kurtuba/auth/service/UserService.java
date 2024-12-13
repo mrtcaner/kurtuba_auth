@@ -1,10 +1,7 @@
 package com.kurtuba.auth.service;
 
 import com.kurtuba.auth.data.model.*;
-import com.kurtuba.auth.data.model.dto.TokensDto;
-import com.kurtuba.auth.data.model.dto.UserDto;
-import com.kurtuba.auth.data.model.dto.UserRegistrationDto;
-import com.kurtuba.auth.data.model.dto.UserRegistrationOtherProviderDto;
+import com.kurtuba.auth.data.model.dto.*;
 import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.data.repository.UserRoleRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
@@ -18,6 +15,7 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -348,4 +346,20 @@ public class UserService {
         return userRepository.getUserByEmail(email) == null;
     }
 
+    @Transactional
+    public void changePassword(@Valid PasswordChangeDto passwordChangeDto, @NotEmpty String userId) {
+        User user = userRepository.getUserById(userId);
+        if(user == null){
+            throw new UsernameNotFoundException("Invalid user");
+        }
+        if(!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())){
+            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_PASSWORD);
+        }
+        if(!passwordChangeDto.getNewPassword().equals(passwordChangeDto.getRepeatNewPassword())){
+            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
+        }
+
+        user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
+        userRepository.save(user);
+    }
 }
