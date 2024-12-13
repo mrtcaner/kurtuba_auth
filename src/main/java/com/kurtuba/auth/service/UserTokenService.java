@@ -30,6 +30,7 @@ public class UserTokenService {
     private static final int MOBILE_ACCESS_TOKEN_VALIDITY_MINUTES = 5;
     private static final int WEB_CLIENT_ACCESS_TOKEN_VALIDITY_MINUTES = 3;
     private static final int TOKEN_COOKIE_MAX_AGE_SECONDS = 7776000;
+    private static final int REFRESH_TOKEN_VALIDITY_DAYS = 90;
 
     final
     UserTokenRepository userTokenRepository;
@@ -71,7 +72,6 @@ public class UserTokenService {
             // delete old tokens
             userTokenRepository.delete(userToken);
             // save new tokens
-            //todo aud can be array. claims.getAudience().toString() may fail
             return createAndSaveTokens(claims.getSubject(),claims.getAudience().stream()
                     .map(aud-> ClientType.fromClientTypeName(aud)).collect(Collectors.toSet()),
                     Duration.ofMinutes(MOBILE_ACCESS_TOKEN_VALIDITY_MINUTES));
@@ -132,10 +132,10 @@ public class UserTokenService {
         UserToken newUserToken = UserToken.builder()
                 .jti(decodedNewToken.get(JWTClaimsEnum.JTI.getDisplayName()).getAsString())
                 .userId(decodedNewToken.get(JWTClaimsEnum.SUB.getDisplayName()).getAsString())
-                .clientId(clientTypes.toString())//todo brackets in db. Fix!
+                .clientId(String.join(",", clientTypes.stream().map(ct->ct.getClientTypeName()).collect(Collectors.toSet())))
                 .expirationDate(expirationDate)
                 .refreshToken(new BCryptPasswordEncoder().encode(new String(Base64.getDecoder().decode(newRefreshToken))))
-                .refreshTokenExp(LocalDateTime.now().plusMonths(3))// todo put the values to properties
+                .refreshTokenExp(LocalDateTime.now().plusDays(REFRESH_TOKEN_VALIDITY_DAYS))// todo put the values to properties
                 .createdDate(LocalDateTime.now())
                 .blocked(false)
                 .build();
