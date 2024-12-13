@@ -1,5 +1,7 @@
 package com.kurtuba.auth.config.provider;
 
+import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.data.model.dto.KurtubaUserDetailsDto;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -7,21 +9,21 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class CustomAuthenticationProvider implements AuthenticationProvider {
 
     final
-    UserDetailsService userDetailsService;
-
-    final
     UserService userService;
 
-    public CustomAuthenticationProvider(UserDetailsService userDetailsService, UserService userService) {
-        this.userDetailsService = userDetailsService;
+    public CustomAuthenticationProvider(UserService userService) {
         this.userService = userService;
     }
 
@@ -37,11 +39,31 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(usernameEmail);
+        UserDetails userDetails = loadUserByUsername(usernameEmail);
         // Create a fully authenticated Authentication object
         return new UsernamePasswordAuthenticationToken(
                 userDetails, password, userDetails.getAuthorities());
     }
+
+    public UserDetails loadUserByUsername(String usernameEmail)
+            throws UsernameNotFoundException {
+        User user = userService.getUserByUsernameOrEmail(usernameEmail);
+
+        if (user == null) {
+            throw new UsernameNotFoundException("Could not find user");
+        }
+
+        List<SimpleGrantedAuthority> auths = new ArrayList<>();
+        user.getUserRoles().stream().map(auth -> auths.add(new SimpleGrantedAuthority(auth.getRole().name())));
+        return KurtubaUserDetailsDto.builder()
+                .username(user.getUsername())
+                .password(user.getPassword())
+                .authorities(auths)
+                .locked(user.isLocked())
+                .activated(user.isActivated())
+                .build();
+    }
+
     @Override
     public boolean supports(Class<?> authentication) {
         // Return true if this AuthenticationProvider supports the provided authentication class

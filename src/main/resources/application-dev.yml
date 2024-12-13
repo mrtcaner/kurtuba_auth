@@ -54,9 +54,9 @@ spring:
     username: user
     password: pass
     protocol: smtp
-  data:
-    redis:
-      host: 192.168.1.114
+  #data:
+  #  redis:
+  #    host: 192.168.1.114
 
 
 management:
