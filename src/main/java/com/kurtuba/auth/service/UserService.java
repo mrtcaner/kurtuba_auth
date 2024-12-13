@@ -17,6 +17,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,15 @@ import static com.kurtuba.auth.utils.Utils.generateValidationCode;
 
 @Service
 public class UserService {
+
+    @Value("${kurtuba.mobile-client.access-token-validity.minutes}")
+    private int mobileClientAccessTokenValidityMinutes;
+    @Value("${kurtuba.mobile-client.refresh-token-validity.minutes}")
+    private int mobileClientRefreshTokenValidityMinutes;
+    @Value("${kurtuba.web-client.access-token-validity.minutes}")
+    private int webClientAccessTokenValidityMinutes;
+    @Value("${kurtuba.web-client.refresh-token-validity.minutes}")
+    private int webClientRefreshTokenValidityMinutes;
 
     private final UserRepository userRepository;
 
@@ -151,10 +161,18 @@ public class UserService {
 
     @Transactional
     public TokensDto generateTokensForLoginByRestRequest(String emailUsername, String pass, Set<ClientType> clientTypes) {
-
+        Duration accessTokenValidity;
+        Duration refreshTokenValidity;
         User user = authenticate(emailUsername, pass);
-
-        return userTokenService.createAndSaveTokens(user.getId(), clientTypes, Duration.ofMinutes(5));
+        if(clientTypes.stream().filter(aud-> aud.equals(ClientType.ADM_WEB_CLIENT)).findFirst().orElse(null) != null){
+            accessTokenValidity = Duration.ofMinutes(webClientAccessTokenValidityMinutes);
+            refreshTokenValidity = Duration.ofMinutes(webClientRefreshTokenValidityMinutes);
+        }else{
+            // mobile client
+            accessTokenValidity = Duration.ofMinutes(mobileClientAccessTokenValidityMinutes);
+            refreshTokenValidity = Duration.ofMinutes(mobileClientRefreshTokenValidityMinutes);
+        }
+        return userTokenService.createAndSaveTokens(user.getId(), clientTypes, accessTokenValidity, refreshTokenValidity);
     }
 
     @Transactional

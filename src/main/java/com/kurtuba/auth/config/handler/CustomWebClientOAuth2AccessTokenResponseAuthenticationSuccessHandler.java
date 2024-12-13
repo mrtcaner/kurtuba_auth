@@ -17,9 +17,13 @@ import java.io.IOException;
 
 public class CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandler implements AuthenticationSuccessHandler {
 
-	private static final int TOKEN_COOKIE_MAX_AGE_SECONDS = 7776000;
-
 	private final Log logger = LogFactory.getLog(getClass());
+
+	private int tokenCookieMaxAgeSeconds;
+
+	public CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandler(int tokenCookieMaxAgeSeconds){
+		this.tokenCookieMaxAgeSeconds = tokenCookieMaxAgeSeconds;
+	}
 
 	@Override
 	public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -40,8 +44,7 @@ public class CustomWebClientOAuth2AccessTokenResponseAuthenticationSuccessHandle
 				.httpOnly(true)
 				.secure(false)
 				.path("/")
-				.maxAge(TOKEN_COOKIE_MAX_AGE_SECONDS)// seconds-30 minutes. todo May be different for different web-clients. For adm-web-client 180 seconds
-				//todo max age must be same with refreshToken exp date
+				.maxAge(tokenCookieMaxAgeSeconds)
 				.build();
 		response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
 

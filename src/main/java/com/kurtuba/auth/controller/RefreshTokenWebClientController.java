@@ -7,6 +7,7 @@ import com.kurtuba.auth.service.UserTokenService;
 import com.kurtuba.auth.utils.TokenUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +25,8 @@ import java.util.Arrays;
 @RequestMapping("/public/auth")
 public class RefreshTokenWebClientController {
 
-    private static final int TOKEN_COOKIE_MAX_AGE_SECONDS = 7776000;
+    @Value("${kurtuba.web-client.cookie.max-age.seconds}")
+    private int webClientCookieMaxAgeValiditySeconds;
 
     final
     UserTokenService userTokenService;
@@ -54,7 +56,7 @@ public class RefreshTokenWebClientController {
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
-                .maxAge(TOKEN_COOKIE_MAX_AGE_SECONDS)
+                .maxAge(webClientCookieMaxAgeValiditySeconds)
                 .build();
 
         return ResponseEntity.status(HttpStatus.OK)

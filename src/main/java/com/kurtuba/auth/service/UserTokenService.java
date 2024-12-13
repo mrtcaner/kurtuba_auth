@@ -12,6 +12,7 @@ import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TokenUtils;
 import com.nimbusds.jose.shaded.gson.JsonObject;
 import io.jsonwebtoken.Claims;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,10 +28,14 @@ import java.util.stream.Collectors;
 @Service
 public class UserTokenService {
 
-    private static final int MOBILE_ACCESS_TOKEN_VALIDITY_MINUTES = 5;
-    private static final int WEB_CLIENT_ACCESS_TOKEN_VALIDITY_MINUTES = 3;
-    private static final int TOKEN_COOKIE_MAX_AGE_SECONDS = 7776000;
-    private static final int REFRESH_TOKEN_VALIDITY_DAYS = 90;
+    @Value("${kurtuba.mobile-client.access-token-validity.minutes}")
+    private int mobileClientAccessTokenValidityMinutes;
+    @Value("${kurtuba.mobile-client.refresh-token-validity.minutes}")
+    private int mobileClientRefreshTokenValidityMinutes;
+    @Value("${kurtuba.web-client.access-token-validity.minutes}")
+    private int webClientAccessTokenValidityMinutes;
+    @Value("${kurtuba.web-client.refresh-token-validity.minutes}")
+    private int webClientRefreshTokenValidityMinutes;
 
     final
     UserTokenRepository userTokenRepository;
@@ -54,7 +59,7 @@ public class UserTokenService {
 
     @Transactional
     public TokensDto refreshUserTokens(TokensDto tokensDto){
-        Claims claims = verifyAccessToken(tokensDto.getAccessToken());
+        Claims claims = verifyAccessToken(tokensDto.getAccessToken(),Duration.ofMinutes(mobileClientRefreshTokenValidityMinutes).getSeconds());
         UserToken userToken = checkRefreshTokenState(claims.getId().toString());
 
         //Decode refresh token
@@ -74,14 +79,14 @@ public class UserTokenService {
             // save new tokens
             return createAndSaveTokens(claims.getSubject(),claims.getAudience().stream()
                     .map(aud-> ClientType.fromClientTypeName(aud)).collect(Collectors.toSet()),
-                    Duration.ofMinutes(MOBILE_ACCESS_TOKEN_VALIDITY_MINUTES));
+                    Duration.ofMinutes(mobileClientAccessTokenValidityMinutes), Duration.ofMinutes(mobileClientRefreshTokenValidityMinutes));
         }
         throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
     }
 
     @Transactional
     public String refreshWebClientTokens(String accessToken){
-        Claims claims = verifyAccessToken(accessToken);
+        Claims claims = verifyAccessToken(accessToken,Duration.ofMinutes(webClientRefreshTokenValidityMinutes).getSeconds());
         // only the tokens issued for web-client(s) refreshed here
         // check each aud element to see if any contains "web-client"
         if(claims.getAudience().stream().filter(s -> s.contains("web-client")).findFirst().orElse(null) == null){
@@ -102,7 +107,7 @@ public class UserTokenService {
             userTokenRepository.delete(userToken);
             // save new tokens
             return createAndSaveTokens(claims.getSubject(),auds,
-                    Duration.ofMinutes(WEB_CLIENT_ACCESS_TOKEN_VALIDITY_MINUTES))
+                    Duration.ofMinutes(webClientAccessTokenValidityMinutes), Duration.ofMinutes(webClientRefreshTokenValidityMinutes))
                     .getAccessToken();
         }
         throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
@@ -112,15 +117,10 @@ public class UserTokenService {
      * TODO
      * This method must not be accessed without user credentials or a valid refresh token.
      * That means token-validation/user-authentication must be carried out inside this method.
-     *
-     * @param userId
-     * @param clientTypes
-     * @param duration
-     * @return
      */
     @Transactional
-    public TokensDto createAndSaveTokens(String userId, Set<ClientType> clientTypes, Duration duration){
-        String newAccessToken = tokenUtils.generateToken(userId, clientTypes, duration);
+    public TokensDto createAndSaveTokens(String userId, Set<ClientType> clientTypes, Duration accessTokenValidityDuration, Duration refreshTokenValidityDuration){
+        String newAccessToken = tokenUtils.generateToken(userId, clientTypes, accessTokenValidityDuration);
         String newRefreshToken = tokenUtils.generateRefreshToken();
 
         JsonObject decodedNewToken = TokenUtils.decodeTokenPayload(newAccessToken);
@@ -135,7 +135,7 @@ public class UserTokenService {
                 .clientId(String.join(",", clientTypes.stream().map(ct->ct.getClientTypeName()).collect(Collectors.toSet())))
                 .expirationDate(expirationDate)
                 .refreshToken(new BCryptPasswordEncoder().encode(new String(Base64.getDecoder().decode(newRefreshToken))))
-                .refreshTokenExp(LocalDateTime.now().plusDays(REFRESH_TOKEN_VALIDITY_DAYS))// todo put the values to properties
+                .refreshTokenExp(LocalDateTime.now().plus(refreshTokenValidityDuration))
                 .createdDate(LocalDateTime.now())
                 .blocked(false)
                 .build();
@@ -148,10 +148,10 @@ public class UserTokenService {
                 .build();
     }
 
-    private Claims verifyAccessToken(String accessToken){
+    private Claims verifyAccessToken(String accessToken, long clockSkew){
         Claims claims;
         try {
-            claims = tokenUtils.getVerifiedTokenClaims(accessToken,TOKEN_COOKIE_MAX_AGE_SECONDS);
+            claims = tokenUtils.getVerifiedTokenClaims(accessToken,clockSkew);
         }catch(Exception e) {
             throw new BusinessLogicException(ErrorEnum.AUTH_REFRESH_TOKEN_INVALID, e);
         }

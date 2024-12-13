@@ -27,9 +27,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.temporal.TemporalAmount;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -53,7 +53,7 @@ public class TokenUtils {
      * @param duration
      * @return Access token
      */
-    public String generateToken(String userId, Set<ClientType> clientTypes, TemporalAmount duration) {
+    public String generateToken(String userId, Set<ClientType> clientTypes, Duration duration) {
         if (publicJsonWebKey == null) {
             //System.out.println("key null!");
             publicJsonWebKey = decrypJwk();
@@ -85,9 +85,9 @@ public class TokenUtils {
             throw new BusinessLogicException(ErrorEnum.GENERIC_EXCEPTION.getCode()
                     , "SHA3-256 algorithm not found. Unable to create refresh token");
         }
-        final byte[] hashbytes = digest.digest(
+        final byte[] hashBytes = digest.digest(
                 originalBase64String.getBytes(StandardCharsets.UTF_8));
-        String sha3Hex = bytesToHex(hashbytes);
+        String sha3Hex = bytesToHex(hashBytes);
         return Base64.getEncoder().encodeToString(sha3Hex.getBytes());
     }
 
