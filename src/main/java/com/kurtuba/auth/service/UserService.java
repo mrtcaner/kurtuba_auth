@@ -406,7 +406,7 @@ public class UserService {
         }
 
         //todo check user state for locked/active etc?
-        user.setPasswordResetCode(Utils.generateValidationCode());
+        user.setPasswordResetCode(Utils.generateRandomAlphanumericString(6));
         user.setPasswordResetCodeExpirationDate(LocalDateTime.now().plusMinutes(passwordResetCodeValidityMinutes));
         userRepository.save(user);
         emailService.sendPasswordResetCodeMail(user.getEmail(),user.getPasswordResetCode());
