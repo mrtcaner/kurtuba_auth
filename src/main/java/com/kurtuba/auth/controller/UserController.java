@@ -77,17 +77,41 @@ public class UserController {
      * @param code
      * @return
      */
-    @GetMapping("/password/reset/link/{code}")
+    @GetMapping("/password-reset/{code}")
     public ModelAndView getPasswordResetPage(@Valid @PathVariable String code) {
         ModelAndView modelAndView = new ModelAndView();
         try{
             userService.validatePasswordResetCode(code);
             modelAndView.setViewName("passwordReset.html");
+            modelAndView.addObject("passwordResetDto",PasswordResetDto.builder().code(code).build());
         }catch (BusinessLogicException ex){
+
             modelAndView.setViewName("passwordResetFailure.html");
             modelAndView.addObject("errorMessage", ex.getMessage());
         }
         return modelAndView;
+    }
+
+    @PostMapping("/password-reset")
+    public ModelAndView handleResetPassword(@Valid PasswordResetDto passwordResetDto, BindingResult result){
+        ModelAndView modelAndView = new ModelAndView();
+        if(result.hasErrors()){
+            //in case password mismatch or required complexity is not fulfilled etc.
+            modelAndView.setViewName("passwordReset.html");
+            modelAndView.addObject("passwordResetDto", passwordResetDto);
+            modelAndView.addAllObjects(result.getModel());
+        }else {
+            try {
+                userService.resetPasswordByLink(passwordResetDto);
+                modelAndView.setViewName("passwordResetSuccess.html");
+            } catch (BusinessLogicException | UsernameNotFoundException ex) {
+                // user doesn't exist in the system or code expired etc.
+                modelAndView.setViewName("passwordResetFailure.html");
+            }
+        }
+
+        return modelAndView;
+
     }
 
     /**
