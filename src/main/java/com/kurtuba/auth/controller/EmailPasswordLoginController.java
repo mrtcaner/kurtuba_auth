@@ -12,7 +12,7 @@ import java.util.Set;
 
 @RestController
 @RequestMapping("auth")
-public class EmailPassLoginController {
+public class EmailPasswordLoginController {
 
     @Autowired
     UserService userService;

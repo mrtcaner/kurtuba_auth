@@ -59,21 +59,6 @@ public class RegistrationController {
         return modelAndView;
     }
 
-    /*@GetMapping("/register/email/validation/link/test/success/{code}")
-    private ModelAndView validateEmailByLinkValidatedTest(@NotEmpty @PathVariable String code) {
-        ModelAndView modelAndView = new ModelAndView();
-        modelAndView.setViewName("emailValidationSuccess.html");
-        return modelAndView;
-    }
-
-    @GetMapping("/register/email/validation/link/test/fail/{code}")
-    private ModelAndView validateEmailByLinkFailTest(@NotEmpty @PathVariable String code) {
-        ModelAndView modelAndView = new ModelAndView();
-        modelAndView.setViewName("emailValidationFailure.html");
-        modelAndView.addObject("errorMessage","Invalid code");
-        return modelAndView;
-    }*/
-
     @PostMapping("/register/email/validation/code")
     @ResponseBody
     private ResponseEntity validateEmailByCode(@Valid @RequestBody EmailValidationDto validationDto) {

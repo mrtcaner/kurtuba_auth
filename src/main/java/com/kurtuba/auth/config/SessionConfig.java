@@ -1,8 +1,9 @@
 package com.kurtuba.auth.config;
 
-import com.kurtuba.auth.config.customizer.TableNameCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.session.config.SessionRepositoryCustomizer;
+import org.springframework.session.jdbc.JdbcIndexedSessionRepository;
 import org.springframework.session.jdbc.config.annotation.web.http.EnableJdbcHttpSession;
 
 @Configuration
@@ -14,5 +15,14 @@ public class SessionConfig {
         return new TableNameCustomizer();
     }
 
+    class TableNameCustomizer
+            implements SessionRepositoryCustomizer<JdbcIndexedSessionRepository> {
+
+        @Override
+        public void customize(JdbcIndexedSessionRepository sessionRepository) {
+            sessionRepository.setTableName("kurtuba.SPRING_SESSION");
+        }
+
+    }
 }
 

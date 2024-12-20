@@ -15,8 +15,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginCredentialsDto {
-    @NotEmpty String emailUsername;
-    @NotEmpty String pass;
+    @NotEmpty
+    String emailUsername;
+    @NotEmpty
+    String pass;
     @NotNull
     @Enumerated(EnumType.STRING)
     ClientType clientType;

@@ -10,6 +10,9 @@ import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ *  A controller for test purposes
+ */
 @RestController
 @RequestMapping("auth")
 public class ProductController {
