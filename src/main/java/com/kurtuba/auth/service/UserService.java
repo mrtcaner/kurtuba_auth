@@ -239,7 +239,7 @@ public class UserService {
     @Transactional
     public void validateEmailByLink(@NotEmpty String code) {
         UserMetaChange userMetaChange = userMetaChangeRepository.findByCode(code);
-        if (userMetaChange == null) {
+        if (userMetaChange == null || !userMetaChange.getMetaChangeType().equals(MetaChangeType.EMAIL)) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VALIDATION_CODE_INVALID);
         }
         User user = userRepository.getUserById(userMetaChange.getUserId());
@@ -258,7 +258,7 @@ public class UserService {
         UserMetaChange userMetaChange = userMetaChangeRepository
                 .findByMetaAndCode(email, code);
 
-        if (userMetaChange == null) {
+        if (userMetaChange == null || !userMetaChange.getMetaChangeType().equals(MetaChangeType.EMAIL)) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VALIDATION_CODE_INVALID);
         }
         if (userMetaChange.isExecuted()) {
@@ -508,14 +508,16 @@ public class UserService {
 
     }
 
-    public void validatePasswordResetCode(String code) {
+    public UserMetaChange validatePasswordResetCode(String code) {
         UserMetaChange userMetaChange = userMetaChangeRepository.findByCode(code);
 
         validatePasswordResetCode(userMetaChange);
+
+        return userMetaChange;
     }
 
     private void validatePasswordResetCode(UserMetaChange userMetaChange) {
-        if (userMetaChange == null) {
+        if (userMetaChange == null || !userMetaChange.getMetaChangeType().equals(MetaChangeType.PASSWORD_RESET)) {
             throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_RESET_CODE_INVALID);
         }
 
