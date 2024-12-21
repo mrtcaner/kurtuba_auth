@@ -6,6 +6,7 @@ import com.kurtuba.auth.data.model.JWTClaimsEnum;
 import com.kurtuba.auth.data.model.dto.ForgotPasswordDto;
 import com.kurtuba.auth.data.model.dto.PasswordChangeDto;
 import com.kurtuba.auth.data.model.dto.PasswordResetDto;
+import com.kurtuba.auth.data.model.dto.ResultPageDto;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.Valid;
@@ -85,9 +86,12 @@ public class UserController {
             modelAndView.setViewName("passwordReset.html");
             modelAndView.addObject("passwordResetDto",PasswordResetDto.builder().code(code).build());
         }catch (BusinessLogicException ex){
-
-            modelAndView.setViewName("passwordResetFailure.html");
-            modelAndView.addObject("errorMessage", ex.getMessage());
+            modelAndView.setViewName("genericResult.html");//failure
+            modelAndView.addAllObjects(ResultPageDto.builder()
+                    .success(false)
+                    .title("Password Reset Failed!")
+                    .message1(ex.getMessage())
+                    .build().toMap());
         }
         return modelAndView;
     }
@@ -103,10 +107,19 @@ public class UserController {
         }else {
             try {
                 userService.resetPasswordByLink(passwordResetDto);
-                modelAndView.setViewName("passwordResetSuccess.html");
+                modelAndView.setViewName("genericResult.html");//success
+                modelAndView.addAllObjects(ResultPageDto.builder()
+                        .success(true)
+                        .title("Password changed successfully!")
+                        .build().toMap());
             } catch (BusinessLogicException | UsernameNotFoundException ex) {
                 // user doesn't exist in the system or code expired etc.
-                modelAndView.setViewName("passwordResetFailure.html");
+                modelAndView.setViewName("genericResult.html");//failure
+                modelAndView.addAllObjects(ResultPageDto.builder()
+                        .success(false)
+                        .title("Password Reset Failed!")
+                        .message1(ex.getMessage())
+                        .build().toMap());
             }
         }
 
@@ -165,8 +178,11 @@ public class UserController {
                 return modelAndView;
             }
             // success!
-            modelAndView.setViewName("requestPasswordResetSuccess.html");
-            modelAndView.addObject("email", form.getEmail());
+            modelAndView.setViewName("genericResult.html");//success
+            modelAndView.addAllObjects(ResultPageDto.builder()
+                    .success(true)
+                    .message1("We sent a password reset link to " + form.getEmail())
+                    .build().toMap());
         }
 
         return modelAndView;
