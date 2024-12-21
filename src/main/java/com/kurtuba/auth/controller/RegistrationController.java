@@ -1,6 +1,7 @@
 package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.model.dto.EmailValidationDto;
+import com.kurtuba.auth.data.model.dto.ResultPageDto;
 import com.kurtuba.auth.data.model.dto.UserRegistrationDto;
 import com.kurtuba.auth.data.model.dto.UserRegistrationOtherProviderDto;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
@@ -51,10 +52,20 @@ public class RegistrationController {
         ModelAndView modelAndView = new ModelAndView();
         try {
             userService.validateEmailByLink(code);
-            modelAndView.setViewName("emailValidationSuccess.html");
+            modelAndView.setViewName("genericResult.html");//sucess
+            modelAndView.addAllObjects(ResultPageDto.builder()
+                    .success(true)
+                    .title("Congratulations!")
+                    .message1("You can now log in to your account with your email address")
+                    .build().toMap());
         } catch (BusinessLogicException ex) {
-            modelAndView.setViewName("emailValidationFailure.html");
-            modelAndView.addObject("errorMessage", ex.getMessage());
+            modelAndView.setViewName("genericResult.html");//failure
+            modelAndView.addAllObjects(ResultPageDto.builder()
+                    .success(false)
+                    .title("Verification Failed!")
+                    .message1(ex.getMessage())
+                    .message2("Try logging in to your account to request a new validation link")
+                    .build().toMap());
         }
         return modelAndView;
     }
