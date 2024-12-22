@@ -127,7 +127,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendPasswordResetLinkMail(String recipient, String resetCode) {
         String resetLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/user/password-reset/" + resetCode;
+                "/user/password/reset/password-reset/" + resetCode;
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             message.setFrom("sender-test@example.com");
