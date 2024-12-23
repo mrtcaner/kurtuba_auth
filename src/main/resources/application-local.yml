@@ -43,12 +43,6 @@ spring:
 logging:
   level:
     root: info
-#    org.springframework.web: info
-#    org.springframework.security: info
-#    org.springframework.security.oauth2: info
-#    org.springframework.security.oauth2.server: info
-#    org.springframework.security.oauth2.server.authorization : info
-#    org.springframework.security.oauth2.server.authorization.authentication : info
 
 management:
   security:
@@ -59,17 +53,21 @@ management:
         include: health, info, env
 
 kurtuba:
+  password-reset:
+    code:
+      validity:
+        minutes: 30
   rsa-jwk:
-    key: "FD7pr&.f!my?k#8:"
-    file: "rsa-jwk"
+    file: "rsa-jwk.json"
+    secrets: '{"363ff933-15b5-4447-a78d-fa2560049cee": "FD7pr&.f!my?k#8:", "fe4ab529-e7d1-4a00-b32d-4bb4cb5776db": "dI1Q089vTAd3aAO"}'
   mobile-client:
     access-token-validity:
-      minutes: 129600
+      minutes: 5
     refresh-token-validity:
       minutes: 129600 #90 days
   web-client:
     access-token-validity:
-      minutes: 129600
+      minutes: 5
     refresh-token-validity:
       minutes: 129600 #90 days
     cookie:
@@ -77,7 +75,7 @@ kurtuba:
         seconds: 7776000 #90 days
   service-client:
     access-token-validity:
-      minutes: 100
+      minutes: 1
 
 ---
 
