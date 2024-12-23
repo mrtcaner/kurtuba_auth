@@ -249,14 +249,20 @@ public class UserService {
     /**
      * Validate email by rest request. User must enter the code mailed to them
      *
-     * @param userMetaChangeId
+     * @param email
      * @param code is random alphanumeric string
      * @return
      */
     @Transactional
-    public UserDto validateEmailByCode(@NotEmpty String userMetaChangeId, @NotEmpty String code) {
+    public UserDto validateEmailByCode(@NotEmpty String email, @NotEmpty String code) {
+        User user  = userRepository.getUserByEmail(email);
+
+        if (user == null) {
+            throw new UsernameNotFoundException("Invalid user");
+        }
+
         UserMetaChange userMetaChange = userMetaChangeRepository
-                .findByIdAndCode(userMetaChangeId, code);
+                .findByUserIdAndCode(user.getId(), code);
 
         if (userMetaChange == null || !userMetaChange.getMetaChangeType().equals(MetaChangeType.EMAIL)) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VALIDATION_CODE_INVALID);
@@ -269,7 +275,6 @@ public class UserService {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VALIDATE_CODE_EXPIRED);
         }
 
-        User user = userRepository.getUserById(userMetaChange.getUserId());
         if(user.isEmailValidated()){
             //this is a change operation
             //send change notification mail to old e-mail

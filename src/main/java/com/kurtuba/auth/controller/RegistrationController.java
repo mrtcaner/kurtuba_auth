@@ -73,7 +73,7 @@ public class RegistrationController {
     @ResponseBody
     private ResponseEntity validateEmailByCode(@Valid @RequestBody EmailValidationDto validationDto) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
-                .body(userService.validateEmailByCode(validationDto.getUserMetaChangeId(), validationDto.getCode()));
+                .body(userService.validateEmailByCode(validationDto.getEmail(), validationDto.getCode()));
     }
 
     @PutMapping("/register/email/validation/code/{email}")
