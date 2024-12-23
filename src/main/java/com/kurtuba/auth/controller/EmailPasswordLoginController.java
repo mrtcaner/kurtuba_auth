@@ -22,7 +22,9 @@ public class EmailPasswordLoginController {
     public ResponseEntity login(@Valid @RequestBody LoginCredentialsDto loginCredentials) {
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
-        return ResponseEntity.status(HttpStatus.OK).body(userService.generateTokensForLoginByRestRequest(loginCredentials.getEmailUsername(), loginCredentials.getPass(), Set.of(loginCredentials.getClientType())));
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(userService.generateTokensForLoginByRestRequest(loginCredentials.getEmailUsername(),
+                        loginCredentials.getPass(), Set.of(loginCredentials.getClientType())));
 
 
     }

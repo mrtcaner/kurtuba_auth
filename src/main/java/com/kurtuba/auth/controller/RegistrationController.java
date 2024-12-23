@@ -9,7 +9,6 @@ import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.AutoLoginUtil;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import org.eclipse.jetty.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -74,32 +73,32 @@ public class RegistrationController {
     @ResponseBody
     private ResponseEntity validateEmailByCode(@Valid @RequestBody EmailValidationDto validationDto) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
-                .body(userService.validateEmailByCode(validationDto.getEmail(), validationDto.getCode()));
+                .body(userService.validateEmailByCode(validationDto.getUserMetaChangeId(), validationDto.getCode()));
     }
 
     @PutMapping("/register/email/validation/code/{email}")
     @ResponseBody
-    private ResponseEntity resendValidationCode(@NotNull @PathVariable String email) {
+    private ResponseEntity resendValidationCode(@NotEmpty @PathVariable String email) {
         userService.resendValidationCode(email, true);
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body("success");
     }
 
     @PutMapping("/register/email/validation/link/{email}")
     @ResponseBody
-    private ResponseEntity resendValidationLink(@NotNull @PathVariable String email) {
+    private ResponseEntity resendValidationLink(@NotEmpty @PathVariable String email) {
         userService.resendValidationCode(email, false);
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body("success");
     }
 
     @GetMapping(value = "/register/username/available/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    private ResponseEntity isUsernameAvailable(@NotNull @PathVariable String username) {
+    private ResponseEntity isUsernameAvailable(@NotEmpty @PathVariable String username) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isUsernameAvailable(username));
     }
 
     @GetMapping("/register/email/available/{email}")
     @ResponseBody
-    private ResponseEntity isEmailAvailable(@NotNull @PathVariable String email) {
+    private ResponseEntity isEmailAvailable(@NotEmpty @PathVariable String email) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isEmailAvailable(email));
     }
 

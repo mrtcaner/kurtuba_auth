@@ -249,14 +249,14 @@ public class UserService {
     /**
      * Validate email by rest request. User must enter the code mailed to them
      *
-     * @param email
-     * @param code is random alphanumeric string. It is somewhat unique so email is also required
+     * @param userMetaChangeId
+     * @param code is random alphanumeric string
      * @return
      */
     @Transactional
-    public UserDto validateEmailByCode(@NotEmpty String email, @NotEmpty String code) {
+    public UserDto validateEmailByCode(@NotEmpty String userMetaChangeId, @NotEmpty String code) {
         UserMetaChange userMetaChange = userMetaChangeRepository
-                .findByMetaAndCode(email, code);
+                .findByIdAndCode(userMetaChangeId, code);
 
         if (userMetaChange == null || !userMetaChange.getMetaChangeType().equals(MetaChangeType.EMAIL)) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VALIDATION_CODE_INVALID);
@@ -440,36 +440,41 @@ public class UserService {
     }
 
 
+    /**
+     * If password reset request is responded with a link, link has unique code.
+     * @param passwordResetDto
+     */
     @Transactional
     public void resetPasswordByLink(@Valid PasswordResetDto passwordResetDto) {
-        UserMetaChange userMetaChange = userMetaChangeRepository.findByCode(passwordResetDto.getCode());
-        User user = userRepository.getUserById(userMetaChange.getUserId());
-        passwordResetDto.setUsernameEmail(user.getEmail());
-        resetPasswordByCode(passwordResetDto);
+        UserMetaChange userMetaChange = validatePasswordResetCode(passwordResetDto.getCode());
+        passwordResetDto.setUserMetaChangeId(userMetaChange.getId());
+        resetPasswordByCode(passwordResetDto.toPasswordResetByCodeDto());
     }
 
 
+    /**
+     * If password reset request is responded with a code rather than a link, generated code is random-not unique.
+     * Hence, userMetaChangeId is required
+     * @param passwordResetByCodeDto
+     */
     @Transactional
-    public void resetPasswordByCode(@Valid PasswordResetDto passwordResetDto) {
+    public void resetPasswordByCode(@Valid PasswordResetByCodeDto passwordResetByCodeDto) {
 
-        if (passwordResetDto.getUsernameEmail() == null || passwordResetDto.getUsernameEmail().isEmpty()) {
-            throw new UsernameNotFoundException("Invalid user");
-        }
-        User user = userRepository.getUserByEmailOrUsername(passwordResetDto.getUsernameEmail());
+        UserMetaChange userMetaChange = userMetaChangeRepository.findByIdAndCode(passwordResetByCodeDto.getUserMetaChangeId(),
+                passwordResetByCodeDto.getCode());
+
+        validatePasswordResetCode(userMetaChange);
+
+        User user = userRepository.getUserById(userMetaChange.getUserId());
         if (user == null) {
             throw new UsernameNotFoundException("Invalid user");
         }
 
-        UserMetaChange userMetaChange = userMetaChangeRepository.findByUserIdAndCode(user.getId(),
-                passwordResetDto.getCode());
-
-        validatePasswordResetCode(userMetaChange);
-
-        if (!passwordResetDto.getNewPassword().equals(passwordResetDto.getRepeatNewPassword())) {
+        if (!passwordResetByCodeDto.getNewPassword().equals(passwordResetByCodeDto.getRepeatNewPassword())) {
             throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
         }
 
-        user.setPassword(new BCryptPasswordEncoder().encode(passwordResetDto.getNewPassword()));
+        user.setPassword(new BCryptPasswordEncoder().encode(passwordResetByCodeDto.getNewPassword()));
         userRepository.save(user);
         userMetaChange.setExecuted(true);
         userMetaChange.setUpdatedDate(LocalDateTime.now());

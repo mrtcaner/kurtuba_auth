@@ -9,6 +9,8 @@ public interface UserMetaChangeRepository extends CrudRepository<UserMetaChange,
 
     UserMetaChange findByMetaAndCode(String meta, String code);
 
+    UserMetaChange findByIdAndCode(String id, String code);
+
     UserMetaChange findByCode(String code);
 
 }

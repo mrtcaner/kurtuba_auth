@@ -3,14 +3,10 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.model.AuthoritiesEnum;
 import com.kurtuba.auth.data.model.JWTClaimsEnum;
-import com.kurtuba.auth.data.model.dto.ForgotPasswordDto;
-import com.kurtuba.auth.data.model.dto.PasswordChangeDto;
-import com.kurtuba.auth.data.model.dto.PasswordResetDto;
-import com.kurtuba.auth.data.model.dto.ResultPageDto;
+import com.kurtuba.auth.data.model.dto.*;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -129,7 +125,7 @@ public class UserController {
     }
 
     /**
-     * Receives valid reset code and new password from password change page
+     * Receives valid reset code(base64 UUID) and new password from password change page
      * @param passwordResetDto
      * @return
      */
@@ -140,13 +136,13 @@ public class UserController {
     }
 
     /**
-     * Receives valid reset code, email-address and new password from mobile
-     * @param passwordResetDto
+     * Receives valid reset code(6 digit random), userMetaChangeId and new password
+     * @param passwordResetByCodeDto
      * @return
      */
     @PutMapping("/password/reset/code")
-    public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetDto passwordResetDto) {
-        userService.resetPasswordByCode(passwordResetDto);
+    public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
+        userService.resetPasswordByCode(passwordResetByCodeDto);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
@@ -198,7 +194,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/password/reset/code/{email}")
-    public ResponseEntity requestPasswordResetByCode(@Email @PathVariable String email) {
+    public ResponseEntity requestPasswordResetByCode(@NotEmpty @PathVariable String email) {
         userService.requestResetPassword(email, true);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
@@ -209,7 +205,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/password/reset/link/{email}")
-    public ResponseEntity requestPasswordResetByLink(@Email @PathVariable String email) {
+    public ResponseEntity requestPasswordResetByLink(@NotEmpty @PathVariable String email) {
         userService.requestResetPassword(email, false);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
