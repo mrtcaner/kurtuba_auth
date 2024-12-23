@@ -19,4 +19,6 @@ public interface EmailService {
     void sendPasswordResetCodeMail(@NotEmpty String recipient, @NotEmpty String resetCode);
 
     void sendPasswordResetLinkMail(@NotEmpty String recipient, @NotEmpty String resetCode);
+
+    void sendUserMetaChangeMail(@NotEmpty String recipient, @NotEmpty String meta);
 }

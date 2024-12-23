@@ -151,6 +151,31 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Override
+    public void sendUserMetaChangeMail(String recipient, String meta) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            message.setFrom("sender-test@example.com");
+            message.setRecipients(MimeMessage.RecipientType.TO, recipient);
+            message.setSubject("Kurtuba Password Reset Code");
+            message.setSentDate(new Date());
+
+            MimeBodyPart messageBodyPart = new MimeBodyPart();
+            File htmlFile = ResourceUtils.getFile("classpath:templates/userMetaChange.html");
+            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            htmlFileContent = htmlFileContent.replace("${meta}", meta);
+            messageBodyPart.setContent(htmlFileContent, "text/html");
+
+            MimeMultipart multipart = new MimeMultipart();
+            multipart.addBodyPart(messageBodyPart);
+            message.setContent(multipart);
+            javaMailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+        }
+    }
+
     // Method 1
     // To send a simple email
     public String sendSimpleMail(EmailDetails details) {

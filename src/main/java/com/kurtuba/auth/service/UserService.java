@@ -270,12 +270,18 @@ public class UserService {
         }
 
         User user = userRepository.getUserById(userMetaChange.getUserId());
+        if(user.isEmailValidated()){
+            //this is a change operation
+            //send change notification mail to old e-mail
+            emailService.sendUserMetaChangeMail(user.getEmail(), MetaChangeType.EMAIL.name());
+        }
         user.setEmail(userMetaChange.getMeta());
-        user.setEmailValidated(true);
+        user.setEmailValidated(true);// in case user is registering
         userRepository.save(user);
         userMetaChange.setExecuted(true);
         userMetaChange.setUpdatedDate(LocalDateTime.now());
         userMetaChangeRepository.save(userMetaChange);
+
         return UserDto.fromUser(user);
     }
 
@@ -437,6 +443,7 @@ public class UserService {
 
         user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
         userRepository.save(user);
+        emailService.sendUserMetaChangeMail(user.getEmail(), "password");
     }
 
 
