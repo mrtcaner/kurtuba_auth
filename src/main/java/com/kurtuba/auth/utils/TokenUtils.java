@@ -78,7 +78,7 @@ public class TokenUtils {
                 .expiration(Date.from(LocalDateTime.now().plus(duration).atZone(ZoneId.systemDefault()).toInstant()));
 
         if (!CollectionUtils.isEmpty(scopes))
-            builder = builder.claim("scope", scopes.toString());
+            builder = builder.claim("scope", scopes);
 
 
         return builder
