@@ -1,16 +1,26 @@
 package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.LoginCredentialsDto;
+import com.kurtuba.auth.data.dto.LoginServiceCredentialsDto;
 import com.kurtuba.auth.data.dto.TokenReturnDto;
+import com.kurtuba.auth.data.enums.RegisteredClientType;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
+import com.kurtuba.auth.error.enums.ErrorEnum;
+import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
+import com.kurtuba.auth.utils.TokenUtils;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("auth")
@@ -22,9 +32,13 @@ public class LoginController {
     final
     RegisteredClientRepository registeredClientRepository;
 
-    public LoginController(UserService userService, RegisteredClientRepository registeredClientRepository) {
+    final
+    TokenUtils tokenUtils;
+
+    public LoginController(UserService userService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
         this.userService = userService;
         this.registeredClientRepository = registeredClientRepository;
+        this.tokenUtils = tokenUtils;
     }
 
     @PostMapping("/login")
@@ -54,6 +68,32 @@ public class LoginController {
                     .body(tokenDto);
         }
 
+
+    }
+
+    /**
+     * Only used by services to get short-lived tokens
+     * @param loginServiceCredentialsDto
+     * @return
+     */
+    @PostMapping("/service/login")
+    @ResponseBody
+    public ResponseEntity login(@Valid @RequestBody LoginServiceCredentialsDto loginServiceCredentialsDto) {
+        RegisteredClient client = registeredClientRepository.findByClientId(loginServiceCredentialsDto.getClientId());
+        if(!RegisteredClientType.SERVICE.equals(client.getClientType())){
+            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
+        }
+        if (!new BCryptPasswordEncoder().matches(loginServiceCredentialsDto.getClientSecret(), client.getClientSecret())) {
+            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
+        }
+
+        // return token json
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(TokenReturnDto.builder()
+                        .accessToken(tokenUtils.generateToken(client.getId(), Set.of(client.getClientName()),
+                                client.getScopes().stream().collect(Collectors.toSet()),
+                                Duration.ofMinutes(client.getAccessTokenTtlMinutes())))
+                        .build());
 
     }
 }
