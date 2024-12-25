@@ -1,4 +1,4 @@
-package com.kurtuba.auth.data.model.dto;
+package com.kurtuba.auth.data.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;

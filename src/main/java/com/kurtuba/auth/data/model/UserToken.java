@@ -1,5 +1,6 @@
 package com.kurtuba.auth.data.model;
 
+import com.kurtuba.auth.utils.StringListConverter;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -9,6 +10,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Entity
 @Data
@@ -37,6 +39,13 @@ public class UserToken {
 
     @NotEmpty
     private String clientId;
+
+    @NotEmpty
+    @Convert(converter = StringListConverter.class)
+    private List<String> aud;
+
+    @Convert(converter = StringListConverter.class)
+    private List<String> scopes;
 
     private boolean blocked;
 

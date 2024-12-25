@@ -1,14 +1,15 @@
 package com.kurtuba.auth.controller;
 
 
-import com.kurtuba.auth.data.model.dto.TokensDto;
+import com.kurtuba.auth.data.dto.TokenRefreshRequestDto;
+import com.kurtuba.auth.data.dto.TokenRefreshWebRequestDto;
+import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserTokenService;
 import com.kurtuba.auth.utils.TokenUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -24,34 +25,41 @@ import java.util.Arrays;
 @RequestMapping("auth")
 public class RefreshTokenController {
 
-    @Value("${kurtuba.web-client.cookie.max-age.seconds}")
-    private int webClientCookieMaxAgeValiditySeconds;
+    final UserTokenService userTokenService;
 
-    final
-    UserTokenService userTokenService;
+    final TokenUtils tokenUtils;
 
-    final
-    TokenUtils tokenUtils;
+    final RegisteredClientRepository registeredClientRepository;
 
-    public RefreshTokenController(UserTokenService userTokenService, TokenUtils tokenUtils) {
+    public RefreshTokenController(UserTokenService userTokenService, TokenUtils tokenUtils,
+                                  RegisteredClientRepository registeredClientRepository) {
         this.userTokenService = userTokenService;
         this.tokenUtils = tokenUtils;
+        this.registeredClientRepository = registeredClientRepository;
     }
 
     /**
      * Refresh token is rotated, can only be used once
      *
-     * @param tokensDto
+     * @param tokenRefreshRequestDto
      * @return
      */
     @PostMapping("/token/refresh")
-    public ResponseEntity refreshTokens(@Valid @RequestBody TokensDto tokensDto) {
+    public ResponseEntity refreshTokens(@Valid @RequestBody TokenRefreshRequestDto tokenRefreshRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(userTokenService.refreshUserTokens(tokensDto));
+                .body(userTokenService.refreshUserTokens(tokenRefreshRequestDto));
     }
 
+    /**
+     * Web clients with jwt in cookies must call this endpoint
+     *
+     * @param tokenRefreshWebRequestDto
+     * @param request
+     * @return
+     */
     @PostMapping("/web/token/refresh")
-    public ResponseEntity refreshWebClientTokens(HttpServletRequest request) {
+    public ResponseEntity refreshWebClientWithCookieTokens(@Valid @RequestBody TokenRefreshWebRequestDto tokenRefreshWebRequestDto,
+                                                 HttpServletRequest request) {
         // find the jwt cookie
         String jwt = request.getCookies() == null ? null : Arrays
                 .stream(request.getCookies())
@@ -59,15 +67,18 @@ public class RefreshTokenController {
                 .map(cookie -> cookie.getValue())
                 .findFirst()
                 .orElse(null);
-        if(jwt == null){
+        if (jwt == null) {
             throw new BusinessLogicException(ErrorEnum.AUTH_REFRESH_TOKEN_INVALID);
         }
 
-        ResponseCookie cookie = ResponseCookie.from("jwt", userTokenService.refreshWebClientTokens(jwt))
+        ResponseCookie cookie = ResponseCookie.from("jwt",
+                        userTokenService.refreshWebClientWithCookieTokens(jwt, tokenRefreshWebRequestDto.getClientId(),
+                                tokenRefreshWebRequestDto.getClientSecret()))
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
-                .maxAge(webClientCookieMaxAgeValiditySeconds)
+                .maxAge(registeredClientRepository
+                        .findByClientId(tokenRefreshWebRequestDto.getClientId()).getCookieMaxAgeSeconds())
                 .build();
 
         return ResponseEntity.status(HttpStatus.OK)

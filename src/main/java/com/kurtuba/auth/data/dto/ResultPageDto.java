@@ -1,4 +1,4 @@
-package com.kurtuba.auth.data.model.dto;
+package com.kurtuba.auth.data.dto;
 
 import lombok.Builder;
 import lombok.Data;

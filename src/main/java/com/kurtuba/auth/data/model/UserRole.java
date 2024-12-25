@@ -1,6 +1,6 @@
 package com.kurtuba.auth.data.model;
 
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.kurtuba.auth.data.enums.AuthoritiesType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -31,7 +31,7 @@ public class UserRole implements Serializable {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    private AuthoritiesEnum role;
+    private AuthoritiesType role;
 
     @NotNull
     LocalDateTime createdDate;

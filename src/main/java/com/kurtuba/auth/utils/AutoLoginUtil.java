@@ -1,7 +1,7 @@
 package com.kurtuba.auth.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kurtuba.auth.data.model.dto.TokensDto;
+import com.kurtuba.auth.data.dto.TokensReturnDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -212,7 +212,7 @@ public class AutoLoginUtil {
      * @param pass
      * @return
      */
-    public TokensDto getAccessToken(String email, String pass){
+    public TokensReturnDto getAccessToken(String email, String pass){
         Map<String, String> bodyValues = new HashMap<>();
         bodyValues.put("emailUsername",email);
         bodyValues.put("pass",pass);
@@ -228,7 +228,7 @@ public class AutoLoginUtil {
                 .block(Duration.ofSeconds(10));
         System.out.println("accessTokenUtilCallStatus:" + resp.statusCode());
         System.out.println("respBody:" + resp.bodyToMono(String.class));
-        TokensDto tokensDto = resp.bodyToMono(TokensDto.class).block();
+        TokensReturnDto tokensDto = resp.bodyToMono(TokensReturnDto.class).block();
         System.out.println("token:" + tokensDto.getAccessToken());
         return tokensDto;
 

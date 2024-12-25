@@ -1,9 +1,9 @@
 package com.kurtuba.auth.controller;
 
-import com.kurtuba.auth.data.model.dto.EmailValidationDto;
-import com.kurtuba.auth.data.model.dto.ResultPageDto;
-import com.kurtuba.auth.data.model.dto.UserRegistrationDto;
-import com.kurtuba.auth.data.model.dto.UserRegistrationOtherProviderDto;
+import com.kurtuba.auth.data.dto.EmailValidationDto;
+import com.kurtuba.auth.data.dto.ResultPageDto;
+import com.kurtuba.auth.data.dto.UserRegistrationDto;
+import com.kurtuba.auth.data.dto.UserRegistrationOtherProviderDto;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.AutoLoginUtil;

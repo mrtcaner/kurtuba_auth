@@ -1,17 +1,17 @@
-package com.kurtuba.auth.data.model;
+package com.kurtuba.auth.data.enums;
 
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
-public enum AuthProvider {
+public enum AuthProviderType {
     KURTUBA, GOOGLE, FACEBOOK, GITHUB;
 
     @JsonCreator
-    public static AuthProvider create(String value) {
+    public static AuthProviderType create(String value) {
         if (value == null) {
             return null;
         }
-        for (AuthProvider v : values()) {
+        for (AuthProviderType v : values()) {
             if (value.equals(v.name())) {
                 return v;
             }

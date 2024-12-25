@@ -1,8 +1,12 @@
 package com.kurtuba.auth.service;
 
+import com.kurtuba.auth.data.dto.*;
+import com.kurtuba.auth.data.enums.AuthProviderType;
+import com.kurtuba.auth.data.enums.AuthoritiesType;
+import com.kurtuba.auth.data.enums.MetaChangeType;
 import com.kurtuba.auth.data.model.*;
-import com.kurtuba.auth.data.model.dto.*;
 import com.kurtuba.auth.data.repository.UserMetaChangeRepository;
+import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.data.repository.UserRoleRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
@@ -20,27 +24,18 @@ import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.kurtuba.auth.utils.Utils.generateRandomAlphanumericString;
 
 @Service
 public class UserService {
 
-    @Value("${kurtuba.mobile-client.access-token-validity.minutes}")
-    private int mobileClientAccessTokenValidityMinutes;
-    @Value("${kurtuba.mobile-client.refresh-token-validity.minutes}")
-    private int mobileClientRefreshTokenValidityMinutes;
-    @Value("${kurtuba.web-client.access-token-validity.minutes}")
-    private int webClientAccessTokenValidityMinutes;
-    @Value("${kurtuba.web-client.refresh-token-validity.minutes}")
-    private int webClientRefreshTokenValidityMinutes;
     @Value("${kurtuba.password-reset.code.validity.minutes}")
     private int passwordResetCodeValidityMinutes;
 
@@ -54,6 +49,8 @@ public class UserService {
 
     private final UserMetaChangeRepository userMetaChangeRepository;
 
+    private final RegisteredClientRepository registeredClientRepository;
+
     private final EntityManagerFactory entityManagerFactory;
 
     private EntityManager em() {
@@ -62,12 +59,15 @@ public class UserService {
 
     public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository,
                        UserTokenService userTokenService, EmailService emailService,
-                       UserMetaChangeRepository userMetaChangeRepository, EntityManagerFactory entityManagerFactory) {
+                       UserMetaChangeRepository userMetaChangeRepository,
+                       RegisteredClientRepository registeredClientRepository,
+                       EntityManagerFactory entityManagerFactory) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.userTokenService = userTokenService;
         this.emailService = emailService;
         this.userMetaChangeRepository = userMetaChangeRepository;
+        this.registeredClientRepository = registeredClientRepository;
         this.entityManagerFactory = entityManagerFactory;
     }
 
@@ -84,7 +84,7 @@ public class UserService {
         if (existUser == null) {
             User newUser = new User();
             newUser.setEmail(username);
-            newUser.setAuthProvider(AuthProvider.GOOGLE);
+            newUser.setAuthProvider(AuthProviderType.GOOGLE);
             newUser.setActivated(true);
 
             userRepository.save(newUser);
@@ -165,19 +165,40 @@ public class UserService {
     }
 
     @Transactional
-    public TokensDto generateTokensForLoginByRestRequest(String emailUsername, String pass, Set<ClientType> clientTypes) {
-        Duration accessTokenValidity;
-        Duration refreshTokenValidity;
-        User user = authenticate(emailUsername, pass);
-        if (clientTypes.stream().filter(aud -> aud.equals(ClientType.ADM_WEB_CLIENT)).findFirst().orElse(null) != null) {
-            accessTokenValidity = Duration.ofMinutes(webClientAccessTokenValidityMinutes);
-            refreshTokenValidity = Duration.ofMinutes(webClientRefreshTokenValidityMinutes);
-        } else {
-            // mobile client
-            accessTokenValidity = Duration.ofMinutes(mobileClientAccessTokenValidityMinutes);
-            refreshTokenValidity = Duration.ofMinutes(mobileClientRefreshTokenValidityMinutes);
+    public TokenReturnDto generateTokensForLoginByRestRequest(String emailUsername, String pass,
+                                                               String registeredClientId, String registeredClientSecret) {
+        // validate client credentials
+        RegisteredClient client = registeredClientRepository.findByClientId(registeredClientId);
+        if(client == null){
+            throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
         }
-        return userTokenService.createAndSaveTokens(user.getId(), clientTypes, accessTokenValidity, refreshTokenValidity);
+        if(StringUtils.hasLength(client.getClientSecret())){
+            if(!StringUtils.hasLength(registeredClientSecret)){
+                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
+            }
+            if(!new BCryptPasswordEncoder().matches(registeredClientSecret,client.getClientSecret())){
+                throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
+            }
+        }
+
+        // authenticate user
+        User user = authenticate(emailUsername, pass);
+
+        //set token params
+        Duration accessTokenValidity =  Duration.ofMinutes(client.getAccessTokenTtlMinutes());
+        Duration refreshTokenValidity = null;
+        if(client.isRefreshTokenEnabled()){
+            refreshTokenValidity = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
+        }
+
+        Set<String> roles = null;
+        if(client.isScopeEnabled()){
+            roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
+        }
+
+        //create token(s)
+        return userTokenService.createAndSaveTokens(user.getId(), client.getClientId(), Set.of(client.getClientName()),
+                roles, accessTokenValidity, refreshTokenValidity);
     }
 
     @Transactional
@@ -213,7 +234,7 @@ public class UserService {
         user.setUserRoles(List.of(
                 UserRole.builder()
                         .userId(user.getId())
-                        .role(AuthoritiesEnum.USER)
+                        .role(AuthoritiesType.USER)
                         .build()));
         userRoleRepository.saveAll(user.getUserRoles());
 
@@ -291,7 +312,7 @@ public class UserService {
     }
 
     /**
-     * Used when a user registered but didn't verify the mail by clicking the link and the link is expired
+     * Used when a user registered but didn't verify the mail by clicking the link and then the link is expired
      * Assumes the email address is in user table and also an expired code exist in user_meta_change table
      */
     @Transactional
@@ -329,7 +350,7 @@ public class UserService {
     public UserRegistrationDto registerByAnotherProvider(@Valid UserRegistrationOtherProviderDto newUserByOtherProvider) {
 
         UserRegistrationDto decodedUser = null;
-        if (newUserByOtherProvider.getProvider().equals(AuthProvider.GOOGLE)) {
+        if (newUserByOtherProvider.getProvider().equals(AuthProviderType.GOOGLE)) {
             try {
                 decodedUser = TokenUtils.decodeGoogleToken(newUserByOtherProvider.getToken(), newUserByOtherProvider.getClientId());
             } catch (Exception e) {
@@ -337,7 +358,7 @@ public class UserService {
                 throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN);
             }
         }
-        if (newUserByOtherProvider.getProvider().equals(AuthProvider.FACEBOOK)) {
+        if (newUserByOtherProvider.getProvider().equals(AuthProviderType.FACEBOOK)) {
             try {
 
                 JsonObject jsonUser = TokenUtils.decodeTokenPayload(newUserByOtherProvider.getToken());
@@ -345,7 +366,7 @@ public class UserService {
                 decodedUser.setEmail(jsonUser.get("email").getAsString());
                 decodedUser.setName(jsonUser.get("given_name").getAsString());
                 decodedUser.setSurname(jsonUser.get("family_name").getAsString());
-                decodedUser.setAuthProvider(AuthProvider.FACEBOOK);
+                decodedUser.setAuthProvider(AuthProviderType.FACEBOOK);
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN);
@@ -373,14 +394,14 @@ public class UserService {
             user.setUserRoles(List.of(
                     UserRole.builder()
                             .userId(user.getId())
-                            .role(AuthoritiesEnum.USER)
+                            .role(AuthoritiesType.USER)
                             .build()));
             userRoleRepository.saveAll(user.getUserRoles());
             decodedUser.setPassword(pass);
             return decodedUser;
         }
 
-        if (existingUser.getAuthProvider().equals(AuthProvider.KURTUBA)) {
+        if (existingUser.getAuthProvider().equals(AuthProviderType.KURTUBA)) {
             //this is a regular user and we cannot return a token without changing pass so have to log in properly. Throw error
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
         }

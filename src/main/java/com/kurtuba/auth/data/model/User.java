@@ -1,7 +1,7 @@
 package com.kurtuba.auth.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.kurtuba.auth.data.enums.AuthProviderType;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
@@ -70,7 +70,7 @@ public class User implements Serializable {
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    private AuthProvider authProvider;
+    private AuthProviderType authProvider;
 
     private boolean locked;
 

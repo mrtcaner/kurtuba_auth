@@ -1,9 +1,9 @@
 package com.kurtuba.auth.controller;
 
 
-import com.kurtuba.auth.data.model.AuthoritiesEnum;
-import com.kurtuba.auth.data.model.JWTClaimsEnum;
-import com.kurtuba.auth.data.model.dto.*;
+import com.kurtuba.auth.data.dto.*;
+import com.kurtuba.auth.data.enums.AuthoritiesType;
+import com.kurtuba.auth.data.enums.JWTClaimType;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.Valid;
@@ -43,19 +43,20 @@ public class UserController {
     /**
      * users with a valid token can access
      * todo only certain info must be shared through a DTO
-     * @param principal
+     * @param authentication
      * @return
      */
     @GetMapping("/info")
-    public ResponseEntity getUserInfo(JwtAuthenticationToken principal) {
-        if(principal == null){
+    public ResponseEntity getUserInfo(JwtAuthenticationToken authentication) {
+
+        if(authentication == null){
            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
         }
-        if(principal.getAuthorities().contains(JWTClaimsEnum.SCOPE.name() + "_" +AuthoritiesEnum.SERVICE.name())){
+        if(authentication.getAuthorities().contains(JWTClaimType.SCOPE.name() + "_" + AuthoritiesType.SERVICE.name())){
             // SERVICEs are not users
             return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).body("");
         }
-        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(principal.getName()));
+        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(authentication.getName()));
     }
 
     /**
@@ -65,7 +66,7 @@ public class UserController {
      * @return
      */
     @PutMapping("/password")
-    public ResponseEntity changePassword(@Valid @RequestBody PasswordChangeDto passwordChangeDto,Principal principal) {
+    public ResponseEntity changePassword(@Valid @RequestBody PasswordChangeDto passwordChangeDto, Principal principal) {
         userService.changePassword(passwordChangeDto, principal.getName());
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
@@ -81,7 +82,7 @@ public class UserController {
         try{
             userService.validatePasswordResetCode(code);
             modelAndView.setViewName("passwordReset.html");
-            modelAndView.addObject("passwordResetDto",PasswordResetDto.builder().code(code).build());
+            modelAndView.addObject("passwordResetDto", PasswordResetDto.builder().code(code).build());
         }catch (BusinessLogicException ex){
             modelAndView.setViewName("genericResult.html");//failure
             modelAndView.addAllObjects(ResultPageDto.builder()

@@ -1,4 +1,4 @@
-package com.kurtuba.auth.data.model.dto;
+package com.kurtuba.auth.data.dto;
 
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
@@ -10,10 +10,15 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EmailValidationDto {
+public class LoginCredentialsDto {
+    @NotEmpty
+    String emailUsername;
 
     @NotEmpty
-    String email;
+    String password;
+
     @NotEmpty
-    String code;
+    String clientId;
+
+    String clientSecret;
 }

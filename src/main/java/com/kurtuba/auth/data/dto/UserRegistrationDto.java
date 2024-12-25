@@ -1,7 +1,7 @@
-package com.kurtuba.auth.data.model.dto;
+package com.kurtuba.auth.data.dto;
 
 
-import com.kurtuba.auth.data.model.AuthProvider;
+import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.model.User;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -42,7 +42,7 @@ public class UserRegistrationDto {
     private String password;
 
     @NotNull
-    private AuthProvider authProvider;
+    private AuthProviderType authProvider;
 
     boolean emailValidationByCode;
 

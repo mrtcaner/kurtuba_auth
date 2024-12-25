@@ -1,4 +1,4 @@
-package com.kurtuba.auth.data.model;
+package com.kurtuba.auth.data.enums;
 
 public enum MetaChangeType {
     PASSWORD_CHANGE,

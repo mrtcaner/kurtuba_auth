@@ -1,7 +1,7 @@
 package com.kurtuba.auth.config.provider;
 
 import com.kurtuba.auth.data.model.User;
-import com.kurtuba.auth.data.model.dto.KurtubaUserDetailsDto;
+import com.kurtuba.auth.data.dto.KurtubaUserDetailsDto;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import org.springframework.security.authentication.AuthenticationProvider;

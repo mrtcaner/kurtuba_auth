@@ -4,15 +4,15 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
-import com.kurtuba.auth.data.model.AuthProvider;
-import com.kurtuba.auth.data.model.ClientType;
-import com.kurtuba.auth.data.model.dto.UserRegistrationDto;
+import com.kurtuba.auth.data.dto.UserRegistrationDto;
+import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.nimbusds.jose.shaded.gson.JsonArray;
 import com.nimbusds.jose.shaded.gson.JsonObject;
 import com.nimbusds.jose.shaded.gson.JsonParser;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import jakarta.annotation.PostConstruct;
 import org.jose4j.jwe.JsonWebEncryption;
@@ -22,6 +22,7 @@ import org.jose4j.lang.JoseException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -32,7 +33,6 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Component
 public class TokenUtils {
@@ -50,32 +50,20 @@ public class TokenUtils {
 
     @PostConstruct
     public void init() {
-        //initPublicJsonWebKey();
         allSigningKeys = decryptJwk();
         currentPublicJsonWebKey = allSigningKeys.get(0);
     }
-
-    /*public PublicJsonWebKey initPublicJsonWebKey(){
-        if (currentPublicJsonWebKey == null) {
-            allSigningKeys = decryptJwk();
-            currentPublicJsonWebKey = allSigningKeys.get(allSigningKeys.size()-1);
-        }
-
-        return currentPublicJsonWebKey;
-    }*/
 
     /**
      * Generates an access token for login via rest request
      *
      * @param userId
-     * @param clientTypes
+     * @param auds
      * @param duration
      * @return Access token
      */
-    public String generateToken(String userId, Set<ClientType> clientTypes, Duration duration) {
-        //initPublicJsonWebKey();
-
-        return Jwts.builder()
+    public String generateToken(String userId, Set<String> auds, Set<String> scopes, Duration duration) {
+        JwtBuilder builder = Jwts.builder()
                 .header()
                 .keyId(currentPublicJsonWebKey.getKeyId())
                 .and()
@@ -83,11 +71,17 @@ public class TokenUtils {
                 .issuer(authServerIssuerUrl)
                 .subject(userId)
                 .audience()
-                .add(clientTypes.stream().map(e -> e.getClientTypeName()).collect(Collectors.toSet()))
+                .add(auds)
                 .and()
                 .issuedAt(new Date())
                 .notBefore(new Date())
-                .expiration(Date.from(LocalDateTime.now().plus(duration).atZone(ZoneId.systemDefault()).toInstant()))
+                .expiration(Date.from(LocalDateTime.now().plus(duration).atZone(ZoneId.systemDefault()).toInstant()));
+
+        if (!CollectionUtils.isEmpty(scopes))
+            builder = builder.claim("scope", scopes.toString());
+
+
+        return builder
                 .signWith(currentPublicJsonWebKey.getPrivateKey())
                 .compact();
     }
@@ -127,7 +121,7 @@ public class TokenUtils {
      * @return
      */
     public Claims getVerifiedTokenClaims(String token, long clockSkew) {
-        //initPublicJsonWebKey();
+
         String keyId = decodeTokenHeader(token).getAsJsonObject().get("kid").getAsString();
 
         // find the key
@@ -213,7 +207,7 @@ public class TokenUtils {
             newUser.setEmail(email);
             newUser.setName(givenName);
             newUser.setSurname(familyName);
-            newUser.setAuthProvider(AuthProvider.GOOGLE);
+            newUser.setAuthProvider(AuthProviderType.GOOGLE);
 
         } else {
             System.out.println("Invalid ID token.");

@@ -1,7 +1,7 @@
-package com.kurtuba.auth.data.model.dto;
+package com.kurtuba.auth.data.dto;
 
 
-import com.kurtuba.auth.data.model.AuthProvider;
+import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserRole;
 import lombok.AllArgsConstructor;
@@ -28,7 +28,7 @@ public class UserDto {
     private String profileCover;
     private boolean canChangeUsername;
     private LocalDateTime birthdate;
-    private AuthProvider authProvider;
+    private AuthProviderType authProvider;
     private String phone;
     private boolean activated;
     private boolean locked;

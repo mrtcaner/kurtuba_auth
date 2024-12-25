@@ -1,6 +1,6 @@
 package com.kurtuba.auth.data.repository;
 
-import com.kurtuba.auth.data.model.AuthProvider;
+import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.model.User;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.CrudRepository;
@@ -18,7 +18,7 @@ public interface UserRepository extends CrudRepository<User, String> {
 
 	User getUserByEmail(String email);
 
-	User getUserByEmailAndAuthProvider(String email, AuthProvider provider);
+	User getUserByEmailAndAuthProvider(String email, AuthProviderType provider);
 
 	User getUserByEmailAndEmailValidatedIsFalse(String email);
 

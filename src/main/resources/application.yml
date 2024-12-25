@@ -41,21 +41,5 @@ kurtuba:
   rsa-jwk:
     file: "rsa-jwk.json"
     secrets: '{"363ff933-15b5-4447-a78d-fa2560049cee": "FD7pr&.f!my?k#8:", "fe4ab529-e7d1-4a00-b32d-4bb4cb5776db": "dI1Q089vTAd3aAO"}'
-  mobile-client:
-    access-token-validity:
-      minutes: 5
-    refresh-token-validity:
-      minutes: 129600 #90 days
-  web-client:
-    access-token-validity:
-      minutes: 5
-    refresh-token-validity:
-      minutes: 129600 #90 days
-    cookie:
-      max-age:
-        seconds: 7776000 #90 days
-  service-client:
-    access-token-validity:
-      minutes: 1
 
 

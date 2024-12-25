@@ -1,6 +1,7 @@
 package com.kurtuba.auth.data.model;
 
 
+import com.kurtuba.auth.data.enums.MetaChangeType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
