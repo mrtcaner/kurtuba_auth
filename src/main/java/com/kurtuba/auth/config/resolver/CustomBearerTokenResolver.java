@@ -46,10 +46,9 @@ public class CustomBearerTokenResolver implements BearerTokenResolver {
 			return parameterToken;
 		}
 		// token is not in header. check the cookie
-		//todo this must only be allowed for certain clients like "adm-web-client". check token aud claim!
 		return request.getCookies() == null ? null : Arrays
 				.stream(request.getCookies())
-				.filter(cookie -> cookie.getName().equals("jwt"))
+				.filter(cookie -> cookie.getName().equals("jwt") && cookie.isHttpOnly())// todo check also domain, secure properties
 				.map(cookie -> cookie.getValue())
 				.findFirst()
 				.orElse(null);

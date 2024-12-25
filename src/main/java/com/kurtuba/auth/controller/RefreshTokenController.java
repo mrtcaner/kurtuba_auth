@@ -63,7 +63,7 @@ public class RefreshTokenController {
         // find the jwt cookie
         String jwt = request.getCookies() == null ? null : Arrays
                 .stream(request.getCookies())
-                .filter(cookie -> cookie.getName().equals("jwt"))
+                .filter(cookie -> cookie.getName().equals("jwt") && cookie.isHttpOnly())// todo check also domain, secure properties
                 .map(cookie -> cookie.getValue())
                 .findFirst()
                 .orElse(null);
