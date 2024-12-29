@@ -11,7 +11,6 @@ import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
@@ -43,16 +42,17 @@ public class UserController {
     /**
      * users with a valid token can access
      * todo only certain info must be shared through a DTO
+     *
      * @param authentication
      * @return
      */
     @GetMapping("/info")
     public ResponseEntity getUserInfo(JwtAuthenticationToken authentication) {
 
-        if(authentication == null){
-           return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
+        if (authentication == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
         }
-        if(authentication.getAuthorities().contains(JWTClaimType.SCOPE.name() + "_" + AuthoritiesType.SERVICE.name())){
+        if (authentication.getAuthorities().contains(JWTClaimType.SCOPE.name() + "_" + AuthoritiesType.SERVICE.name())) {
             // SERVICEs are not users
             return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).body("");
         }
@@ -61,6 +61,7 @@ public class UserController {
 
     /**
      * Password change endpoint for logged-in users
+     *
      * @param passwordChangeDto
      * @param principal
      * @return
@@ -72,18 +73,19 @@ public class UserController {
     }
 
     /**
-     *  Returns password change page upon receiving a valid password reset code
+     * Returns password change page upon receiving a valid password reset code
+     *
      * @param code
      * @return
      */
     @GetMapping("/password/reset/password-reset/{code}")
     public ModelAndView getPasswordResetPage(@Valid @PathVariable String code) {
         ModelAndView modelAndView = new ModelAndView();
-        try{
+        try {
             userService.validatePasswordResetCode(code);
             modelAndView.setViewName("passwordReset.html");
             modelAndView.addObject("passwordResetDto", PasswordResetDto.builder().code(code).build());
-        }catch (BusinessLogicException ex){
+        } catch (BusinessLogicException ex) {
             modelAndView.setViewName("genericResult.html");//failure
             modelAndView.addAllObjects(ResultPageDto.builder()
                     .success(false)
@@ -95,14 +97,14 @@ public class UserController {
     }
 
     @PostMapping("/password/reset/password-reset")
-    public ModelAndView handleResetPassword(@Valid PasswordResetDto passwordResetDto, BindingResult result){
+    public ModelAndView handleResetPassword(@Valid PasswordResetDto passwordResetDto, BindingResult result) {
         ModelAndView modelAndView = new ModelAndView();
-        if(result.hasErrors()){
+        if (result.hasErrors()) {
             //in case password mismatch or required complexity is not fulfilled etc.
             modelAndView.setViewName("passwordReset.html");
             modelAndView.addObject("passwordResetDto", passwordResetDto);
             modelAndView.addAllObjects(result.getModel());
-        }else {
+        } else {
             try {
                 userService.resetPasswordByLink(passwordResetDto);
                 modelAndView.setViewName("genericResult.html");//success
@@ -110,7 +112,7 @@ public class UserController {
                         .success(true)
                         .title("Password changed successfully!")
                         .build().toMap());
-            } catch (BusinessLogicException | UsernameNotFoundException ex) {
+            } catch (BusinessLogicException ex) {
                 // user doesn't exist in the system or code expired etc.
                 modelAndView.setViewName("genericResult.html");//failure
                 modelAndView.addAllObjects(ResultPageDto.builder()
@@ -127,6 +129,7 @@ public class UserController {
 
     /**
      * Receives valid reset code(base64 UUID) and new password from password change page
+     *
      * @param passwordResetDto
      * @return
      */
@@ -138,6 +141,7 @@ public class UserController {
 
     /**
      * Receives valid reset code(6 digit random), userMetaChangeId and new password
+     *
      * @param passwordResetByCodeDto
      * @return
      */
@@ -148,7 +152,7 @@ public class UserController {
     }
 
     @GetMapping("/password/reset/forgot-password")
-    public ModelAndView getForgotPasswordPage(){
+    public ModelAndView getForgotPasswordPage() {
         ModelAndView modelAndView = new ModelAndView();
         modelAndView.addObject("forgotPasswordForm", new ForgotPasswordDto());
         modelAndView.setViewName("requestPasswordReset.html");
@@ -157,19 +161,19 @@ public class UserController {
 
     @PostMapping("/password/reset/forgot-password")
     public ModelAndView handleForgotPasswordPage(@ModelAttribute("forgotPasswordForm") @Valid ForgotPasswordDto form,
-                                                 BindingResult result){
+                                                 BindingResult result) {
         ModelAndView modelAndView = new ModelAndView();
-        if(result.hasErrors()){
+        if (result.hasErrors()) {
             //in case of malformed email
             modelAndView.setViewName("requestPasswordReset.html");
             modelAndView.addObject("forgotPasswordForm", form);
-        }else{
+        } else {
             // mail well-formed
-            try{
+            try {
                 userService.requestResetPassword(form.getEmail(), false);
-            }catch (BusinessLogicException | UsernameNotFoundException ex){
+            } catch (BusinessLogicException ex) {
                 // mail doesn't exist in the system or user's mail is not validated
-                result.rejectValue("email","1000",ex.getMessage());
+                result.rejectValue("email", "1000", ex.getMessage());
                 modelAndView.setViewName("requestPasswordReset.html");
                 modelAndView.addObject("forgotPasswordForm", form);
                 modelAndView.addAllObjects(result.getModel());
@@ -191,6 +195,7 @@ public class UserController {
 
     /**
      * Sends reset code to user's email-address. User is expected to manually enter the code to a from
+     *
      * @param email
      * @return
      */
@@ -202,12 +207,39 @@ public class UserController {
 
     /**
      * Send a link to user's email address. Link opens password-reset page
+     *
      * @param email
      * @return
      */
     @PostMapping("/password/reset/link/{email}")
     public ResponseEntity requestPasswordResetByLink(@NotEmpty @PathVariable String email) {
         userService.requestResetPassword(email, false);
+        return ResponseEntity.status(HttpStatus.OK_200).body("");
+    }
+
+    /**
+     * Email change by validationCode endpoint for logged-in users
+     *
+     * @param email
+     * @param principal
+     * @return
+     */
+    @PutMapping("/email/code/{email}")
+    public ResponseEntity changeEmailByCode(@Valid @PathVariable String email, Principal principal) {
+        userService.changeEmail(principal.getName(), email, true);
+        return ResponseEntity.status(HttpStatus.OK_200).body("");
+    }
+
+    /**
+     * Email change by validationLink endpoint for logged-in users
+     *
+     * @param email
+     * @param principal
+     * @return
+     */
+    @PutMapping("/email/link/{email}")
+    public ResponseEntity changeEmailByLink(@Valid @PathVariable String email, Principal principal) {
+        userService.changeEmail(principal.getName(), email, false);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 

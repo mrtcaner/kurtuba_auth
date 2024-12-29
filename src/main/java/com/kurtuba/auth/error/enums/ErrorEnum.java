@@ -23,7 +23,8 @@ public enum ErrorEnum {
     USER_PASSWORD_RESET_EMAIL_NOT_VALIDATED("User email is not validated",1018),
     AUTH_INVALID_TOKEN("Invalid token",1019),
     AUTH_CLIENT_INVALID_CREDENTIALS("Invalid client credentials",1020),
-    AUTH_CLIENT_INVALID("Invalid client",1021);
+    AUTH_CLIENT_INVALID("Invalid client",1021),
+    USER_DOESNT_EXIST("User doesn't exist", 1022);
 
 
     private String message;

@@ -78,15 +78,15 @@ public class RegistrationController {
 
     @PutMapping("/register/email/validation/code/{email}")
     @ResponseBody
-    private ResponseEntity resendValidationCode(@NotEmpty @PathVariable String email) {
-        userService.resendValidationCode(email, true);
+    private ResponseEntity sendEmailValidationCode(@NotEmpty @PathVariable String email) {
+        userService.sendRegistrationEmailValidationCode(email, true);
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body("success");
     }
 
     @PutMapping("/register/email/validation/link/{email}")
     @ResponseBody
-    private ResponseEntity resendValidationLink(@NotEmpty @PathVariable String email) {
-        userService.resendValidationCode(email, false);
+    private ResponseEntity sendEmailValidationLink(@NotEmpty @PathVariable String email) {
+        userService.sendRegistrationEmailValidationCode(email, false);
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body("success");
     }
 
