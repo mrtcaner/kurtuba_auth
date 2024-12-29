@@ -1,5 +1,6 @@
 package com.kurtuba.auth.service;// Importing required classes
 
+import com.kurtuba.auth.data.dto.EmailValidationMailDto;
 import com.kurtuba.auth.data.model.EmailDetails;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
@@ -44,19 +45,33 @@ public class EmailServiceImpl implements EmailService {
         this.javaMailSender = javaMailSender;
     }
 
-    public void sendValidationCodeMail(@NotEmpty String recipient, @NotEmpty String validationCode) {
-
+    public void sendRegistrationValidationCodeMail(@NotEmpty String recipient, @NotEmpty String validationCode) {
+        EmailValidationMailDto validationMailDto = EmailValidationMailDto.builder()
+                .title("THANKS FOR SIGNING UP!")
+                .greet("Hi")
+                .msg1("You're almost ready to get started. Here is your validation code")
+                .validationCode(validationCode)
+                .displayCode("block")
+                .displayLink("none")
+                .msg2("Login to Kurtuba with your existing credentials to enter the code")
+                .build();
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             message.setFrom("sender-test@example.com");
             message.setRecipients(MimeMessage.RecipientType.TO, recipient);
-            message.setSubject("Kurtuba Validation Code");
+            message.setSubject("Kurtuba Email Validation Code");
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidationCode.html");
+            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${validationCode}", validationCode);
+            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
+            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
+            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
+            htmlFileContent = htmlFileContent.replace("${validationCode}", validationMailDto.getValidationCode());
+            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
+            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
+            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
@@ -71,21 +86,35 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendValidationLinkMail(String recipient, String validationCode) {
-
+    public void sendRegistrationValidationLinkMail(String recipient, String validationCode) {
         String validationLink = authServerProtocol + authServerIp + ":" + authServerPort +
                 "/auth/register/email/validation/link/" + validationCode;
+
+        EmailValidationMailDto validationMailDto = EmailValidationMailDto.builder()
+                .title("THANKS FOR SIGNING UP!")
+                .greet("Hi")
+                .msg1("You're almost ready to get started. Click below to verify your mail address")
+                .validationLink(validationLink)
+                .displayCode("none")
+                .displayLink("block")
+                .build();
+
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             message.setFrom("sender-test@example.com");
             message.setRecipients(MimeMessage.RecipientType.TO, recipient);
-            message.setSubject("Kurtuba Validation Code");
+            message.setSubject("Kurtuba Email Validation");
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidationLink.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${validationLink}", validationLink);
+            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
+            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
+            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
+            htmlFileContent = htmlFileContent.replace("${validationLink}", validationMailDto.getValidationLink());
+            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
+            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
@@ -152,18 +181,76 @@ public class EmailServiceImpl implements EmailService {
     }
 
     @Override
-    public void sendUserMetaChangeMail(String recipient, String meta) {
+    public void sendUserEmailChangeCodeMail(String recipient, String validationCode) {
+
+        EmailValidationMailDto validationMailDto = EmailValidationMailDto.builder()
+                .title("Validate Your E-mail Address!")
+                .greet("Hi")
+                .msg1("Here is your validation code")
+                .validationCode(validationCode)
+                .displayCode("block")
+                .displayLink("none")
+                .build();
+
         try {
             MimeMessage message = javaMailSender.createMimeMessage();
             message.setFrom("sender-test@example.com");
             message.setRecipients(MimeMessage.RecipientType.TO, recipient);
-            message.setSubject("Kurtuba Password Reset Code");
+            message.setSubject("Kurtuba Email Validation Code");
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/userMetaChange.html");
+            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${meta}", meta);
+            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
+            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
+            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
+            htmlFileContent = htmlFileContent.replace("${validationCode}", validationMailDto.getValidationCode());
+            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
+            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
+            messageBodyPart.setContent(htmlFileContent, "text/html");
+
+            MimeMultipart multipart = new MimeMultipart();
+            multipart.addBodyPart(messageBodyPart);
+            message.setContent(multipart);
+            javaMailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+        }
+    }
+
+    @Override
+    public void sendUserEmailChangeLinkMail(String recipient, String validationCode) {
+
+        String validationLink = authServerProtocol + authServerIp + ":" + authServerPort +
+                "/auth/register/email/validation/link/" + validationCode;
+
+        EmailValidationMailDto validationMailDto = EmailValidationMailDto.builder()
+                .title("Validate Your E-mail Address!")
+                .greet("Hi")
+                .msg1("Click below to validate your email address")
+                .validationLink(validationLink)
+                .displayCode("none")
+                .displayLink("block")
+                .build();
+
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            message.setFrom("sender-test@example.com");
+            message.setRecipients(MimeMessage.RecipientType.TO, recipient);
+            message.setSubject("Kurtuba Email Validation");
+            message.setSentDate(new Date());
+
+            MimeBodyPart messageBodyPart = new MimeBodyPart();
+            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
+            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
+            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
+            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
+            htmlFileContent = htmlFileContent.replace("${validationLink}", validationMailDto.getValidationLink());
+            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
+            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();

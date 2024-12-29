@@ -26,7 +26,7 @@ public class EmailController {
     @PostMapping("/mail/verification-code")
     public ResponseEntity<String> sendEmailVerificationMail(@RequestParam @NotEmpty String recipient, @RequestParam @NotEmpty String verificationCode) {
 
-        emailService.sendValidationCodeMail(recipient, verificationCode);
+        emailService.sendRegistrationValidationCodeMail(recipient, verificationCode);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body("Success");
     }
 

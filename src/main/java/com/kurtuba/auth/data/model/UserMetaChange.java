@@ -28,7 +28,7 @@ public class UserMetaChange {
     @NotEmpty
     private String userId;
 
-    //email address, phone number. In case of password
+    //email address, phone number etc
     private String meta;
 
     @NotNull

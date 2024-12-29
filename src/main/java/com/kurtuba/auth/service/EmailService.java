@@ -12,13 +12,15 @@ public interface EmailService {
 
     String sendMailWithAttachment(EmailDetails details);
 
-    void sendValidationCodeMail(@NotEmpty String recipient, @NotEmpty String verificationCode);
+    void sendRegistrationValidationCodeMail(@NotEmpty String recipient, @NotEmpty String verificationCode);
 
-    void sendValidationLinkMail(@NotEmpty String recipient, @NotEmpty String verificationLink);
+    void sendRegistrationValidationLinkMail(@NotEmpty String recipient, @NotEmpty String verificationLink);
+
+    void sendUserEmailChangeCodeMail(@NotEmpty String recipient, @NotEmpty String verificationCode);
+
+    void sendUserEmailChangeLinkMail(@NotEmpty String recipient, @NotEmpty String verificationCode);
 
     void sendPasswordResetCodeMail(@NotEmpty String recipient, @NotEmpty String resetCode);
 
     void sendPasswordResetLinkMail(@NotEmpty String recipient, @NotEmpty String resetCode);
-
-    void sendUserMetaChangeMail(@NotEmpty String recipient, @NotEmpty String meta);
 }
