@@ -3,7 +3,7 @@ package com.kurtuba.auth.error.enums;
 public enum ErrorEnum {
 
     GENERIC_EXCEPTION("Error",1000),
-    INVALID_DATA("Validation failure",1001),
+    INVALID_PARAMETER("Validation failure",1001),
     RESOURCE_NOT_FOUND("Resource not found",1002),
     LOGIN_INVALID_CREDENTIALS("Invalid credentials",1003),
     LOGIN_USER_LOCKED("Account locked",1004),

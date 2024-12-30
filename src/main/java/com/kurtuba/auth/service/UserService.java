@@ -234,6 +234,7 @@ public class UserService {
                 UserRole.builder()
                         .userId(user.getId())
                         .role(AuthoritiesType.USER)
+                        .createdDate(LocalDateTime.now())
                         .build()));
         userRoleRepository.saveAll(user.getUserRoles());
 
@@ -298,7 +299,7 @@ public class UserService {
         if(user.isEmailValidated()){
             //this is a change operation
             //send change notification mail to old e-mail
-            emailService.sendUserEmailChangeCodeMail(user.getEmail(), MetaChangeType.EMAIL.name());
+            emailService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.EMAIL);
         }
         user.setEmail(userMetaChange.getMeta());
         user.setEmailValidated(true);// in case user is registering
@@ -476,7 +477,7 @@ public class UserService {
                 .executed(true)
                 .expirationDate(LocalDateTime.now())
                 .build());
-        emailService.sendUserEmailChangeCodeMail(user.getEmail(), "password");
+        emailService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.PASSWORD_CHANGE);
     }
 
 
@@ -519,6 +520,7 @@ public class UserService {
         userMetaChange.setExecuted(true);
         userMetaChange.setUpdatedDate(LocalDateTime.now());
         userMetaChangeRepository.save(userMetaChange);
+        emailService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.PASSWORD_RESET);
 
     }
 

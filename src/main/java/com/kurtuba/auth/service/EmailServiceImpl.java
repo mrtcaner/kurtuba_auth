@@ -1,6 +1,7 @@
 package com.kurtuba.auth.service;// Importing required classes
 
 import com.kurtuba.auth.data.dto.EmailValidationMailDto;
+import com.kurtuba.auth.data.enums.MetaChangeType;
 import com.kurtuba.auth.data.model.EmailDetails;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
@@ -97,6 +98,7 @@ public class EmailServiceImpl implements EmailService {
                 .validationLink(validationLink)
                 .displayCode("none")
                 .displayLink("block")
+                .msg2("")
                 .build();
 
         try {
@@ -115,6 +117,7 @@ public class EmailServiceImpl implements EmailService {
             htmlFileContent = htmlFileContent.replace("${validationLink}", validationMailDto.getValidationLink());
             htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
             htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
+            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
@@ -194,6 +197,7 @@ public class EmailServiceImpl implements EmailService {
                 .validationCode(validationCode)
                 .displayCode("block")
                 .displayLink("none")
+                .msg2("")
                 .build();
 
         try {
@@ -212,6 +216,7 @@ public class EmailServiceImpl implements EmailService {
             htmlFileContent = htmlFileContent.replace("${validationCode}", validationMailDto.getValidationCode());
             htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
             htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
+            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
@@ -237,6 +242,7 @@ public class EmailServiceImpl implements EmailService {
                 .validationLink(validationLink)
                 .displayCode("none")
                 .displayLink("block")
+                .msg2("")
                 .build();
 
         try {
@@ -255,6 +261,34 @@ public class EmailServiceImpl implements EmailService {
             htmlFileContent = htmlFileContent.replace("${validationLink}", validationMailDto.getValidationLink());
             htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
             htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
+            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
+            messageBodyPart.setContent(htmlFileContent, "text/html");
+
+            MimeMultipart multipart = new MimeMultipart();
+            multipart.addBodyPart(messageBodyPart);
+            message.setContent(multipart);
+            javaMailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+        }
+    }
+
+    @Override
+    public void sendUserMetaChangeNotificationMail(String recipient, MetaChangeType metaChangeType) {
+        String metaName = metaChangeType == MetaChangeType.PASSWORD_CHANGE || metaChangeType == MetaChangeType.PASSWORD_RESET ? "password" :
+                metaChangeType.name().toLowerCase();
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            message.setFrom("sender-test@example.com");
+            message.setRecipients(MimeMessage.RecipientType.TO, recipient);
+            message.setSubject("Kurtuba Email Validation");
+            message.setSentDate(new Date());
+
+            MimeBodyPart messageBodyPart = new MimeBodyPart();
+            File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
+            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            htmlFileContent = htmlFileContent.replaceAll("metaName", metaName);
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();

@@ -2,11 +2,14 @@
 package com.kurtuba.auth.service;
 
 
+import com.kurtuba.auth.data.enums.MetaChangeType;
 import com.kurtuba.auth.data.model.EmailDetails;
 import jakarta.validation.constraints.NotEmpty;
 
 
 public interface EmailService {
+
+    void sendUserMetaChangeNotificationMail(String recipient, MetaChangeType metaChangeType);
 
     String sendSimpleMail(EmailDetails details);
 
