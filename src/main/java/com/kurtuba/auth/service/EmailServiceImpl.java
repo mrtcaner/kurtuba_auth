@@ -137,9 +137,11 @@ public class EmailServiceImpl implements EmailService {
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordResetCode.html");
+            File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
             htmlFileContent = htmlFileContent.replace("${resetCode}", resetCode);
+            htmlFileContent = htmlFileContent.replace("${displayCode}", "block");
+            htmlFileContent = htmlFileContent.replace("${displayLink}", "none");
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
@@ -165,9 +167,11 @@ public class EmailServiceImpl implements EmailService {
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordResetLink.html");
+            File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
             htmlFileContent = htmlFileContent.replace("${resetLink}", resetLink);
+            htmlFileContent = htmlFileContent.replace("${displayLink}", "block");
+            htmlFileContent = htmlFileContent.replace("${displayCode}", "none");
             messageBodyPart.setContent(htmlFileContent, "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
