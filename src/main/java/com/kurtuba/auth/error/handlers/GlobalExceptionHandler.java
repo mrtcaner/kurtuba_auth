@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.time.LocalDateTime;
 
@@ -48,13 +49,28 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorDetails, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(ConstraintViolationException.class)
+    @ExceptionHandler({ConstraintViolationException.class})
     public ResponseEntity<?> constraintViolationException(ConstraintViolationException ex, WebRequest request) {
         ex.printStackTrace();
         ResponseError errorDetails = ResponseError
                 .builder()
                 .code(ErrorEnum.INVALID_DATA.getCode())
-                .message(ex.getMessage())
+                .message(ex.getConstraintViolations().toString())
+                .error(ex.getMessage())
+                .detail(request.getDescription(false))
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler({HandlerMethodValidationException.class})
+    public ResponseEntity<?> handlerMethodValidationException(HandlerMethodValidationException ex, WebRequest request) {
+        ex.printStackTrace();
+        ResponseError errorDetails = ResponseError
+                .builder()
+                .code(ErrorEnum.INVALID_DATA.getCode())
+                .message(ex.getAllValidationResults().toString())
                 .error(ex.getMessage())
                 .detail(request.getDescription(false))
                 .timestamp(LocalDateTime.now())
