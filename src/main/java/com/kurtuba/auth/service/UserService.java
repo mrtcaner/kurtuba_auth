@@ -341,6 +341,7 @@ public class UserService {
 
         } catch (BusinessLogicException e) {
             //TODO let email scheduler handle
+            e.printStackTrace();
         }
 
     }
