@@ -218,27 +218,27 @@ public class UserController {
     }
 
     /**
-     * Email change by validationCode endpoint for logged-in users
+     * Email change by validation-Code endpoint for logged-in users
      *
      * @param email
      * @param principal
      * @return
      */
-    @PutMapping("/email/code/{email}")
-    public ResponseEntity changeEmailByCode(@Valid @PathVariable String email, Principal principal) {
+    @PostMapping("/email/code/{email}")
+    public ResponseEntity sendEmailValidationCode(@Valid @PathVariable String email, Principal principal) {
         userService.changeEmail(principal.getName(), email, true);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
     /**
-     * Email change by validationLink endpoint for logged-in users
+     * Email change by validation-Link endpoint for logged-in users
      *
      * @param email
      * @param principal
      * @return
      */
-    @PutMapping("/email/link/{email}")
-    public ResponseEntity changeEmailByLink(@Valid @PathVariable String email, Principal principal) {
+    @PostMapping("/email/link/{email}")
+    public ResponseEntity sendEmailValidationLink(@Valid @PathVariable String email, Principal principal) {
         userService.changeEmail(principal.getName(), email, false);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
