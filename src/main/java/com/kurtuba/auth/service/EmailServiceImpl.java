@@ -88,7 +88,7 @@ public class EmailServiceImpl implements EmailService {
     @Override
     public void sendRegistrationValidationLinkMail(String recipient, String validationCode) {
         String validationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/auth/register/email/validation/link/" + validationCode;
+                "/auth/email/validation/link/" + validationCode;
 
         EmailValidationMailDto validationMailDto = EmailValidationMailDto.builder()
                 .title("THANKS FOR SIGNING UP!")
@@ -224,7 +224,7 @@ public class EmailServiceImpl implements EmailService {
     public void sendUserEmailChangeLinkMail(String recipient, String validationCode) {
 
         String validationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/auth/register/email/validation/link/" + validationCode;
+                "/auth/email/validation/link/" + validationCode;
 
         EmailValidationMailDto validationMailDto = EmailValidationMailDto.builder()
                 .title("Validate Your E-mail Address!")
