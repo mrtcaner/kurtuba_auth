@@ -55,7 +55,7 @@ public class GlobalExceptionHandler {
         ex.printStackTrace();
         ResponseError errorDetails = ResponseError
                 .builder()
-                .code(ErrorEnum.INVALID_DATA.getCode())
+                .code(ErrorEnum.INVALID_PARAMETER.getCode())
                 .message(ex.getConstraintViolations().toString())
                 .error(ex.getMessage())
                 .detail(request.getDescription(false))
@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
         ex.printStackTrace();
         ResponseError errorDetails = ResponseError
                 .builder()
-                .code(ErrorEnum.INVALID_DATA.getCode())
+                .code(ErrorEnum.INVALID_PARAMETER.getCode())
                 .message(ex.getAllValidationResults().toString())
                 .error(ex.getMessage())
                 .detail(request.getDescription(false))
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
         ex.printStackTrace();
         ResponseError errorDetails = ResponseError
                 .builder()
-                .code(ErrorEnum.INVALID_DATA.getCode())
+                .code(ErrorEnum.INVALID_PARAMETER.getCode())
                 .message(ex.getMessage())
                 .error(ex.getBody().getDetail())
                 .detail(request.getDescription(false))

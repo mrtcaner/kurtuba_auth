@@ -3,6 +3,9 @@ package com.kurtuba.auth.data.dto;
 
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.utils.Utils;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -28,20 +31,20 @@ public class UserRegistrationDto {
     private String surname;
 
     @NotEmpty
-    @Pattern(regexp = "^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@"
-            + "[^-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$")
+    @Pattern(regexp = Utils.EMAIL_REGEX)
     private String email;
 
-    @Pattern(regexp = "^(?=.{2,32}$)(?![_.])(?!.*[_.]{2})[a-z0-9._]+(?<![_.])$")
+    @Pattern(regexp = Utils.USERNAME_REGEX)
     @NotEmpty
     private String username;
 
     @NotEmpty
     @Size(min = 8, max = 100, message = "Password length must be between 8-100 characters")
-    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[\\.@$!%*#?&])[A-Za-z\\d\\.@$!%*#?&]{8,}$")
+    @Pattern(regexp = Utils.PASSWORD_REGEX)
     private String password;
 
     @NotNull
+    @Enumerated(EnumType.STRING)
     private AuthProviderType authProvider;
 
     boolean emailValidationByCode;
@@ -56,7 +59,7 @@ public class UserRegistrationDto {
                 .authProvider(authProvider)
                 .phone("")
                 .canChangeUsername(false)
-                .activated(true)
+                .activated(false)
                 .locked(false)
                 .failedLoginCount(0)
                 .showCaptcha(false)
