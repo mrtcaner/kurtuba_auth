@@ -5,7 +5,9 @@ import com.kurtuba.auth.data.dto.UserRegistrationDto;
 import com.kurtuba.auth.data.dto.UserRegistrationOtherProviderDto;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.service.UserService;
+import com.kurtuba.auth.utils.Utils;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -37,7 +39,7 @@ public class RegistrationController {
     private ResponseEntity registerViaAnotherProvider(@Valid @RequestBody UserRegistrationOtherProviderDto newUser) {
         UserRegistrationDto dto = userService.registerByAnotherProvider(newUser);
         TokenReturnDto tokenReturnDto = userService.generateTokensForLoginByRestRequest(dto.getEmail(), dto.getPassword(),
-                registeredClientRepository.findByClientName("kurtuba-mobile-client").getClientId(),"");
+                registeredClientRepository.findByClientName("kurtuba-mobile-client").getClientId(), "");
         return ResponseEntity
                 .status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
                 .body(tokenReturnDto);
@@ -51,7 +53,7 @@ public class RegistrationController {
 
     @GetMapping("/register/email/available/{email}")
     @ResponseBody
-    private ResponseEntity isEmailAvailable(@NotEmpty @PathVariable String email) {
+    private ResponseEntity isEmailAvailable(@NotEmpty @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isEmailAvailable(email));
     }
 

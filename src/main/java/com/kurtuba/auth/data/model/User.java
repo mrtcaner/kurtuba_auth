@@ -2,6 +2,7 @@ package com.kurtuba.auth.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.kurtuba.auth.data.enums.AuthProviderType;
+import com.kurtuba.auth.utils.Utils;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
@@ -36,7 +37,7 @@ public class User implements Serializable {
     private String surname;
 
     @NotEmpty
-    @Pattern(regexp = "^(?=.{2,32}$)(?![_.])(?!.*[_.]{2})[a-z0-9._]+(?<![_.])$")
+    @Pattern(regexp = Utils.USERNAME_REGEX)
     private String username;
 
     @Nullable
@@ -46,8 +47,7 @@ public class User implements Serializable {
     private String phone;
 
     @NotEmpty
-    @Pattern(regexp = "^(?=.{1,64}@)[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*@"
-            + "[^-][A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)*(\\.[A-Za-z]{2,})$")
+    @Pattern(regexp = Utils.EMAIL_REGEX)
     private String email;
 
     @NotEmpty

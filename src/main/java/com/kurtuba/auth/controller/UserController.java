@@ -6,7 +6,9 @@ import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.JWTClaimType;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
+import com.kurtuba.auth.utils.Utils;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -225,9 +227,13 @@ public class UserController {
      * @return
      */
     @PostMapping("/email/code/{email}")
-    public ResponseEntity sendEmailValidationCode(@Valid @PathVariable String email, Principal principal) {
+    public ResponseEntity sendEmailValidationCode(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
+                                                  Principal principal) {
+
         userService.changeEmail(principal.getName(), email, true);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
+
+
     }
 
     /**
@@ -238,7 +244,8 @@ public class UserController {
      * @return
      */
     @PostMapping("/email/link/{email}")
-    public ResponseEntity sendEmailValidationLink(@Valid @PathVariable String email, Principal principal) {
+    public ResponseEntity sendEmailValidationLink(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
+                                                  Principal principal) {
         userService.changeEmail(principal.getName(), email, false);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
