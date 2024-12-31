@@ -5,13 +5,9 @@ server:
 auth:
   server:
     issuer-url: http://192.168.1.2:8080
-    mobile-client-secret: $2a$10$8Xr/8v58z91sUKQcD.wmqupNP3azgAm/FFVshnq9xs9irAbHlr7Ea
-    adm-web-client-secret: $2a$12$vUM7IpBs2wk/0U21HmF5xeiumBgD8bJaBJ8OOox8TLAXC5erm4/Oq
-    adm-service-client-secret: $2a$10$9u/FK6u3hyYv6LfiahN.ceeKhyToICqCvxOcJgH11EzB2YcKInwta
     protocol: http://
     ip: 192.168.1.2
     port: 8080
-    email-password-login-endpoint: http://${auth.server.ip}:${auth.server.port}/login
 
 logging:
   level:
@@ -35,15 +31,6 @@ spring:
       schema: kurtuba
 
   security:
-    client:
-        registration:
-          google:
-            clientId: 288830956764-22nplnlfceqg5m4a09mq9dvrrjvaae88.apps.googleusercontent.com
-            clientSecret: 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
-            redirect-uri: http://localhost:8080/login/oauth2/code/google
-            scope:
-              - email
-              - profile
     oauth2:
       resourceserver:
         jwt:
