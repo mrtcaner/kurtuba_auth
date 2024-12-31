@@ -419,7 +419,7 @@ public class UserService {
 
         }
 
-        //This email with different provider exists. Check active, lock etc fields and return a token
+        //This email with different provider exists. TODO Check active, lock etc fields and return a token
         //That also means as long as user uses other providers with same email, same user will be logged in
         String pass = UUID.randomUUID().toString();
         existingUser.setPassword(new BCryptPasswordEncoder().encode(pass));
@@ -532,7 +532,7 @@ public class UserService {
         }
 
         if (!user.isEmailValidated()) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_RESET_EMAIL_NOT_VALIDATED);
+            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VALIDATED);
         }
         String code = byCode == true ? generateRandomAlphanumericString(6) :
                 Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());

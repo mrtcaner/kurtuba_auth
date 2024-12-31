@@ -42,7 +42,6 @@ public class LoginController {
     }
 
     @PostMapping("/login")
-    @ResponseBody
     public ResponseEntity login(@Valid @RequestBody LoginCredentialsDto loginCredentials) {
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
@@ -77,7 +76,6 @@ public class LoginController {
      * @return
      */
     @PostMapping("/service/login")
-    @ResponseBody
     public ResponseEntity login(@Valid @RequestBody LoginServiceCredentialsDto loginServiceCredentialsDto) {
         RegisteredClient client = registeredClientRepository.findByClientId(loginServiceCredentialsDto.getClientId());
         if(!RegisteredClientType.SERVICE.equals(client.getClientType())){

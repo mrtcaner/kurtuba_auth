@@ -47,21 +47,18 @@ public class EmailController {
     }
 
     @PostMapping("/email/validation/code")
-    @ResponseBody
     private ResponseEntity validateEmailByCode(@Valid @RequestBody EmailValidationDto validationDto) {
         return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200))
                 .body(userService.validateEmailByCode(validationDto.getEmail(), validationDto.getCode()));
     }
 
     @PutMapping("/email/validation/code/{email}")
-    @ResponseBody
     private ResponseEntity resendRegistrationEmailValidationCode(@NotEmpty @PathVariable String email) {
         userService.sendRegistrationEmailValidationCode(email, true);
         return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200)).body("success");
     }
 
     @PutMapping("/email/validation/link/{email}")
-    @ResponseBody
     private ResponseEntity resendRegistrationEmailValidationLink(@NotEmpty @PathVariable String email) {
         userService.sendRegistrationEmailValidationCode(email, false);
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body("success");

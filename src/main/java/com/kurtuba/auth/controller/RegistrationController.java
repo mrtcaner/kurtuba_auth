@@ -29,13 +29,11 @@ public class RegistrationController {
     }
 
     @PostMapping("/register")
-    @ResponseBody
     private ResponseEntity register(@Valid @RequestBody UserRegistrationDto newUser) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(userService.register(newUser));
     }
 
     @PostMapping("/register/other-provider")
-    @ResponseBody
     private ResponseEntity registerViaAnotherProvider(@Valid @RequestBody UserRegistrationOtherProviderDto newUser) {
         UserRegistrationDto dto = userService.registerByAnotherProvider(newUser);
         TokenReturnDto tokenReturnDto = userService.generateTokensForLoginByRestRequest(dto.getEmail(), dto.getPassword(),
@@ -46,13 +44,11 @@ public class RegistrationController {
     }
 
     @GetMapping(value = "/register/username/available/{username}", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
     private ResponseEntity isUsernameAvailable(@NotEmpty @PathVariable String username) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isUsernameAvailable(username));
     }
 
     @GetMapping("/register/email/available/{email}")
-    @ResponseBody
     private ResponseEntity isEmailAvailable(@NotEmpty @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isEmailAvailable(email));
     }
