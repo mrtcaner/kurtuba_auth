@@ -11,6 +11,8 @@ public interface EmailService {
 
     void sendUserMetaChangeNotificationMail(String recipient, MetaChangeType metaChangeType);
 
+    void sendMultipartMail(EmailDetails details);
+
     String sendSimpleMail(EmailDetails details);
 
     String sendMailWithAttachment(EmailDetails details);

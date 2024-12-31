@@ -5,6 +5,7 @@ import com.kurtuba.auth.data.enums.MetaChangeType;
 import com.kurtuba.auth.data.model.EmailDetails;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
+import com.kurtuba.auth.utils.EmailUtils;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
@@ -29,9 +30,6 @@ import java.util.Date;
 public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender javaMailSender;
-
-    @Value("${spring.mail.username}")
-    private String sender;
 
     @Value("${auth.server.protocol}")
     private String authServerProtocol;
@@ -64,24 +62,14 @@ public class EmailServiceImpl implements EmailService {
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
-            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
-            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
-            htmlFileContent = htmlFileContent.replace("${validationCode}", validationMailDto.getValidationCode());
-            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
-            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
-            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
-            messageBodyPart.setContent(htmlFileContent, "text/html");
+            messageBodyPart.setContent(EmailUtils.setRegistrationEmailValidationMessageBody(validationMailDto), "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
             multipart.addBodyPart(messageBodyPart);
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),e.getMessage());
         }
 
     }
@@ -109,24 +97,14 @@ public class EmailServiceImpl implements EmailService {
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
-            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
-            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
-            htmlFileContent = htmlFileContent.replace("${validationLink}", validationMailDto.getValidationLink());
-            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
-            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
-            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
-            messageBodyPart.setContent(htmlFileContent, "text/html");
+            messageBodyPart.setContent(EmailUtils.setRegistrationEmailValidationMessageBody(validationMailDto), "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
             multipart.addBodyPart(messageBodyPart);
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),e.getMessage());
         }
     }
 
@@ -152,8 +130,7 @@ public class EmailServiceImpl implements EmailService {
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),e.getMessage());
         }
 
     }
@@ -182,8 +159,7 @@ public class EmailServiceImpl implements EmailService {
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),e.getMessage());
         }
     }
 
@@ -208,24 +184,14 @@ public class EmailServiceImpl implements EmailService {
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
-            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
-            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
-            htmlFileContent = htmlFileContent.replace("${validationCode}", validationMailDto.getValidationCode());
-            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
-            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
-            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
-            messageBodyPart.setContent(htmlFileContent, "text/html");
+            messageBodyPart.setContent(EmailUtils.setRegistrationEmailValidationMessageBody(validationMailDto), "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
             multipart.addBodyPart(messageBodyPart);
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),e.getMessage());
         }
     }
 
@@ -253,24 +219,14 @@ public class EmailServiceImpl implements EmailService {
             message.setSentDate(new Date());
 
             MimeBodyPart messageBodyPart = new MimeBodyPart();
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailValidation.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${title}", validationMailDto.getTitle());
-            htmlFileContent = htmlFileContent.replace("${greet}", validationMailDto.getGreet());
-            htmlFileContent = htmlFileContent.replace("${msg1}", validationMailDto.getMsg1());
-            htmlFileContent = htmlFileContent.replace("${validationLink}", validationMailDto.getValidationLink());
-            htmlFileContent = htmlFileContent.replace("${displayCode}", validationMailDto.getDisplayCode());
-            htmlFileContent = htmlFileContent.replace("${displayLink}", validationMailDto.getDisplayLink());
-            htmlFileContent = htmlFileContent.replace("${msg2}", validationMailDto.getMsg2());
-            messageBodyPart.setContent(htmlFileContent, "text/html");
+            messageBodyPart.setContent(EmailUtils.setRegistrationEmailValidationMessageBody(validationMailDto), "text/html");
 
             MimeMultipart multipart = new MimeMultipart();
             multipart.addBodyPart(messageBodyPart);
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
         }
     }
 
@@ -296,13 +252,31 @@ public class EmailServiceImpl implements EmailService {
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),e.getMessage());
         }
     }
 
-    // Method 1
-    // To send a simple email
+    @Override
+    public void sendMultipartMail(EmailDetails details) {
+        try {
+            MimeMessage message = javaMailSender.createMimeMessage();
+            message.setFrom(details.getSender());
+            message.setRecipients(MimeMessage.RecipientType.TO, details.getRecipient());
+            message.setSubject(details.getSubject());
+            message.setSentDate(new Date());
+
+            MimeBodyPart messageBodyPart = new MimeBodyPart();
+            messageBodyPart.setContent(details.getMsgBody(), "text/html");
+
+            MimeMultipart multipart = new MimeMultipart();
+            multipart.addBodyPart(messageBodyPart);
+            message.setContent(multipart);
+            javaMailSender.send(message);
+        } catch (Exception e) {
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+        }
+    }
+
     public String sendSimpleMail(EmailDetails details) {
 
         // Try block to check for exceptions
@@ -313,7 +287,7 @@ public class EmailServiceImpl implements EmailService {
                     = new SimpleMailMessage();
 
             // Setting up necessary details
-            mailMessage.setFrom(sender);
+            mailMessage.setFrom("test@test.com");
             mailMessage.setTo(details.getRecipient());
             mailMessage.setText(details.getMsgBody());
             mailMessage.setSubject(details.getSubject());
@@ -330,10 +304,7 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
-    // Method 2
-    // To send an email with attachment
-    public String
-    sendMailWithAttachment(EmailDetails details) {
+    public String sendMailWithAttachment(EmailDetails details) {
         // Creating a mime message
         MimeMessage mimeMessage
                 = javaMailSender.createMimeMessage();
@@ -345,7 +316,7 @@ public class EmailServiceImpl implements EmailService {
             // be send
             mimeMessageHelper
                     = new MimeMessageHelper(mimeMessage, true);
-            mimeMessageHelper.setFrom(sender);
+            mimeMessageHelper.setFrom("test@test.com");
             mimeMessageHelper.setTo(details.getRecipient());
             mimeMessageHelper.setText(details.getMsgBody());
             mimeMessageHelper.setSubject(

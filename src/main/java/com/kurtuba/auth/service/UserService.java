@@ -4,9 +4,12 @@ import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.MetaChangeType;
-import com.kurtuba.auth.data.model.*;
-import com.kurtuba.auth.data.repository.UserMetaChangeRepository;
+import com.kurtuba.auth.data.model.RegisteredClient;
+import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.data.model.UserMetaChange;
+import com.kurtuba.auth.data.model.UserRole;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
+import com.kurtuba.auth.data.repository.UserMetaChangeRepository;
 import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.data.repository.UserRoleRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
@@ -27,7 +30,10 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static com.kurtuba.auth.utils.Utils.generateRandomAlphanumericString;
@@ -44,7 +50,7 @@ public class UserService {
 
     private final UserTokenService userTokenService;
 
-    private final EmailService emailService;
+    private final EmailJobService emailJobService;
 
     private final UserMetaChangeRepository userMetaChangeRepository;
 
@@ -57,14 +63,14 @@ public class UserService {
     }
 
     public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository,
-                       UserTokenService userTokenService, EmailService emailService,
+                       UserTokenService userTokenService, EmailJobService emailJobService,
                        UserMetaChangeRepository userMetaChangeRepository,
                        RegisteredClientRepository registeredClientRepository,
                        EntityManagerFactory entityManagerFactory) {
         this.userRepository = userRepository;
         this.userRoleRepository = userRoleRepository;
         this.userTokenService = userTokenService;
-        this.emailService = emailService;
+        this.emailJobService = emailJobService;
         this.userMetaChangeRepository = userMetaChangeRepository;
         this.registeredClientRepository = registeredClientRepository;
         this.entityManagerFactory = entityManagerFactory;
@@ -165,17 +171,17 @@ public class UserService {
 
     @Transactional
     public TokenReturnDto generateTokensForLoginByRestRequest(String emailUsername, String pass,
-                                                               String registeredClientId, String registeredClientSecret) {
+                                                              String registeredClientId, String registeredClientSecret) {
         // validate client credentials
         RegisteredClient client = registeredClientRepository.findByClientId(registeredClientId);
-        if(client == null){
+        if (client == null) {
             throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
         }
-        if(StringUtils.hasLength(client.getClientSecret())){
-            if(!StringUtils.hasLength(registeredClientSecret)){
+        if (StringUtils.hasLength(client.getClientSecret())) {
+            if (!StringUtils.hasLength(registeredClientSecret)) {
                 throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
             }
-            if(!new BCryptPasswordEncoder().matches(registeredClientSecret,client.getClientSecret())){
+            if (!new BCryptPasswordEncoder().matches(registeredClientSecret, client.getClientSecret())) {
                 throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
             }
         }
@@ -184,14 +190,14 @@ public class UserService {
         User user = authenticate(emailUsername, pass);
 
         //set token params
-        Duration accessTokenValidity =  Duration.ofMinutes(client.getAccessTokenTtlMinutes());
+        Duration accessTokenValidity = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
         Duration refreshTokenValidity = null;
-        if(client.isRefreshTokenEnabled()){
+        if (client.isRefreshTokenEnabled()) {
             refreshTokenValidity = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
         }
 
         Set<String> roles = null;
-        if(client.isScopeEnabled()){
+        if (client.isScopeEnabled()) {
             roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
         }
 
@@ -238,23 +244,16 @@ public class UserService {
                         .build()));
         userRoleRepository.saveAll(user.getUserRoles());
 
-        try {
-            if (newUser.isEmailValidationByCode()) {
-                emailService.sendRegistrationValidationCodeMail(user.getEmail(), metaChange.getCode());
-            } else {
-                emailService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getCode());
-            }
-
-        } catch (BusinessLogicException e) {
-            //TODO let email scheduler handle
-            e.printStackTrace();
+        if (newUser.isEmailValidationByCode()) {
+            emailJobService.sendRegistrationValidationCodeMail(user.getEmail(), metaChange.getCode());
+        } else {
+            emailJobService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getCode());
         }
 
         return UserDto.fromUser(user);
     }
 
     /**
-     *
      * @param code is unique
      */
     @Transactional
@@ -271,12 +270,12 @@ public class UserService {
      * Validate email by rest request. User must enter the code mailed to them
      *
      * @param email
-     * @param code is random alphanumeric string
+     * @param code  is random alphanumeric string
      * @return
      */
     @Transactional
     public UserDto validateEmailByCode(@NotEmpty String email, @NotEmpty String code) {
-        User user  = userRepository.getUserByEmail(email);
+        User user = userRepository.getUserByEmail(email);
 
         if (user == null) {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
@@ -296,13 +295,14 @@ public class UserService {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VALIDATE_CODE_EXPIRED);
         }
 
-        if(user.isEmailValidated()){
+        if (user.isEmailValidated()) {
             //this is a change operation
             //send change notification mail to old e-mail
-            emailService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.EMAIL);
+            emailJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.EMAIL);
         }
         user.setEmail(userMetaChange.getMeta());
         user.setEmailValidated(true);// in case user is registering
+        user.setActivated(true);
         userRepository.save(user);
         userMetaChange.setExecuted(true);
         userMetaChange.setUpdatedDate(LocalDateTime.now());
@@ -333,17 +333,13 @@ public class UserService {
                 .code(byCode == true ? generateRandomAlphanumericString(6) :
                         Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()))
                 .build();
-        try {
-            if (byCode) {
-                emailService.sendRegistrationValidationCodeMail(user.getEmail(), metaChange.getCode());
-            } else {
-                emailService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getCode());
-            }
-
-        } catch (BusinessLogicException e) {
-            //TODO let email scheduler handle
-            e.printStackTrace();
+        userMetaChangeRepository.save(metaChange);
+        if (byCode) {
+            emailJobService.sendRegistrationValidationCodeMail(user.getEmail(), metaChange.getCode());
+        } else {
+            emailJobService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getCode());
         }
+
 
     }
 
@@ -477,12 +473,13 @@ public class UserService {
                 .executed(true)
                 .expirationDate(LocalDateTime.now())
                 .build());
-        emailService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.PASSWORD_CHANGE);
+        emailJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.PASSWORD_CHANGE);
     }
 
 
     /**
      * If password reset request is responded with a link, link has unique code.
+     *
      * @param passwordResetDto
      */
     @Transactional
@@ -496,6 +493,7 @@ public class UserService {
     /**
      * If password reset request is responded with a code rather than a link, generated code is random-not unique.
      * Hence, userMetaChangeId is required
+     *
      * @param passwordResetByCodeDto
      */
     @Transactional
@@ -520,7 +518,7 @@ public class UserService {
         userMetaChange.setExecuted(true);
         userMetaChange.setUpdatedDate(LocalDateTime.now());
         userMetaChangeRepository.save(userMetaChange);
-        emailService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.PASSWORD_RESET);
+        emailJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaChangeType.PASSWORD_RESET);
 
     }
 
@@ -548,9 +546,9 @@ public class UserService {
         //todo check user state for locked/active etc?
         userMetaChangeRepository.save(metaChange);
         if (byCode == true) {
-            emailService.sendPasswordResetCodeMail(user.getEmail(), code);
+            emailJobService.sendPasswordResetCodeMail(user.getEmail(), code);
         } else {
-            emailService.sendPasswordResetLinkMail(user.getEmail(), code);
+            emailJobService.sendPasswordResetLinkMail(user.getEmail(), code);
         }
 
     }
@@ -580,18 +578,18 @@ public class UserService {
     /**
      * User registered and there is already a validated email(email change operation)
      *
-     *  @param userId
+     * @param userId
      * @param email
      */
     public void changeEmail(String userId, String email, boolean byCode) {
         User user = userRepository.getUserById(userId);
 
-        if(user == null){
+        if (user == null) {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
         }
 
         // user must be in a valid state
-        if(!user.isEmailValidated() || user.isLocked() || user.isShowCaptcha() || !user.isActivated()){
+        if (!user.isEmailValidated() || user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
@@ -605,15 +603,12 @@ public class UserService {
                 .code(byCode == true ? generateRandomAlphanumericString(6) :
                         Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()))
                 .build();
-        try {
-            if (byCode) {
-                emailService.sendUserEmailChangeCodeMail(email, metaChange.getCode());
-            } else {
-                emailService.sendUserEmailChangeLinkMail(email, metaChange.getCode());
-            }
+        userMetaChangeRepository.save(metaChange);
 
-        } catch (BusinessLogicException e) {
-            //TODO let email scheduler handle
+        if (byCode) {
+            emailJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode());
+        } else {
+            emailJobService.sendUserEmailChangeLinkMail(email, metaChange.getCode());
         }
 
     }
