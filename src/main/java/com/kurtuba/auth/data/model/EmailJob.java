@@ -35,7 +35,7 @@ public class EmailJob {
     String subject;
 
     @NotEmpty
-    @Column(columnDefinition="TEXT")
+    @Column(length=10485760)
     String message;
 
     @NotNull

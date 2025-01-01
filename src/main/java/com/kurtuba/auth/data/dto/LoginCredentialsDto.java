@@ -17,7 +17,6 @@ public class LoginCredentialsDto {
     @NotEmpty
     String password;
 
-    @NotEmpty
     String clientId;
 
     String clientSecret;

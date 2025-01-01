@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -43,6 +44,13 @@ public class LoginController {
 
     @PostMapping("/login")
     public ResponseEntity login(@Valid @RequestBody LoginCredentialsDto loginCredentials) {
+        if(!StringUtils.hasLength(loginCredentials.getClientId())){
+            // if no client info is present then use default client
+            RegisteredClient defaultClient = registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT)
+                    .get(0);
+            loginCredentials.setClientId(defaultClient.getClientId());
+            loginCredentials.setClientSecret(defaultClient.getClientSecret());
+        }
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
         TokenReturnDto tokenDto = userService.generateTokensForLoginByRestRequest(loginCredentials.getEmailUsername(),
