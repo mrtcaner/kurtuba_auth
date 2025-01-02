@@ -259,7 +259,7 @@ public class UserService {
         if (newUser.isEmailValidationByCode()) {
             emailJobService.sendRegistrationValidationCodeMail(user.getEmail(), metaChange.getCode());
         } else {
-            emailJobService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getCode());
+            emailJobService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getLinkParam());
         }
 
         return metaChange.getId();
@@ -369,7 +369,7 @@ public class UserService {
         if (byCode) {
             emailJobService.sendRegistrationValidationCodeMail(user.getEmail(), metaChange.getCode());
         } else {
-            emailJobService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getCode());
+            emailJobService.sendRegistrationValidationLinkMail(user.getEmail(), metaChange.getLinkParam());
         }
 
 
@@ -600,7 +600,7 @@ public class UserService {
         if (byCode == true) {
             emailJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode());
         } else {
-            emailJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getCode());
+            emailJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam());
         }
 
         return metaChange;
@@ -670,7 +670,7 @@ public class UserService {
         if (byCode) {
             emailJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode());
         } else {
-            emailJobService.sendUserEmailChangeLinkMail(email, metaChange.getCode());
+            emailJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam());
         }
 
         return metaChange;
