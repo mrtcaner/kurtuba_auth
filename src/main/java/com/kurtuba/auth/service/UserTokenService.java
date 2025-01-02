@@ -1,8 +1,8 @@
 package com.kurtuba.auth.service;
 
 import com.kurtuba.auth.data.dto.TokenRefreshRequestDto;
-import com.kurtuba.auth.data.dto.TokenReturnDto;
-import com.kurtuba.auth.data.dto.TokensReturnDto;
+import com.kurtuba.auth.data.dto.TokenResponseDto;
+import com.kurtuba.auth.data.dto.TokensResponseDto;
 import com.kurtuba.auth.data.enums.JWTClaimType;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
 import com.kurtuba.auth.data.model.RegisteredClient;
@@ -58,7 +58,7 @@ public class UserTokenService {
     }
 
     @Transactional
-    public TokenReturnDto refreshUserTokens(TokenRefreshRequestDto tokenRefreshRequestDto) {
+    public TokenResponseDto refreshUserTokens(TokenRefreshRequestDto tokenRefreshRequestDto) {
 
         // token validation
         JsonObject decodedToken = TokenUtils.decodeTokenPayload(tokenRefreshRequestDto.getAccessToken());
@@ -185,8 +185,8 @@ public class UserTokenService {
      * That means token-validation/user-authentication must be carried out inside this method.
      */
     @Transactional
-    public TokenReturnDto createAndSaveTokens(String userId, String clientId, Set<String> auds, Set<String> scopes,
-                                              Duration accessTokenValidityDuration, Duration refreshTokenValidityDuration) {
+    public TokenResponseDto createAndSaveTokens(String userId, String clientId, Set<String> auds, Set<String> scopes,
+                                                Duration accessTokenValidityDuration, Duration refreshTokenValidityDuration) {
 
         String newAccessToken = tokenUtils.generateToken(userId, auds, scopes, accessTokenValidityDuration);
         String newRefreshToken = null;
@@ -217,9 +217,9 @@ public class UserTokenService {
 
         userTokenRepository.save(newUserToken);
 
-        return newRefreshToken == null ? TokenReturnDto.builder()
+        return newRefreshToken == null ? TokenResponseDto.builder()
                 .accessToken(newAccessToken).build() :
-                TokensReturnDto.tokensReturnDtoBuilder()
+                TokensResponseDto.tokensReturnDtoBuilder()
                         .accessToken(newAccessToken)
                         .refreshToken(newRefreshToken)
                         .build();

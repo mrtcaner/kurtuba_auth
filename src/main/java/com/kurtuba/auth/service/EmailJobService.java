@@ -32,7 +32,7 @@ public class EmailJobService {
     @Value("${auth.server.port}")
     private String authServerPort;
 
-    @Value("${kurtuba.email.max-try-count}")
+    @Value("${kurtuba.job.email.send.max-try-count}")
     private String emailSendMaxTryCount;
 
     final

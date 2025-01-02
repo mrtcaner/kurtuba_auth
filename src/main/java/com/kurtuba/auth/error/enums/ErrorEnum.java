@@ -24,6 +24,8 @@ public enum ErrorEnum {
     USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH("New passwords don't match",1310),
     USER_PASSWORD_RESET_CODE_INVALID("Password reset code invalid",1311),
     USER_PASSWORD_RESET_CODE_EXPIRED("Password reset code expired",1312),
+    USER_META_CHANGE_INVALID_OPERATION("Invalid meta modification",1313),
+    USER_META_CHANGE_CODE_MISMATCH("Code mismatch",1314),
     MAIL_UNABLE_TO_SEND("Unable to send mail",1400);
 
 

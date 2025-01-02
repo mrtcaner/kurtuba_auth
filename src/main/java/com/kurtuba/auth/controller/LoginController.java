@@ -2,7 +2,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.LoginCredentialsDto;
 import com.kurtuba.auth.data.dto.LoginServiceCredentialsDto;
-import com.kurtuba.auth.data.dto.TokenReturnDto;
+import com.kurtuba.auth.data.dto.TokenResponseDto;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
@@ -53,7 +53,7 @@ public class LoginController {
         }
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
-        TokenReturnDto tokenDto = userService.generateTokensForLoginByRestRequest(loginCredentials.getEmailUsername(),
+        TokenResponseDto tokenDto = userService.generateTokensForLogin(loginCredentials.getEmailUsername(),
                 loginCredentials.getPassword(), loginCredentials.getClientId(), loginCredentials.getClientSecret());
 
         RegisteredClient client = registeredClientRepository.findByClientId(loginCredentials.getClientId());
@@ -95,7 +95,7 @@ public class LoginController {
 
         // return token json
         return ResponseEntity.status(HttpStatus.OK)
-                .body(TokenReturnDto.builder()
+                .body(TokenResponseDto.builder()
                         .accessToken(tokenUtils.generateToken(client.getId(), Set.of(client.getClientName()),
                                 client.getScopes().stream().collect(Collectors.toSet()),
                                 Duration.ofMinutes(client.getAccessTokenTtlMinutes())))

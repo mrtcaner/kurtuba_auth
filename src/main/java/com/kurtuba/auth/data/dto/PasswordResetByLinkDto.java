@@ -13,12 +13,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PasswordResetDto {
-
-    String userMetaChangeId;
+public class PasswordResetByLinkDto {
 
     @NotEmpty
-    String code;
+    String linkParam;
     @NotEmpty
     @Size(min = 8, max = 100, message = "Password length must be between 8-100 characters")
     @Pattern(regexp = Utils.PASSWORD_REGEX)
@@ -28,12 +26,4 @@ public class PasswordResetDto {
     @Pattern(regexp = Utils.PASSWORD_REGEX)
     String repeatNewPassword;
 
-    public PasswordResetByCodeDto toPasswordResetByCodeDto(){
-        return PasswordResetByCodeDto.builder()
-                .userMetaChangeId(this.userMetaChangeId)
-                .code(this.code)
-                .newPassword(this.newPassword)
-                .repeatNewPassword(this.repeatNewPassword)
-                .build();
-    }
 }

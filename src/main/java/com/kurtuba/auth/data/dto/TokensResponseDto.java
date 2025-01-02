@@ -5,13 +5,13 @@ import lombok.Builder;
 import lombok.Data;
 
 @Data
-public class TokensReturnDto extends TokenReturnDto {
+public class TokensResponseDto extends TokenResponseDto {
 
     @NotEmpty
     public String refreshToken;
 
     @Builder(builderMethodName = "tokensReturnDtoBuilder")
-    public TokensReturnDto(String accessToken, String refreshToken) {
+    public TokensResponseDto(String accessToken, String refreshToken) {
         super(accessToken);
         this.refreshToken = refreshToken;
     }

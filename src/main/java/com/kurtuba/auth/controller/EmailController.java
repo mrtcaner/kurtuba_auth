@@ -2,6 +2,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.EmailValidationDto;
 import com.kurtuba.auth.data.dto.ResultPageDto;
+import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.Valid;
@@ -23,11 +24,11 @@ public class EmailController {
         this.userService = userService;
     }
 
-    @GetMapping("/email/validation/link/{code}")
-    private ModelAndView validateEmailByLink(@NotEmpty @PathVariable String code) {
+    @GetMapping("/email/validation/link/{linkParam}")
+    private ModelAndView validateEmailByLink(@NotEmpty @PathVariable String linkParam) {
         ModelAndView modelAndView = new ModelAndView();
         try {
-            userService.validateEmailByLink(code);
+            userService.validateEmailByLink(linkParam);
             modelAndView.setViewName("genericResult.html");//sucess
             modelAndView.addAllObjects(ResultPageDto.builder()
                     .success(true)
@@ -48,8 +49,16 @@ public class EmailController {
 
     @PostMapping("/email/validation/code")
     private ResponseEntity validateEmailByCode(@Valid @RequestBody EmailValidationDto validationDto) {
+        try {
+            userService.validateEmailByCode(validationDto.getUserMetaChangeId(), validationDto.getCode());
+        } catch (BusinessLogicException e) {
+            if (ErrorEnum.USER_META_CHANGE_CODE_MISMATCH.getCode().equals(e.getErrorCode())) {
+                userService.updateEmailChangeTryCount(validationDto);
+            }
+            throw e;
+        }
         return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200))
-                .body(userService.validateEmailByCode(validationDto.getEmail(), validationDto.getCode()));
+                .body("");
     }
 
     @PutMapping("/email/validation/code/{email}")

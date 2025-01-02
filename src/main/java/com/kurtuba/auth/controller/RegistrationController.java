@@ -1,6 +1,6 @@
 package com.kurtuba.auth.controller;
 
-import com.kurtuba.auth.data.dto.TokenReturnDto;
+import com.kurtuba.auth.data.dto.TokenResponseDto;
 import com.kurtuba.auth.data.dto.UserRegistrationDto;
 import com.kurtuba.auth.data.dto.UserRegistrationOtherProviderDto;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
@@ -35,11 +35,11 @@ public class RegistrationController {
     @PostMapping("/register/other-provider")
     private ResponseEntity registerViaAnotherProvider(@Valid @RequestBody UserRegistrationOtherProviderDto newUser) {
         UserRegistrationDto dto = userService.registerByAnotherProvider(newUser);
-        TokenReturnDto tokenReturnDto = userService.generateTokensForLoginByRestRequest(dto.getEmail(), dto.getPassword(),
+        TokenResponseDto tokenResponseDto = userService.generateTokensForLogin(dto.getEmail(), dto.getPassword(),
                 registeredClientRepository.findByClientName("kurtuba-mobile-client").getClientId(), "");
         return ResponseEntity
                 .status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
-                .body(tokenReturnDto);
+                .body(tokenResponseDto);
     }
 
     @GetMapping("/register/username/available/{username}")

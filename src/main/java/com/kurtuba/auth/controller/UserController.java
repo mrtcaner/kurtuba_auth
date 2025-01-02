@@ -4,6 +4,7 @@ package com.kurtuba.auth.controller;
 import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.JWTClaimType;
+import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.Utils;
@@ -77,16 +78,18 @@ public class UserController {
     /**
      * Returns password change page upon receiving a valid password reset code
      *
-     * @param code
+     * @param linkParam
      * @return
      */
-    @GetMapping("/password/reset/password-reset/{code}")
-    public ModelAndView getPasswordResetPage(@Valid @PathVariable String code) {
+    @GetMapping("/password/reset/password-reset/{linkParam}")
+    public ModelAndView getPasswordResetPage(@Valid @PathVariable String linkParam) {
         ModelAndView modelAndView = new ModelAndView();
         try {
-            userService.validatePasswordResetCode(code);
+            userService.validatePasswordResetLinkParam(linkParam);
             modelAndView.setViewName("passwordReset.html");
-            modelAndView.addObject("passwordResetDto", PasswordResetDto.builder().code(code).build());
+            modelAndView.addObject("passwordResetByLinkDto", PasswordResetByLinkDto.builder()
+                    .linkParam(linkParam)
+                    .build());
         } catch (BusinessLogicException ex) {
             modelAndView.setViewName("genericResult.html");//failure
             modelAndView.addAllObjects(ResultPageDto.builder()
@@ -99,16 +102,16 @@ public class UserController {
     }
 
     @PostMapping("/password/reset/password-reset")
-    public ModelAndView handleResetPassword(@Valid PasswordResetDto passwordResetDto, BindingResult result) {
+    public ModelAndView handleResetPassword(@Valid PasswordResetByLinkDto passwordResetByLinkDto, BindingResult result) {
         ModelAndView modelAndView = new ModelAndView();
         if (result.hasErrors()) {
             //in case password mismatch or required complexity is not fulfilled etc.
             modelAndView.setViewName("passwordReset.html");
-            modelAndView.addObject("passwordResetDto", passwordResetDto);
+            modelAndView.addObject("passwordResetByLinkDto", passwordResetByLinkDto);
             modelAndView.addAllObjects(result.getModel());
         } else {
             try {
-                userService.resetPasswordByLink(passwordResetDto);
+                userService.resetPasswordByLink(passwordResetByLinkDto);
                 modelAndView.setViewName("genericResult.html");//success
                 modelAndView.addAllObjects(ResultPageDto.builder()
                         .success(true)
@@ -132,12 +135,12 @@ public class UserController {
     /**
      * Receives valid reset code(base64 UUID) and new password from password change page
      *
-     * @param passwordResetDto
+     * @param passwordResetByLinkDto
      * @return
      */
     @PutMapping("/password/reset/link")
-    public ResponseEntity resetPasswordByLink(@Valid @RequestBody PasswordResetDto passwordResetDto) {
-        userService.resetPasswordByLink(passwordResetDto);
+    public ResponseEntity resetPasswordByLink(@Valid @RequestBody PasswordResetByLinkDto passwordResetByLinkDto) {
+        userService.resetPasswordByLink(passwordResetByLinkDto);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
@@ -149,7 +152,15 @@ public class UserController {
      */
     @PutMapping("/password/reset/code")
     public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
-        userService.resetPasswordByCode(passwordResetByCodeDto);
+        try{
+            userService.resetPasswordByCode(passwordResetByCodeDto);
+        }catch (BusinessLogicException e){
+            if(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH.getCode().equals(e.getErrorCode())){
+                userService.updatePasswordResetTryCount(passwordResetByCodeDto);
+            }
+            throw e;
+        }
+
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
@@ -203,8 +214,11 @@ public class UserController {
      */
     @PostMapping("/password/reset/code/{email}")
     public ResponseEntity requestPasswordResetByCode(@NotEmpty @PathVariable String email) {
-        userService.requestResetPassword(email, true);
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
+
+        return ResponseEntity.status(HttpStatus.OK_200)
+                .body(UserMetaChangeDto.builder()
+                        .userMetaChangeId(userService.requestResetPassword(email, true).getId())
+                        .build());
     }
 
     /**
@@ -230,8 +244,10 @@ public class UserController {
     public ResponseEntity sendEmailValidationCode(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
                                                   Principal principal) {
 
-        userService.changeEmail(principal.getName(), email, true);
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
+        return ResponseEntity.status(HttpStatus.OK_200)
+                .body(UserMetaChangeDto.builder()
+                        .userMetaChangeId(userService.requestChangeEmail(principal.getName(), email, true).getId())
+                        .build());
 
 
     }
@@ -246,7 +262,7 @@ public class UserController {
     @PostMapping("/email/link/{email}")
     public ResponseEntity sendEmailValidationLink(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
                                                   Principal principal) {
-        userService.changeEmail(principal.getName(), email, false);
+        userService.requestChangeEmail(principal.getName(), email, false);
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 

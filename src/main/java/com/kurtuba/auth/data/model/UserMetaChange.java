@@ -37,9 +37,15 @@ public class UserMetaChange {
 
     private String code;
 
+    private String linkParam;
+
     private boolean executed;
 
     private LocalDateTime expirationDate;
+
+    private Integer tryCount;
+
+    private Integer maxTryCount;
 
     private LocalDateTime createdDate;
 

@@ -1,7 +1,5 @@
 package com.kurtuba.auth.data.dto;
 
-import com.kurtuba.auth.utils.Utils;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -12,10 +10,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EmailValidationDto {
+public class TokenResponseDto {
 
     @NotEmpty
-    String userMetaChangeId;
-    @NotEmpty
-    String code;
+    public String accessToken;
 }
