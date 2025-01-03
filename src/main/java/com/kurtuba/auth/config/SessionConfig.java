@@ -1,5 +1,6 @@
 package com.kurtuba.auth.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.session.config.SessionRepositoryCustomizer;
@@ -9,6 +10,9 @@ import org.springframework.session.jdbc.config.annotation.web.http.EnableJdbcHtt
 @Configuration
 @EnableJdbcHttpSession
 public class SessionConfig {
+
+    @Value("${spring.datasource.hikari.schema}")
+    String schema;
 
     @Bean
     public TableNameCustomizer tableNameCustomizer() {
@@ -20,7 +24,7 @@ public class SessionConfig {
 
         @Override
         public void customize(JdbcIndexedSessionRepository sessionRepository) {
-            sessionRepository.setTableName("kurtuba.SPRING_SESSION");
+            sessionRepository.setTableName(schema + ".SPRING_SESSION");
         }
 
     }

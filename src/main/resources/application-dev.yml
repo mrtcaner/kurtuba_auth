@@ -16,7 +16,7 @@ logging:
 spring:
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         show_sql: false
@@ -24,8 +24,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://192.168.1.114:5432/postgres
-    username: postgres
-    password: postgres
+    username: kurtubauser
+    password: 6kOroUVNmFqcp3I
     hikari:
       schema: kurtuba
 
