@@ -37,7 +37,7 @@ public class UserDto {
     private boolean emailVerified;
     private boolean phoneVerified;
     private LocalDateTime lastLoginAttempt;
-    private LocalDateTime dateCreated;
+    private LocalDateTime createdDate;
 
     public User toUser() {
         return User.builder()
@@ -61,7 +61,7 @@ public class UserDto {
                 .emailVerified(emailVerified)
                 .phoneVerified(phoneVerified)
                 .lastLoginAttempt(lastLoginAttempt)
-                .createdDate(dateCreated)
+                .createdDate(createdDate)
                 .build();
     }
 
@@ -87,7 +87,7 @@ public class UserDto {
                 .emailVerified(user.isEmailVerified())
                 .phoneVerified(user.isPhoneVerified())
                 .lastLoginAttempt(user.getLastLoginAttempt())
-                .dateCreated(user.getCreatedDate())
+                .createdDate(user.getCreatedDate())
                 .build();
     }
 

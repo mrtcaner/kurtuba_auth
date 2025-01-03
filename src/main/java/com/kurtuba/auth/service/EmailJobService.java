@@ -64,7 +64,7 @@ public class EmailJobService {
                 .msg2("Login to Kurtuba with your existing credentials to enter the code")
                 .build();
         try {
-            String htmlFileContent = EmailUtils.setRegistrationEmailVerificationMessageBody(verificationMailDto);
+            String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
             emailJobRepository.save(EmailJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -100,7 +100,7 @@ public class EmailJobService {
                 .build();
 
         try {
-            String htmlFileContent = EmailUtils.setRegistrationEmailVerificationMessageBody(verificationMailDto);
+            String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
             emailJobRepository.save(EmailJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -190,7 +190,7 @@ public class EmailJobService {
                 .build();
 
         try {
-            String htmlFileContent = EmailUtils.setRegistrationEmailVerificationMessageBody(verificationMailDto);
+            String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
             emailJobRepository.save(EmailJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -227,7 +227,7 @@ public class EmailJobService {
                 .build();
 
         try {
-            String htmlFileContent = EmailUtils.setRegistrationEmailVerificationMessageBody(verificationMailDto);
+            String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
             emailJobRepository.save(EmailJob.builder()
                     .createdDate(LocalDateTime.now())

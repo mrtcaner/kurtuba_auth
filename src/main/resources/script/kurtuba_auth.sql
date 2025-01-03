@@ -88,6 +88,8 @@ create table kurtuba.registered_client
 alter table kurtuba.registered_client
     owner to kurtubauser;
 
+INSERT INTO kurtuba.registered_client (access_token_ttl_minutes, cookie_max_age_seconds, refresh_token_enabled, refresh_token_ttl_minutes, scope_enabled, send_token_in_cookie, created_date, client_id, client_name, client_secret, client_type, id, post_logout_redirect_urls, redirect_urls, scopes) VALUES (5, 0, true, 129600, false, false, '2025-01-03 19:04:50.253145', 'b4e547f9-2c80-4cf0-b46a-d87a918a2280', 'default-client', null, 'DEFAULT', 'ff123e66-d288-43ae-8032-bd380cfe08d5', '', '', '');
+
 create table kurtuba."user"
 (
     id                  varchar(255) not null

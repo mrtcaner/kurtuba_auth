@@ -1,6 +1,9 @@
 package com.kurtuba.auth.controller;
 
-import com.kurtuba.auth.data.dto.*;
+import com.kurtuba.auth.data.dto.RegistrationResponseDto;
+import com.kurtuba.auth.data.dto.TokenResponseDto;
+import com.kurtuba.auth.data.dto.UserRegistrationDto;
+import com.kurtuba.auth.data.dto.UserRegistrationOtherProviderDto;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.Utils;
@@ -28,10 +31,10 @@ public class RegistrationController {
     @PostMapping("/register")
     private ResponseEntity register(@Valid @RequestBody UserRegistrationDto newUser) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
-                UserMetaChangeDto.builder()
+                RegistrationResponseDto.builder()
                         .userMetaChangeId(userService.register(newUser))
-                        .build()
-        );
+                        .user(userService.getUserByEmail(newUser.getEmail()))
+                        .build());
     }
 
     @PostMapping("/register/other-provider")

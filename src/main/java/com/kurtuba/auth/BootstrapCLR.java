@@ -23,11 +23,23 @@ public class BootstrapCLR implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        /*
-        registeredClientRepository.save(RegisteredClient.builder()
+
+        /*registeredClientRepository.save(RegisteredClient.builder()
                 .clientId(UUID.randomUUID().toString())
                 .clientName("default-client")
                 .clientType(RegisteredClientType.DEFAULT)
+                .scopeEnabled(false)
+                .accessTokenTtlMinutes(5)
+                .refreshTokenEnabled(true)
+                .refreshTokenTtlMinutes(129600)
+                .sendTokenInCookie(false)
+                .createdDate(LocalDateTime.now())
+                .build());
+
+        registeredClientRepository.save(RegisteredClient.builder()
+                .clientId(UUID.randomUUID().toString())
+                .clientName("kurtuba-mobile-client")
+                .clientType(RegisteredClientType.MOBILE)
                 .scopeEnabled(false)
                 .accessTokenTtlMinutes(5)
                 .refreshTokenEnabled(true)

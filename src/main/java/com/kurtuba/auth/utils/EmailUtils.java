@@ -10,7 +10,7 @@ import java.nio.file.Files;
 public class EmailUtils {
 
 
-    public static String setRegistrationEmailVerificationMessageBody(EmailVerificationMailDto verificationMailDto) throws IOException {
+    public static String setEmailVerificationMessageBody(EmailVerificationMailDto verificationMailDto) throws IOException {
         File htmlFile = ResourceUtils.getFile("classpath:templates/mailEmailVerification.html");
         String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
         htmlFileContent = htmlFileContent.replace("${title}", verificationMailDto.getTitle());

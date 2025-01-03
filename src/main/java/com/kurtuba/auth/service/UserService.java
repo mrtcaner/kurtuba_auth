@@ -329,6 +329,7 @@ public class UserService {
             // this is activation
             user.setActivated(true);
         }
+
         user.setEmail(userMetaChange.getMeta());
         user.setEmailVerified(true);
 
@@ -489,12 +490,19 @@ public class UserService {
         if (user == null) {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
         }
+
+        if(!user.isActivated()){
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
         if (!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())) {
             throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_PASSWORD);
         }
+
         if (!passwordChangeDto.getNewPassword().equals(passwordChangeDto.getRepeatNewPassword())) {
             throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
         }
+
         user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
         userRepository.save(user);
         userMetaChangeService.create(UserMetaChange.builder()
@@ -571,12 +579,17 @@ public class UserService {
     @Transactional
     public UserMetaChange requestResetPassword(@NotEmpty String usernameEmail, boolean byCode) {
         User user = userRepository.getUserByEmailOrUsername(usernameEmail);
+
         if (user == null) {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
         }
 
         if (!user.isEmailVerified()) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
+        }
+
+        if (!user.isActivated()) {
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
         UserMetaChange metaChange = UserMetaChange.builder()
@@ -643,13 +656,17 @@ public class UserService {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
         }
 
-        if(userRepository.getUserByEmail(email) != null){
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
+        // user must be in a valid state
+        if(!user.isEmailVerified()){
+            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
         }
 
-        // user must be in a valid state
-        if (!user.isEmailVerified() || user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
+        if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        if(userRepository.getUserByEmail(email) != null){
+            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
         }
 
         UserMetaChange metaChange = UserMetaChange.builder()
