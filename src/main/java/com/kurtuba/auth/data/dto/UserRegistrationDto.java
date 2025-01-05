@@ -1,9 +1,13 @@
 package com.kurtuba.auth.data.dto;
 
 
+import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.utils.Utils;
+import com.kurtuba.auth.utils.annotation.EmailAddress;
+import com.kurtuba.auth.utils.annotation.MobileNumber;
+import com.kurtuba.auth.utils.annotation.UserName;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.validation.constraints.NotEmpty;
@@ -30,12 +34,13 @@ public class UserRegistrationDto {
     @NotEmpty
     private String surname;
 
-    @NotEmpty
-    @Pattern(regexp = Utils.EMAIL_REGEX)
+    @EmailAddress(notEmpty = false)
     private String email;
 
-    @Pattern(regexp = Utils.USERNAME_REGEX)
-    @NotEmpty
+    @MobileNumber(notEmpty = false)
+    private String mobile;
+
+    @UserName(notEmpty = false)
     private String username;
 
     @NotEmpty
@@ -47,7 +52,11 @@ public class UserRegistrationDto {
     @Enumerated(EnumType.STRING)
     private AuthProviderType authProvider;
 
-    boolean emailVerificationByCode;
+    @NotNull
+    @Enumerated
+    private ContactType preferredVerificationContact;
+
+    boolean verificationByCode;
 
     public User toUser() {
         return User.builder()
@@ -57,13 +66,14 @@ public class UserRegistrationDto {
                 .email(email)
                 .password(password)
                 .authProvider(authProvider)
-                .phone("")
+                .mobile(mobile)
                 .canChangeUsername(false)
                 .activated(false)
                 .locked(false)
                 .failedLoginCount(0)
                 .showCaptcha(false)
                 .emailVerified(false)
+                .mobileVerified(false)
                 .createdDate(LocalDateTime.now())
                 .build();
     }

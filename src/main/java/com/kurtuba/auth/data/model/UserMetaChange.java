@@ -1,7 +1,8 @@
 package com.kurtuba.auth.data.model;
 
 
-import com.kurtuba.auth.data.enums.MetaChangeType;
+import com.kurtuba.auth.data.enums.ContactType;
+import com.kurtuba.auth.data.enums.MetaOperationType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -28,12 +29,16 @@ public class UserMetaChange {
     @NotEmpty
     private String userId;
 
-    //email address, phone number etc
+    //email address, mobile number etc
     private String meta;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    private MetaChangeType metaChangeType;
+    private MetaOperationType metaOperationType;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    private ContactType contactType;
 
     private String code;
 

@@ -1,11 +1,11 @@
 package com.kurtuba.auth.service;
 
 import com.kurtuba.auth.data.dto.EmailVerificationMailDto;
-import com.kurtuba.auth.data.enums.EmailJobStateType;
-import com.kurtuba.auth.data.enums.MailType;
-import com.kurtuba.auth.data.enums.MetaChangeType;
-import com.kurtuba.auth.data.model.EmailJob;
-import com.kurtuba.auth.data.repository.EmailJobRepository;
+import com.kurtuba.auth.data.enums.ContactType;
+import com.kurtuba.auth.data.enums.MessageJobStateType;
+import com.kurtuba.auth.data.enums.MetaOperationType;
+import com.kurtuba.auth.data.model.MessageJob;
+import com.kurtuba.auth.data.repository.MessageJobRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.EmailUtils;
@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
-public class EmailJobService {
+public class MessageJobService {
 
     @Value("${auth.server.protocol}")
     private String authServerProtocol;
@@ -36,19 +36,24 @@ public class EmailJobService {
     private String emailSendMaxTryCount;
 
     final
-    EmailJobRepository emailJobRepository;
+    MessageJobRepository messageJobRepository;
 
-    public EmailJobService(EmailJobRepository emailJobRepository) {
-        this.emailJobRepository = emailJobRepository;
+    public MessageJobService(MessageJobRepository messageJobRepository) {
+        this.messageJobRepository = messageJobRepository;
     }
 
     @Transactional
-    public void saveEmailJob(EmailJob emailJob) {
-        emailJobRepository.save(emailJob);
+    public void saveEmailJob(MessageJob messageJob) {
+        messageJobRepository.save(messageJob);
     }
 
-    public List<EmailJob> findByStateAndSendAfterDateBefore(EmailJobStateType jobState, LocalDateTime before) {
-        return emailJobRepository.findByStateAndSendAfterDateBefore(jobState, before);
+    public List<MessageJob> findByStateAndSendAfterDateBefore(MessageJobStateType jobState, LocalDateTime before) {
+        return messageJobRepository.findByStateAndSendAfterDateBefore(jobState, before);
+    }
+
+    public List<MessageJob> findByStateAndContactTypeAndSendAfterDateBefore(MessageJobStateType jobState,
+                                                                            ContactType contactType, LocalDateTime before) {
+        return messageJobRepository.findByStateAndContactTypeAndSendAfterDateBefore(jobState, contactType, before);
     }
 
     @Transactional
@@ -61,17 +66,17 @@ public class EmailJobService {
                 .verificationLink("")
                 .displayCode("block")
                 .displayLink("none")
-                .msg2("Login to Kurtuba with your existing credentials to enter the code")
+                .msg2("You can login to Kurtuba with your existing credentials to enter the code")
                 .build();
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.ACCOUNT_ACTIVATION)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
                     .subject("Kurtuba Account Activation Code")
@@ -86,7 +91,7 @@ public class EmailJobService {
     @Transactional
     public void sendAccountActivationLinkMail(String recipient, String verificationCode) {
         String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/auth/email/verification/link/" + verificationCode;
+                "auth/registration/activation/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
                 .title("THANKS FOR SIGNING UP!")
@@ -102,15 +107,15 @@ public class EmailJobService {
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.ACCOUNT_ACTIVATION)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Email Verification")
+                    .subject("Kurtuba Account Activation")
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -130,12 +135,12 @@ public class EmailJobService {
             htmlFileContent = htmlFileContent.replace("${displayCode}", "block");
             htmlFileContent = htmlFileContent.replace("${displayLink}", "none");
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.PASSWORD_RESET)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
                     .subject("Kurtuba Password Reset Code")
@@ -159,12 +164,12 @@ public class EmailJobService {
             htmlFileContent = htmlFileContent.replace("${displayLink}", "block");
             htmlFileContent = htmlFileContent.replace("${displayCode}", "none");
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.PASSWORD_RESET)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
                     .subject("Kurtuba Password Reset")
@@ -176,6 +181,7 @@ public class EmailJobService {
         }
     }
 
+    @Transactional
     public void sendUserEmailChangeCodeMail(String recipient, String verificationCode) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
@@ -192,12 +198,12 @@ public class EmailJobService {
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.EMAIL_CHANGE)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
                     .subject("Kurtuba Email Verification Code")
@@ -229,12 +235,12 @@ public class EmailJobService {
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.EMAIL_CHANGE)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
                     .subject("Kurtuba Email Verification")
@@ -247,20 +253,20 @@ public class EmailJobService {
     }
 
     @Transactional
-    public void sendUserMetaChangeNotificationMail(String recipient, MetaChangeType metaChangeType) {
-        String metaName = metaChangeType == MetaChangeType.PASSWORD_CHANGE || metaChangeType == MetaChangeType.PASSWORD_RESET ? "password" :
-                metaChangeType.name().toLowerCase();
+    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType) {
+        String metaName = metaOperationType == MetaOperationType.PASSWORD_CHANGE || metaOperationType == MetaOperationType.PASSWORD_RESET ? "password" :
+                metaOperationType.name().toLowerCase();
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
             htmlFileContent = htmlFileContent.replaceAll("metaName", metaName);
 
-            emailJobRepository.save(EmailJob.builder()
+            messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
-                    .mailType(MailType.NOTIFICATION)
+                    .contactType(ContactType.EMAIL)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
-                    .state(EmailJobStateType.PENDING)
+                    .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
                     .subject("Kurtuba Account Modification")
@@ -270,6 +276,12 @@ public class EmailJobService {
         } catch (Exception e) {
             throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
         }
+    }
+
+    @Transactional
+    public void sendUserMetaChangeNotificationSMS(String recipient, MetaOperationType metaOperationType) {
+        // todo implement send sms
+        throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
     }
 
 }

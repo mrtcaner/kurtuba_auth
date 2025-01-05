@@ -2,12 +2,13 @@ package com.kurtuba.auth.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.kurtuba.auth.data.enums.AuthProviderType;
-import com.kurtuba.auth.utils.Utils;
+import com.kurtuba.auth.utils.annotation.EmailAddress;
+import com.kurtuba.auth.utils.annotation.MobileNumber;
+import com.kurtuba.auth.utils.annotation.UserName;
 import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -36,18 +37,19 @@ public class User implements Serializable {
     @Nullable//Can be null for different providers but not for kurtuba
     private String surname;
 
-    @NotEmpty
-    @Pattern(regexp = Utils.USERNAME_REGEX)
+    @Nullable//can be created any time
+    @UserName(notEmpty = false)
     private String username;
 
     @Nullable
     private LocalDateTime birthdate;
 
     @Nullable
-    private String phone;
+    @MobileNumber(notEmpty = false)
+    private String mobile;
 
     @NotEmpty
-    @Pattern(regexp = Utils.EMAIL_REGEX)
+    @EmailAddress(notEmpty = false)
     private String email;
 
     @NotEmpty
@@ -80,7 +82,7 @@ public class User implements Serializable {
 
     private boolean emailVerified;
 
-    private boolean phoneVerified;
+    private boolean mobileVerified;
 
     @Nullable
     private LocalDateTime lastLoginAttempt;

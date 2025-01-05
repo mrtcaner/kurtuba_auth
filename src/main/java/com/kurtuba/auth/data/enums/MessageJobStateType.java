@@ -1,6 +1,6 @@
 package com.kurtuba.auth.data.enums;
 
-public enum EmailJobStateType {
+public enum MessageJobStateType {
     PENDING,
     FAILED,
     SUCCESS

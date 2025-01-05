@@ -75,6 +75,14 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
+    @PostMapping("/password/reset")
+    public ResponseEntity requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto passwordResetRequestDto) {
+        return ResponseEntity.status(HttpStatus.OK_200).body(UserMetaChangeDto.builder()
+                .userMetaChangeId(userService.requestResetPassword(passwordResetRequestDto.getEmailMobile(),
+                        passwordResetRequestDto.isByCode()).getId())
+                .build());
+    }
+
     /**
      * Returns password change page upon receiving a valid password reset linkParam
      *
@@ -109,7 +117,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/password/reset/password-reset")
-    public ModelAndView handleResetPassword(@Valid PasswordResetByLinkDto passwordResetByLinkDto, BindingResult result) {
+    public ModelAndView handleResetPasswordPagePost(@Valid PasswordResetByLinkDto passwordResetByLinkDto, BindingResult result) {
         ModelAndView modelAndView = new ModelAndView();
         if (result.hasErrors()) {
             //in case password mismatch or required complexity is not fulfilled etc.
@@ -140,19 +148,9 @@ public class UserController {
     }
 
     /**
-     * Receives valid reset code(base64 UUID) and new password from password change page
+     * Receives valid reset code, userMetaChangeId, new password and client credentials
      *
-     * @param passwordResetByLinkDto
-     * @return
-     */
-    @PutMapping("/password/reset/link")
-    public ResponseEntity resetPasswordByLink(@Valid @RequestBody PasswordResetByLinkDto passwordResetByLinkDto) {
-        userService.resetPasswordByLink(passwordResetByLinkDto);
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
-    }
-
-    /**
-     * Receives valid reset code(6 digit random), userMetaChangeId and new password
+     * if client credentials are provided then return token(s)
      *
      * @param passwordResetByCodeDto
      * @return
@@ -227,33 +225,6 @@ public class UserController {
 
 
     /**
-     * Sends reset code to user's email-address. User is expected to manually enter the code to a from
-     *
-     * @param email
-     * @return
-     */
-    @PostMapping("/password/reset/code/{email}")
-    public ResponseEntity requestPasswordResetByCode(@NotEmpty @PathVariable String email) {
-
-        return ResponseEntity.status(HttpStatus.OK_200)
-                .body(UserMetaChangeDto.builder()
-                        .userMetaChangeId(userService.requestResetPassword(email, true).getId())
-                        .build());
-    }
-
-    /**
-     * Sends a link to user's email address. Link opens password-reset page
-     *
-     * @param email
-     * @return
-     */
-    @PostMapping("/password/reset/link/{email}")
-    public ResponseEntity requestPasswordResetByLink(@NotEmpty @PathVariable String email) {
-        userService.requestResetPassword(email, false);
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
-    }
-
-    /**
      * Sends a verification code to given email address for logged-in user
      *
      * @param email
@@ -263,7 +234,6 @@ public class UserController {
     @PostMapping("/email/code/{email}")
     public ResponseEntity sendEmailVerificationCode(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
                                                     Principal principal) {
-
         return ResponseEntity.status(HttpStatus.OK_200)
                 .body(UserMetaChangeDto.builder()
                         .userMetaChangeId(userService.requestChangeEmail(principal.getName(), email, true).getId())

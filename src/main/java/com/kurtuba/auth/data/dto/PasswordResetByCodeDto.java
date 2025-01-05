@@ -27,4 +27,7 @@ public class PasswordResetByCodeDto {
     @Size(min = 8, max = 100, message = "Password length must be between 8-100 characters")
     @Pattern(regexp = Utils.PASSWORD_REGEX)
     String repeatNewPassword;
+
+    String clientId;
+    String clientSecret;
 }

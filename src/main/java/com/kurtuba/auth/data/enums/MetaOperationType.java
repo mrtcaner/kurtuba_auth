@@ -1,9 +1,9 @@
 package com.kurtuba.auth.data.enums;
 
-public enum MailType {
+public enum MetaOperationType {
+    ACCOUNT_ACTIVATION,
     PASSWORD_CHANGE,
     PASSWORD_RESET,
-    ACCOUNT_ACTIVATION,
     EMAIL_CHANGE,
-    NOTIFICATION
+    MOBILE_CHANGE
 }

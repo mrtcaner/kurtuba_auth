@@ -14,12 +14,19 @@ public interface UserRepository extends CrudRepository<User, String> {
 	@Query("SELECT u FROM User u WHERE u.email = :emailUsername or u.username = :emailUsername")
 	User getUserByEmailOrUsername(String emailUsername);
 
+	@Query("SELECT u FROM User u WHERE u.email = :emailMobile or u.mobile = :emailMobile")
+	User getUserByEmailOrMobile(String emailMobile);
+
 	User getUserById(String id);
 
 	User getUserByEmail(String email);
 
+	User getUserByMobile(String mobile);
+
 	User getUserByEmailAndAuthProvider(String email, AuthProviderType provider);
 
-	User getUserByEmailAndEmailVerifiedIsFalse(String email);
+	User getUserByEmailAndActivatedIsFalse(String email);
+
+	User getUserByMobileAndActivatedIsFalse(String email);
 
 }

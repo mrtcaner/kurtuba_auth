@@ -29,13 +29,13 @@ public class UserDto {
     private boolean canChangeUsername;
     private LocalDateTime birthdate;
     private AuthProviderType authProvider;
-    private String phone;
+    private String mobile;
     private boolean activated;
     private boolean locked;
     private int failedLoginCount;
     private boolean showCaptcha;
     private boolean emailVerified;
-    private boolean phoneVerified;
+    private boolean mobileVerified;
     private LocalDateTime lastLoginAttempt;
     private LocalDateTime createdDate;
 
@@ -53,13 +53,13 @@ public class UserDto {
                 .canChangeUsername(canChangeUsername)
                 .birthdate(birthdate)
                 .authProvider(authProvider)
-                .phone(phone)
+                .mobile(mobile)
                 .activated(activated)
                 .locked(locked)
                 .failedLoginCount(failedLoginCount)
                 .showCaptcha(showCaptcha)
                 .emailVerified(emailVerified)
-                .phoneVerified(phoneVerified)
+                .mobileVerified(mobileVerified)
                 .lastLoginAttempt(lastLoginAttempt)
                 .createdDate(createdDate)
                 .build();
@@ -79,13 +79,13 @@ public class UserDto {
                 .canChangeUsername(user.isCanChangeUsername())
                 .birthdate(user.getBirthdate())
                 .authProvider(user.getAuthProvider())
-                .phone(user.getPhone())
+                .mobile(user.getMobile())
                 .activated(user.isActivated())
                 .locked(user.isLocked())
                 .failedLoginCount(user.getFailedLoginCount())
                 .showCaptcha(user.isShowCaptcha())
                 .emailVerified(user.isEmailVerified())
-                .phoneVerified(user.isPhoneVerified())
+                .mobileVerified(user.isMobileVerified())
                 .lastLoginAttempt(user.getLastLoginAttempt())
                 .createdDate(user.getCreatedDate())
                 .build();

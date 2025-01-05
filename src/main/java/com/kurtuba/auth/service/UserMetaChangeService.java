@@ -1,10 +1,12 @@
 package com.kurtuba.auth.service;
 
+import com.kurtuba.auth.data.enums.MetaOperationType;
 import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.repository.UserMetaChangeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Service
@@ -17,12 +19,16 @@ public class UserMetaChangeService {
         this.userMetaChangeRepository = userMetaChangeRepository;
     }
 
+    /**
+     * deletes all non executed and same type of meta change requests of the user then creates a new one
+     * there will be always one active userMetaChange per User-MetaChangeType
+     * @param userMetaChange
+     */
     @Transactional
     public void create(UserMetaChange userMetaChange){
-        // delete all non executed and same type of meta change requests of the user
-        // there will be always one active userMetaChange per User-MetaChangeType
-        userMetaChangeRepository.deleteAllByExecutedIsFalseAndUserIdAndMetaChangeType(
-                userMetaChange.getUserId(),userMetaChange.getMetaChangeType());
+
+        userMetaChangeRepository.deleteAllByExecutedIsFalseAndUserIdAndMetaOperationType(
+                userMetaChange.getUserId(),userMetaChange.getMetaOperationType());
         userMetaChangeRepository.save(userMetaChange);
     }
 
@@ -37,6 +43,39 @@ public class UserMetaChangeService {
 
     public UserMetaChange findByLinkParam(String linkParam){
         return userMetaChangeRepository.findByLinkParam(linkParam);
+    }
+
+    /**
+     * validation checks for executed, expirationDate and MetaOperationType for ACCOUNT-ACTIVATION operation
+     * @param userId
+     * @return
+     */
+    public UserMetaChange findActiveAccountActivationByUserId(String userId){
+        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
+                userId, MetaOperationType.ACCOUNT_ACTIVATION, LocalDateTime.now()
+        );
+    }
+
+    /**
+     * validation checks for executed, expirationDate and MetaOperationType for ACCOUNT-ACTIVATION operation
+     * @param linkParam
+     * @return
+     */
+    public UserMetaChange findActiveAccountActivationByLinkParam(String linkParam){
+        return userMetaChangeRepository.findByLinkParamAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
+                linkParam, MetaOperationType.ACCOUNT_ACTIVATION, LocalDateTime.now()
+        );
+    }
+
+    /**
+     * validation checks for executed, expirationDate and MetaOperationType for PASSWORD-RESET operation
+     * @param userId
+     * @return
+     */
+    public UserMetaChange findActivePasswordResetByUserId(String userId){
+        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
+                userId, MetaOperationType.PASSWORD_RESET, LocalDateTime.now()
+        );
     }
 
 

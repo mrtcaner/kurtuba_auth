@@ -184,8 +184,6 @@ public class UserTokenService {
                 accessTokenTtlMinutes,
                 refreshTokenTtlMinutes)
                 .getAccessToken();
-
-
     }
 
     /**
@@ -212,7 +210,7 @@ public class UserTokenService {
                 .jti(decodedNewToken.get(JWTClaimType.JTI.getDisplayName()).getAsString())
                 .userId(decodedNewToken.get(JWTClaimType.SUB.getDisplayName()).getAsString())
                 .clientId(clientId)
-                .aud(auds.stream().toList())
+                .auds(auds.stream().toList())
                 .expirationDate(expirationDate)
                 .refreshToken(newRefreshToken != null ?
                         new BCryptPasswordEncoder().encode(new String(Base64.getDecoder().decode(newRefreshToken))) :

@@ -42,7 +42,7 @@ public class UserToken {
 
     @NotEmpty
     @Convert(converter = StringListConverter.class)
-    private List<String> aud;
+    private List<String> auds;
 
     @Convert(converter = StringListConverter.class)
     private List<String> scopes;
