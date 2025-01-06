@@ -2,7 +2,7 @@ package com.kurtuba.auth.error.handlers;
 
 
 import com.kurtuba.auth.error.enums.ErrorEnum;
-import com.kurtuba.auth.utils.response.ResponseError;
+import com.kurtuba.auth.data.dto.ResponseErrorDto;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -20,7 +20,7 @@ public class BaseExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> globalExceptionHandler(Exception ex, WebRequest request) {
         ex.printStackTrace();
-        ResponseError errorDetails = ResponseError
+        ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
                 .code(ErrorEnum.GENERIC_EXCEPTION.getCode())
                 .message(ErrorEnum.GENERIC_EXCEPTION.getMessage())

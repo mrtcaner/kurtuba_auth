@@ -78,6 +78,28 @@ public class UserMetaChangeService {
         );
     }
 
+    /**
+     * validation checks for executed, expirationDate and MetaOperationType for EMAIL-CHANGE operation
+     * @param userId
+     * @return
+     */
+    public UserMetaChange findActiveEmailChangeByUserId(String userId){
+        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
+                userId, MetaOperationType.EMAIL_CHANGE, LocalDateTime.now()
+        );
+    }
+
+    /**
+     * validation checks for executed, expirationDate and MetaOperationType for MOBILE-CHANGE operation
+     * @param userId
+     * @return
+     */
+    public UserMetaChange findActiveMobileChangeByUserId(String userId){
+        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
+                userId, MetaOperationType.MOBILE_CHANGE, LocalDateTime.now()
+        );
+    }
+
 
 
 

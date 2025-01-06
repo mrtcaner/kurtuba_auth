@@ -31,10 +31,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.kurtuba.auth.utils.Utils.generateRandomAlphanumericString;
@@ -95,7 +92,7 @@ public class UserService {
      */
     @Transactional
     public void processOAuthPostLogin(String username) {
-        User existUser = userRepository.getUserByUsername(username);
+        User existUser = userRepository.getUserByUsername(username).orElse(null);
 
         if (existUser == null) {
             User newUser = new User();
@@ -120,7 +117,7 @@ public class UserService {
         userRepository.save(user);
     }
 
-    public User getUserByUsernameOrEmail(String email) {
+    public Optional<User> getUserByUsernameOrEmail(String email) {
         return userRepository.getUserByEmailOrUsername(email);
     }
 
@@ -134,10 +131,9 @@ public class UserService {
 
 
     public User authenticate(String emailUsername, String pass) {
-        User user = userRepository.getUserByEmailOrUsername(emailUsername);
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
-        }
+        User user = userRepository.getUserByEmailOrUsername(emailUsername).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS));
+
         long timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 15;
         if (user.isLocked() && LocalDateTime.now().isBefore(user.getLastLoginAttempt().plusMinutes(timeToWait))) {
             throw new BusinessLogicException(ErrorEnum.LOGIN_USER_LOCKED.getCode(), "Account locked until " + user.getLastLoginAttempt().plusMinutes(timeToWait));
@@ -181,7 +177,7 @@ public class UserService {
     }
 
     @Transactional
-    public TokenResponseDto generateTokensForLogin(String emailUsername, String pass,
+    public TokensResponseDto generateTokensForLogin(String emailUsername, String pass,
                                                    String registeredClientId, String registeredClientSecret) {
         // authenticate user
         User user = authenticate(emailUsername, pass);
@@ -204,11 +200,11 @@ public class UserService {
             throw new BusinessLogicException(ErrorEnum.USER_USERNAME_ALREADY_EXISTS);
         }
 
-        if(!StringUtils.hasLength(newUser.getEmail()) && !StringUtils.hasLength(newUser.getMobile())){
+        if (!StringUtils.hasLength(newUser.getEmail()) && !StringUtils.hasLength(newUser.getMobile())) {
             throw new BusinessLogicException(ErrorEnum.USER_CONTACT_REQUIRED);
         }
 
-        if(newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) && !StringUtils.hasLength(newUser.getEmail())){
+        if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) && !StringUtils.hasLength(newUser.getEmail())) {
             throw new BusinessLogicException(ErrorEnum.USER_CONTACT_REQUIRED);
         }
 
@@ -216,9 +212,9 @@ public class UserService {
         newUser.setPassword(new BCryptPasswordEncoder().encode(pass));
 
         User user = newUser.toUser();
-        if(StringUtils.hasLength(user.getUsername())){
+        if (StringUtils.hasLength(user.getUsername())) {
             user.setCanChangeUsername(false);
-        }else{
+        } else {
             user.setCanChangeUsername(true);
         }
 
@@ -249,13 +245,13 @@ public class UserService {
         userRoleRepository.saveAll(user.getUserRoles());
 
         // in case there are both email and mobile contacts, only one can be used to activate account.
-        if(newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
+        if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
             if (newUser.isVerificationByCode()) {
                 messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode());
             } else {
                 messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam());
             }
-        }else{
+        } else {
             // todo implement send sms
             throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
         }
@@ -268,7 +264,8 @@ public class UserService {
     public UserMetaChange verifyEmailByLink(@NotEmpty String linkParam) {
         UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam);
         validateEmailChangeUserMetaChange(userMetaChange);
-        User user = userRepository.getUserById(userMetaChange.getUserId());
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         saveNewEmail(userMetaChange, user);
         return userMetaChange;
     }
@@ -276,17 +273,17 @@ public class UserService {
     /**
      * Verify email by rest request. User must enter the code mailed to them
      *
-     * @param userMetaChangeId
+     * @param emailMobile
      * @param code
      * @return
      */
     @Transactional
-    public UserDto verifyEmailByCode(@NotEmpty String userMetaChangeId, @NotEmpty String code) {
+    public UserDto verifyEmailByCode(@NotEmpty String emailMobile, @NotEmpty String code) {
+        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         UserMetaChange userMetaChange = userMetaChangeService
-                .findById(userMetaChangeId).orElseThrow(() ->
-                        new BusinessLogicException(ErrorEnum.USER_EMAIL_VERIFICATION_CODE_INVALID));
-        User user = userRepository.getUserById(userMetaChange.getUserId());
+                .findActiveEmailChangeByUserId(user.getId());
 
         validateEmailChangeUserMetaChange(userMetaChange);
 
@@ -299,7 +296,7 @@ public class UserService {
 
     private UserDto saveNewEmail(UserMetaChange userMetaChange, User user) {
 
-        if(StringUtils.hasLength(user.getEmail())){
+        if (StringUtils.hasLength(user.getEmail())) {
             //send change notification mail to old e-mail
             messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE);
         }
@@ -316,37 +313,38 @@ public class UserService {
 
     private void validateEmailChangeUserMetaChange(UserMetaChange userMetaChange) {
         if (userMetaChange == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VERIFICATION_CODE_INVALID);
-        }
-
-        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VERIFICATION_CODE_EXPIRED);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
         }
 
         if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.EMAIL_CHANGE)) {
             throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
         }
 
+        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+
         if (userMetaChange.isExecuted()) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VERIFICATION_CODE_EXPIRED);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
 
         if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VERIFICATION_CODE_EXPIRED);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
     }
 
 
     @Transactional
-    public String sendAccountActivationMessage(@NotEmpty String emailMobile, boolean byCode){
-        if(emailMobile.contains("@")){
+    public String sendAccountActivationMessage(@NotEmpty String emailMobile, boolean byCode) {
+        if (emailMobile.contains("@")) {
             //email
             return sendAccountActivationMail(emailMobile, byCode);
-        }else{
+        } else {
             return sendAccountActivationSMS(emailMobile, byCode);
         }
 
     }
+
     /**
      * Send activation SMS to the user's mobile number
      * May contain code or link
@@ -367,12 +365,10 @@ public class UserService {
     @Transactional
     public String sendAccountActivationMail(@NotEmpty String email, boolean byCode) {
 
-        User user = userRepository.getUserByEmail(email);
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
-        }
+        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if(user.isActivated()){
+        if (user.isActivated()) {
             // already activated
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
@@ -433,7 +429,7 @@ public class UserService {
         //else check twitter etc. then...
 
         //check if user already exists
-        User existingUser = userRepository.getUserByEmail(decodedUser.getEmail());
+        User existingUser = userRepository.getUserByEmail(decodedUser.getEmail()).orElse(null);
 
         if (existingUser == null) {
             //this user never existed, let make one and return a token
@@ -488,41 +484,36 @@ public class UserService {
 
 
     public UserDto getUserByEmail(String email) {
-        User user = userRepository.getUserByEmail(email);
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.RESOURCE_NOT_FOUND);
-        }
+        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         return UserDto.fromUser(user);
     }
 
     public UserDto getUserById(String id) {
-        User user = userRepository.getUserById(id);
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
-        }
+        User user = userRepository.getUserById(id).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
         return UserDto.fromUser(user);
     }
 
     public boolean isUsernameAvailable(String username) {
-        return userRepository.getUserByUsername(username) == null;
+        return !userRepository.getUserByUsername(username).isPresent();
     }
 
     public boolean isEmailAvailable(String email) {
-        return userRepository.getUserByEmail(email) == null;
+        return !userRepository.getUserByEmail(email).isPresent();
     }
 
     public boolean isMobileAvailable(String mobile) {
-        return userRepository.getUserByMobile(mobile) == null;
+        return !userRepository.getUserByMobile(mobile).isPresent();
     }
 
     @Transactional
     public void changePassword(@Valid PasswordChangeDto passwordChangeDto, @NotEmpty String userId) {
-        User user = userRepository.getUserById(userId);
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
-        }
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if(!user.isActivated()){
+        if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
@@ -572,11 +563,13 @@ public class UserService {
      * @param passwordResetByCodeDto
      */
     @Transactional
-    public TokenResponseDto resetPasswordByCode(@Valid PasswordResetByCodeDto passwordResetByCodeDto) {
+    public TokensResponseDto resetPasswordByCode(@Valid PasswordResetByCodeDto passwordResetByCodeDto) {
 
         UserMetaChange userMetaChange = userMetaChangeService
-                .findById(passwordResetByCodeDto.getUserMetaChangeId())
-                .orElse(null);
+                .findActivePasswordResetByUserId(userRepository
+                        .getUserByEmailOrMobile(passwordResetByCodeDto.getEmailMobile()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+                        ).getId());
 
         validatePasswordResetUserMetaChange(userMetaChange);
 
@@ -585,16 +578,18 @@ public class UserService {
         }
 
         saveNewPassword(userMetaChange, passwordResetByCodeDto.getNewPassword(), passwordResetByCodeDto.getRepeatNewPassword());
-        User user = userRepository.getUserById( userMetaChange.getUserId());
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         return validateRegisteredClientAndGetTokens(user, passwordResetByCodeDto.getClientId(), passwordResetByCodeDto.getClientSecret());
 
     }
 
     private void saveNewPassword(@NotNull UserMetaChange userMetaChange, String newPassword, String repeatNewPassword) {
-        User user = userRepository.getUserById(userMetaChange.getUserId());
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if(!user.isActivated()){
+        if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
@@ -608,7 +603,7 @@ public class UserService {
         userMetaChange.setUpdatedDate(LocalDateTime.now());
         userMetaChangeService.create(userMetaChange);
 
-        if(StringUtils.hasLength(user.getEmail())){
+        if (StringUtils.hasLength(user.getEmail())) {
             messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET);
         }
 
@@ -619,15 +614,15 @@ public class UserService {
 
     }
 
-    private TokenResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret){
-        if(StringUtils.hasLength(clientId)){
+    private TokensResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret) {
+        if (StringUtils.hasLength(clientId)) {
             RegisteredClient client = registeredClientRepository.findByClientId(clientId);
-            if(client == null){
+            if (client == null) {
                 throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
             }
-            if(StringUtils.hasLength(client.getClientSecret())){
-                if(!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
-                        .matches(clientSecret, client.getClientSecret())){
+            if (StringUtils.hasLength(client.getClientSecret())) {
+                if (!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
+                        .matches(clientSecret, client.getClientSecret())) {
                     throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
                 }
             }
@@ -656,23 +651,20 @@ public class UserService {
 
     @Transactional
     public UserMetaChange requestResetPassword(@NotEmpty String emailMobile, boolean byCode) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile);
-
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
-        }
+        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        if(emailMobile.contains("@")) {
+        if (emailMobile.contains("@")) {
             //email
             if (!user.isEmailVerified()) {
                 throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
             }
 
-        }else{
+        } else {
             //mobile
             if (!user.isMobileVerified()) {
                 throw new BusinessLogicException(ErrorEnum.USER_MOBILE_NOT_VERIFIED);
@@ -693,14 +685,14 @@ public class UserService {
                 .userId(user.getId())
                 .build();
 
-        if(emailMobile.contains("@")){
+        if (emailMobile.contains("@")) {
             //email
             if (byCode == true) {
                 messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode());
             } else {
                 messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam());
             }
-        }else{
+        } else {
             //mobile
             // todo implement send sms
             throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
@@ -713,11 +705,11 @@ public class UserService {
 
     private void validatePasswordResetUserMetaChange(UserMetaChange userMetaChange) {
         if (userMetaChange == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_RESET_CODE_INVALID);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
         }
 
         if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_RESET_CODE_EXPIRED);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
 
         if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.PASSWORD_RESET)) {
@@ -725,11 +717,37 @@ public class UserService {
         }
 
         if (userMetaChange.isExecuted()) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_RESET_CODE_EXPIRED);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
 
         if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_RESET_CODE_EXPIRED);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+    }
+
+    private void validateAccountActivationUserMetaChange(UserMetaChange userMetaChange, String code) {
+        if (userMetaChange == null) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
+        }
+
+        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+
+        if (StringUtils.hasLength(code) && !userMetaChange.getCode().equals(code)) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH);
+        }
+
+        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.ACCOUNT_ACTIVATION)) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
+        }
+
+        if (userMetaChange.isExecuted()) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+
+        if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
     }
 
@@ -742,17 +760,14 @@ public class UserService {
      */
     @Transactional
     public UserMetaChange requestChangeEmail(String userId, String email, boolean byCode) {
-        User user = userRepository.getUserById(userId);
-
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
-        }
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        if(userRepository.getUserByEmail(email) != null){
+        if (userRepository.getUserByEmail(email).isPresent()) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
         }
 
@@ -784,22 +799,31 @@ public class UserService {
 
     @Transactional
     public void updateEmailChangeTryCount(@Valid EmailVerificationDto emailVerificationDto) {
-        UserMetaChange userMetaChange = userMetaChangeService.findById(emailVerificationDto.getUserMetaChangeId())
-                .get();
+        UserMetaChange userMetaChange = userMetaChangeService
+                .findActiveEmailChangeByUserId(userRepository
+                        .getUserByEmailOrMobile(emailVerificationDto.getEmailMobile()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+                        ).getId());
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
     @Transactional
     public void updatePasswordResetTryCount(PasswordResetByCodeDto passwordResetByCodeDto) {
         UserMetaChange userMetaChange = userMetaChangeService
-                .findById(passwordResetByCodeDto.getUserMetaChangeId()).get();
+                .findActivePasswordResetByUserId(userRepository
+                        .getUserByEmailOrMobile(passwordResetByCodeDto.getEmailMobile()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+                        ).getId());
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
     @Transactional
     public void updateAccountActivationTryCount(AccountActivationDto accountActivationDto) {
         UserMetaChange userMetaChange = userMetaChangeService
-                .findById(userRepository.getUserByEmailOrMobile(accountActivationDto.getEmailMobile()).getId()).get();
+                .findActiveAccountActivationByUserId(userRepository
+                        .getUserByEmailOrMobile(accountActivationDto.getEmailMobile()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+                        ).getId());
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
@@ -812,53 +836,39 @@ public class UserService {
 
     @Transactional
     public UserMetaChange activateAccountByLink(String linkParam) {
-        UserMetaChange userMetaChange = userMetaChangeService.findActiveAccountActivationByLinkParam(linkParam);
-        User user = userRepository.getUserById(userMetaChange.getUserId());
+        UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam);
+        validateAccountActivationUserMetaChange(userMetaChange, null);
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         activateAccount(user, userMetaChange, null, null);
         return userMetaChange;
     }
 
     @Transactional
-    public TokenResponseDto activateAccountByCode(String emailMobile, String code, String clientId, String clientSecret) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile);
+    public TokensResponseDto activateAccountByCode(String emailMobile, String code, String clientId, String clientSecret) {
+        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         UserMetaChange userMetaChange = userMetaChangeService.findActiveAccountActivationByUserId(user.getId());
-
-        if(userMetaChange == null){
-            throw new BusinessLogicException(ErrorEnum.USER_ACTIVATION_INVALID);
-        }
-
-        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()){
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_VERIFICATION_CODE_EXPIRED);
-        }
-
-        if(!userMetaChange.getCode().equals(code)){
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH);
-        }
-
+        validateAccountActivationUserMetaChange(userMetaChange, code);
         return activateAccount(user, userMetaChange, clientId, clientSecret);
     }
 
-    private TokenResponseDto activateAccount(User user, UserMetaChange userMetaChange, String clientId, String clientSecret) {
+    private TokensResponseDto activateAccount(User user, UserMetaChange userMetaChange, String clientId, String clientSecret) {
 
-        if(user == null){
+        if (user == null) {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
         }
 
-        if(user.isActivated()){
+        if (user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        // assuming userMetaChange passed to this method is acquired from
-        // "findActiveAccountActivationByLinkParam" or "findActiveAccountActivationByUserId" method which
-        // already does validation checks for executed, expirationDate and MetaOperationType
-        if(userMetaChange == null){
-            throw new BusinessLogicException(ErrorEnum.USER_ACTIVATION_INVALID);
-        }
+        validateAccountActivationUserMetaChange(userMetaChange, null);
 
         user.setActivated(true);
-        if(userMetaChange.getContactType().equals(ContactType.EMAIL)){
+        if (userMetaChange.getContactType().equals(ContactType.EMAIL)) {
             user.setEmailVerified(true);
-        }else {
+        } else {
             user.setMobileVerified(true);
         }
         userRepository.save(user);

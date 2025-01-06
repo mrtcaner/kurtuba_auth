@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 public class EmailVerificationDto {
 
     @NotEmpty
-    String userMetaChangeId;
+    String emailMobile;
     @NotEmpty
     String code;
 }

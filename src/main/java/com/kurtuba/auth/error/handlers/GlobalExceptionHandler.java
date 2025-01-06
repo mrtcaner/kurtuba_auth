@@ -3,7 +3,7 @@ package com.kurtuba.auth.error.handlers;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.error.exception.ResourceNotFoundException;
-import com.kurtuba.auth.utils.response.ResponseError;
+import com.kurtuba.auth.data.dto.ResponseErrorDto;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -24,7 +24,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessLogicException.class)
     public ResponseEntity<?> businessLogicException(BusinessLogicException ex, WebRequest request) {
         ex.printStackTrace();
-        ResponseError errorDetails = ResponseError
+        ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
                 .code(ex.getErrorCode())
                 .message(ex.getMessage())
@@ -39,7 +39,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<?> resourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
         ex.printStackTrace();
-        ResponseError errorDetails = ResponseError
+        ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
                 .code(ErrorEnum.RESOURCE_NOT_FOUND.getCode())
                 .message(ErrorEnum.RESOURCE_NOT_FOUND.getMessage())
@@ -53,7 +53,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({ConstraintViolationException.class})
     public ResponseEntity<?> constraintViolationException(ConstraintViolationException ex, WebRequest request) {
         ex.printStackTrace();
-        ResponseError errorDetails = ResponseError
+        ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
                 .code(ErrorEnum.INVALID_PARAMETER.getCode())
                 .message(ex.getConstraintViolations().toString())
@@ -68,7 +68,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({HandlerMethodValidationException.class})
     public ResponseEntity<?> handlerMethodValidationException(HandlerMethodValidationException ex, WebRequest request) {
         ex.printStackTrace();
-        ResponseError errorDetails = ResponseError
+        ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
                 .code(ErrorEnum.INVALID_PARAMETER.getCode())
                 .message(ex.getAllValidationResults().toString())
@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class})
     public ResponseEntity<?> methodArgumentNotValidException(MethodArgumentNotValidException ex, WebRequest request) {
         ex.printStackTrace();
-        ResponseError errorDetails = ResponseError
+        ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
                 .code(ErrorEnum.INVALID_PARAMETER.getCode())
                 .message(ex.getMessage())

@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 public class PasswordResetByCodeDto {
 
     @NotEmpty
-    String userMetaChangeId;
+    String emailMobile;
     @NotEmpty
     String code;
     @NotEmpty

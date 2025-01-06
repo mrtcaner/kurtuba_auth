@@ -7,11 +7,10 @@ import com.kurtuba.auth.data.enums.JWTClaimType;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
-import com.kurtuba.auth.utils.Utils;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import org.eclipse.jetty.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -75,12 +74,37 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK_200).body("");
     }
 
+    /**
+     *  Creates a password reset request byCode or Link
+     * @param passwordResetRequestDto
+     * @return
+     */
     @PostMapping("/password/reset")
     public ResponseEntity requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto passwordResetRequestDto) {
         return ResponseEntity.status(HttpStatus.OK_200).body(UserMetaChangeDto.builder()
                 .userMetaChangeId(userService.requestResetPassword(passwordResetRequestDto.getEmailMobile(),
                         passwordResetRequestDto.isByCode()).getId())
                 .build());
+    }
+
+    /**
+     * Receives valid reset code, userMetaChangeId, new password and client credentials
+     * <p>
+     * if client credentials are provided then return token(s)
+     * else empty string
+     * @param passwordResetByCodeDto
+     * @return
+     */
+    @PutMapping("/password/reset/code")
+    public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
+        try {
+           return ResponseEntity.status(HttpStatus.OK_200).body(userService.resetPasswordByCode(passwordResetByCodeDto));
+        } catch (BusinessLogicException e) {
+            if (ErrorEnum.USER_META_CHANGE_CODE_MISMATCH.getCode().equals(e.getErrorCode())) {
+                userService.updatePasswordResetTryCount(passwordResetByCodeDto);
+            }
+            throw e;
+        }
     }
 
     /**
@@ -148,28 +172,6 @@ public class UserController {
     }
 
     /**
-     * Receives valid reset code, userMetaChangeId, new password and client credentials
-     *
-     * if client credentials are provided then return token(s)
-     *
-     * @param passwordResetByCodeDto
-     * @return
-     */
-    @PutMapping("/password/reset/code")
-    public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
-        try{
-            userService.resetPasswordByCode(passwordResetByCodeDto);
-        }catch (BusinessLogicException e){
-            if(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH.getCode().equals(e.getErrorCode())){
-                userService.updatePasswordResetTryCount(passwordResetByCodeDto);
-            }
-            throw e;
-        }
-
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
-    }
-
-    /**
      * Opens forgot-password page. User is expected to provide an email address to receive code/link to initiate
      * password reset
      *
@@ -178,7 +180,7 @@ public class UserController {
     @GetMapping("/password/reset/forgot-password")
     public ModelAndView getForgotPasswordPage() {
         ModelAndView modelAndView = new ModelAndView();
-        modelAndView.addObject("forgotPasswordForm", new ForgotPasswordDto());
+        modelAndView.addObject("forgotPasswordForm", new PasswordResetRequestDto());
         modelAndView.setViewName("requestPasswordReset.html");
         return modelAndView;
     }
@@ -186,27 +188,27 @@ public class UserController {
     /**
      * Handles forgot-password page form post. Sends code/link to given email address
      *
-     * @param form
+     * @param passwordResetRequestDto
      * @param result
      * @return
      */
     @PostMapping("/password/reset/forgot-password")
-    public ModelAndView handleForgotPasswordPage(@ModelAttribute("forgotPasswordForm") @Valid ForgotPasswordDto form,
+    public ModelAndView handleForgotPasswordPage(@ModelAttribute("forgotPasswordForm") @Valid PasswordResetRequestDto passwordResetRequestDto,
                                                  BindingResult result) {
         ModelAndView modelAndView = new ModelAndView();
         if (result.hasErrors()) {
             //in case of malformed email
             modelAndView.setViewName("requestPasswordReset.html");
-            modelAndView.addObject("forgotPasswordForm", form);
+            modelAndView.addObject("forgotPasswordForm", passwordResetRequestDto);
         } else {
             // mail well-formed
             try {
-                userService.requestResetPassword(form.getEmail(), false);
+                userService.requestResetPassword(passwordResetRequestDto.getEmailMobile(), false);
             } catch (BusinessLogicException ex) {
                 // mail doesn't exist in the system or user's mail is not validated
                 result.rejectValue("email", "1000", ex.getMessage());
                 modelAndView.setViewName("requestPasswordReset.html");
-                modelAndView.addObject("forgotPasswordForm", form);
+                modelAndView.addObject("forgotPasswordForm", passwordResetRequestDto);
                 modelAndView.addAllObjects(result.getModel());
                 return modelAndView;
             }
@@ -214,45 +216,77 @@ public class UserController {
             modelAndView.setViewName("genericResult.html");//success
             modelAndView.addAllObjects(ResultPageDto.builder()
                     .success(true)
-                    .message1("We sent a password reset link to " + form.getEmail())
+                    .message1("We sent a password reset link to " + passwordResetRequestDto.getEmailMobile())
                     .build().toMap());
         }
 
         return modelAndView;
-
-
     }
 
 
     /**
-     * Sends a verification code to given email address for logged-in user
+     * Sends a verification code/link to given email address for logged-in user
      *
-     * @param email
+     * @param emailVerificationRequestDto
      * @param principal
      * @return
      */
-    @PostMapping("/email/code/{email}")
-    public ResponseEntity sendEmailVerificationCode(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
-                                                    Principal principal) {
+    @PostMapping("/email/verification")
+    public ResponseEntity sendEmailVerification(@Valid @RequestBody EmailVerificationRequestDto emailVerificationRequestDto,
+                                                Principal principal) {
         return ResponseEntity.status(HttpStatus.OK_200)
                 .body(UserMetaChangeDto.builder()
-                        .userMetaChangeId(userService.requestChangeEmail(principal.getName(), email, true).getId())
+                        .userMetaChangeId(userService.requestChangeEmail(principal.getName(),
+                                emailVerificationRequestDto.getEmail(), emailVerificationRequestDto.isByCode()).getId())
                         .build());
-
 
     }
 
     /**
-     * Sends a verification link to given email address for logged-in user
-     * @param email
-     * @param principal
+     * Verifies email using code
+     * @param verificationDto
      * @return
      */
-    @PostMapping("/email/link/{email}")
-    public ResponseEntity sendEmailVerificationLink(@Valid @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email,
-                                                    Principal principal) {
-        userService.requestChangeEmail(principal.getName(), email, false);
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
+    @PutMapping("/email/verification/code")
+    public ResponseEntity verifyEmailByCode(@Valid @RequestBody EmailVerificationDto verificationDto) {
+        try {
+            userService.verifyEmailByCode(verificationDto.getEmailMobile(), verificationDto.getCode());
+            return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200))
+                    .body("");
+        } catch (BusinessLogicException e) {
+            if (ErrorEnum.USER_META_CHANGE_CODE_MISMATCH.getCode().equals(e.getErrorCode())) {
+                userService.updateEmailChangeTryCount(verificationDto);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Verifies email using link parameter
+     * @param linkParam is Base64 encoded UUID
+     * @return genericResult.html
+     */
+    @GetMapping("/email/verification/link/{linkParam}")
+    public ModelAndView verifyEmailByLink(@NotEmpty @PathVariable String linkParam) {
+        ModelAndView modelAndView = new ModelAndView();
+        try {
+            userService.verifyEmailByLink(linkParam);
+            modelAndView.setViewName("genericResult.html");//sucess
+            modelAndView.addAllObjects(ResultPageDto.builder()
+                    .success(true)
+                    .title("Congratulations!")
+                    .message1("You can now log in to your account with your email address")
+                    .build().toMap());
+        } catch (BusinessLogicException ex) {
+            modelAndView.setViewName("genericResult.html");//failure
+            modelAndView.addAllObjects(ResultPageDto.builder()
+                    .success(false)
+                    .title("Verification Failed!")
+                    .message1(ex.getMessage())
+                    .message2("Try logging in to your account to request a new verification link")
+                    .build().toMap());
+        }
+        return modelAndView;
     }
 
 }

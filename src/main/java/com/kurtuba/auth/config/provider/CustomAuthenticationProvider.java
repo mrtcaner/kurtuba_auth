@@ -2,6 +2,7 @@ package com.kurtuba.auth.config.provider;
 
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.dto.KurtubaUserDetailsDto;
+import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserService;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -47,11 +48,9 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
     public UserDetails loadUserByUsername(String usernameEmail)
             throws UsernameNotFoundException {
-        User user = userService.getUserByUsernameOrEmail(usernameEmail);
-
-        if (user == null) {
-            throw new UsernameNotFoundException("Could not find user");
-        }
+        User user = userService.getUserByUsernameOrEmail(usernameEmail).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+        );
 
         List<SimpleGrantedAuthority> auths = new ArrayList<>();
         user.getUserRoles().stream().map(auth -> auths.add(new SimpleGrantedAuthority(auth.getRole().name())));

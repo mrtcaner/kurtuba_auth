@@ -14,6 +14,7 @@ public class UsernameValidator implements ConstraintValidator<UserName, String> 
     @Override
     public void initialize(UserName constraintAnnotation) {
         ConstraintValidator.super.initialize(constraintAnnotation);
+        this.notEmpty = constraintAnnotation.notEmpty();
     }
 
     @Override

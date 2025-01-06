@@ -58,7 +58,7 @@ public class UserTokenService {
     }
 
     @Transactional
-    public TokenResponseDto refreshUserTokens(TokenRefreshRequestDto tokenRefreshRequestDto) {
+    public TokensResponseDto refreshUserTokens(TokenRefreshRequestDto tokenRefreshRequestDto) {
 
         // token validation
         JsonObject decodedToken = TokenUtils.decodeTokenPayload(tokenRefreshRequestDto.getAccessToken());
@@ -93,7 +93,8 @@ public class UserTokenService {
             throw new BusinessLogicException(ErrorEnum.AUTH_REFRESH_TOKEN_INVALID);
         }
 
-        User user = userRepository.getUserById(claims.getSubject());
+        User user = userRepository.getUserById(claims.getSubject()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         // check user state
         if(!user.isEmailVerified()){
@@ -154,7 +155,8 @@ public class UserTokenService {
             throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
         }
 
-        User user = userRepository.getUserById(claims.getSubject());
+        User user = userRepository.getUserById(claims.getSubject()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         // check user state
         if(!user.isEmailVerified()){
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
@@ -192,7 +194,7 @@ public class UserTokenService {
      * That means token-validation/user-authentication must be carried out inside this method.
      */
     @Transactional
-    public TokenResponseDto createAndSaveTokens(String userId, String clientId, Set<String> auds, Set<String> scopes,
+    public TokensResponseDto createAndSaveTokens(String userId, String clientId, Set<String> auds, Set<String> scopes,
                                                 Duration accessTokenValidityDuration, Duration refreshTokenValidityDuration) {
 
         String newAccessToken = tokenUtils.generateToken(userId, auds, scopes, accessTokenValidityDuration);
@@ -224,11 +226,9 @@ public class UserTokenService {
 
         userTokenRepository.save(newUserToken);
 
-        return newRefreshToken == null ? TokenResponseDto.builder()
-                .accessToken(newAccessToken).build() :
-                TokensResponseDto.tokensReturnDtoBuilder()
+        return TokensResponseDto.builder()
                         .accessToken(newAccessToken)
-                        .refreshToken(newRefreshToken)
+                        .refreshToken(newRefreshToken == null ? "" : newRefreshToken)
                         .build();
     }
 

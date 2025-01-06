@@ -219,7 +219,7 @@ public class MessageJobService {
     public void sendUserEmailChangeLinkMail(String recipient, String verificationCode) {
 
         String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/auth/email/verification/link/" + verificationCode;
+                "/user/email/verification/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
                 .title("Verify Your E-mail Address!")

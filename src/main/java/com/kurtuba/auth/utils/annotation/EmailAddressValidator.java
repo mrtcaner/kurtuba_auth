@@ -14,6 +14,7 @@ public class EmailAddressValidator implements ConstraintValidator<EmailAddress, 
     @Override
     public void initialize(EmailAddress constraintAnnotation) {
         ConstraintValidator.super.initialize(constraintAnnotation);
+        this.notEmpty = constraintAnnotation.notEmpty();
     }
 
     @Override

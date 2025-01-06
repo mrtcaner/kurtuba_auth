@@ -1,4 +1,4 @@
-package com.kurtuba.auth.utils.response;
+package com.kurtuba.auth.data.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,9 +11,8 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ResponseError{
+public class ResponseErrorDto {
 
-    private final String type = ResponseType.ERROR.getType();
     private LocalDateTime timestamp;
     private String error;
     private Integer code;

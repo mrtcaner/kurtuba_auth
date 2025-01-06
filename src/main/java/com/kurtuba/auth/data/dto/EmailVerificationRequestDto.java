@@ -1,6 +1,6 @@
 package com.kurtuba.auth.data.dto;
 
-import jakarta.validation.constraints.NotEmpty;
+import com.kurtuba.auth.utils.annotation.EmailAddress;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,11 +10,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class TokensResponseDto {
+public class EmailVerificationRequestDto {
 
-    @NotEmpty
-    public String accessToken;
+    @EmailAddress
+    String email;
 
-    @NotEmpty
-    public String refreshToken;
+    boolean byCode;
 }

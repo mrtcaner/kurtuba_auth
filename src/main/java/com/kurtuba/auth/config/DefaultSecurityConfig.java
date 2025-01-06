@@ -66,8 +66,8 @@ public class DefaultSecurityConfig {
     @Bean
     @Order(0)
     public SecurityFilterChain publicEndpointsFilterChain(HttpSecurity http) throws Exception {
-        http .securityMatcher("/auth/**", "/user/password/reset/**","/actuator/**", "/favicon.ico",
-                        "/v3/api-docs", "/oauth2/jwks")
+        http .securityMatcher("/auth/**", "/user/password/reset/**","/user/email/verification/link/**",
+                        "/actuator/**", "/favicon.ico", "/v3/api-docs", "/oauth2/jwks")
                 .authorizeHttpRequests((authorize) -> authorize.anyRequest().permitAll())
                 .csrf(csrfConf -> csrfConf.disable());
         return http.build();

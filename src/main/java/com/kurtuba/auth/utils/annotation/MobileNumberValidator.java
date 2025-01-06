@@ -14,6 +14,7 @@ public class MobileNumberValidator implements ConstraintValidator<MobileNumber, 
     @Override
     public void initialize(MobileNumber constraintAnnotation) {
         ConstraintValidator.super.initialize(constraintAnnotation);
+        this.notEmpty = constraintAnnotation.notEmpty();
     }
 
     @Override
