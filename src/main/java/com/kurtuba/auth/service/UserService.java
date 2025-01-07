@@ -160,8 +160,8 @@ public class UserService {
     }
 
     @Transactional
-    public TokensResponseDto generateTokensForLogin(String emailMobile, String pass,
-                                                    String registeredClientId, String registeredClientSecret) {
+    public TokensResponseDto authenticateAndGetTokens(String emailMobile, String pass,
+                                                      String registeredClientId, String registeredClientSecret) {
         // authenticate user
         User user = authenticate(emailMobile, pass);
         return validateRegisteredClientAndGetTokens(user, registeredClientId, registeredClientSecret);

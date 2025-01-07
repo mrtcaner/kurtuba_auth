@@ -52,6 +52,12 @@ public class RegistrationDto {
     @Enumerated(EnumType.STRING)
     private AuthProviderType authProvider;
 
+    @NotEmpty
+    private String language;
+
+    @NotEmpty
+    private String country;
+
     @NotNull
     @Enumerated
     private ContactType preferredVerificationContact;
@@ -74,6 +80,8 @@ public class RegistrationDto {
                 .showCaptcha(false)
                 .emailVerified(false)
                 .mobileVerified(false)
+                .language(language)
+                .country(country)
                 .createdDate(LocalDateTime.now())
                 .build();
     }

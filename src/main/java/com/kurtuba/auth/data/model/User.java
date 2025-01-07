@@ -87,6 +87,12 @@ public class User implements Serializable {
     @Nullable
     private LocalDateTime lastLoginAttempt;
 
+    @NotEmpty
+    private String language;
+
+    @NotEmpty
+    private String country;
+
     @NotNull
     private LocalDateTime createdDate;
 

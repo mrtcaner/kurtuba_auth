@@ -37,6 +37,8 @@ public class UserDto {
     private boolean emailVerified;
     private boolean mobileVerified;
     private LocalDateTime lastLoginAttempt;
+    private String language;
+    private String country;
     private LocalDateTime createdDate;
 
     public User toUser() {
@@ -61,6 +63,8 @@ public class UserDto {
                 .emailVerified(emailVerified)
                 .mobileVerified(mobileVerified)
                 .lastLoginAttempt(lastLoginAttempt)
+                .language(language)
+                .country(country)
                 .createdDate(createdDate)
                 .build();
     }
@@ -87,6 +91,8 @@ public class UserDto {
                 .emailVerified(user.isEmailVerified())
                 .mobileVerified(user.isMobileVerified())
                 .lastLoginAttempt(user.getLastLoginAttempt())
+                .language(user.getLanguage())
+                .country(user.getCountry())
                 .createdDate(user.getCreatedDate())
                 .build();
     }

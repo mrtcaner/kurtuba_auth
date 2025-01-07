@@ -53,7 +53,7 @@ public class RegistrationController {
     @PostMapping("/registration/other-provider")
     public ResponseEntity<TokensResponseDto> registerViaAnotherProvider(@Valid @RequestBody RegistrationOtherProviderDto newUser) {
         RegistrationDto dto = userService.registerByAnotherProvider(newUser);
-        TokensResponseDto tokenResponseDto = userService.generateTokensForLogin(dto.getEmail(), dto.getPassword(),
+        TokensResponseDto tokenResponseDto = userService.authenticateAndGetTokens(dto.getEmail(), dto.getPassword(),
                 registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT).get(0).getClientId(),
                 "");
         return ResponseEntity
