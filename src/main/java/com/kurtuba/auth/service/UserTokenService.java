@@ -30,6 +30,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Base64;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -151,7 +152,8 @@ public class UserTokenService {
     private AccessTokenValidationResult validateAccessToken(String accessToken, String clientId, String clientSecret) {
         // token validation
         JsonObject decodedToken = TokenUtils.decodeTokenPayload(accessToken);
-        UserToken userToken = checkRefreshTokenState(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString());
+        UserToken userToken = checkRefreshTokenStateAndGet(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString())
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_INVALID_TOKEN));
         // token will be verified with the client used for its creation
         RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
@@ -185,12 +187,9 @@ public class UserTokenService {
         return claims;
     }
 
-    private UserToken checkRefreshTokenState(String jti) {
-        UserToken userToken = userTokenRepository.findByJtiAndBlockedAndRefreshTokenExpAfter(
-                jti, false, LocalDateTime.now()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.AUTH_INVALID_TOKEN));
-
-        return userToken;
+    private Optional<UserToken> checkRefreshTokenStateAndGet(String jti) {
+        return userTokenRepository.findByJtiAndBlockedAndRefreshTokenExpAfter(
+                jti, false, LocalDateTime.now());
     }
 
     @Transactional

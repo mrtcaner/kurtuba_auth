@@ -48,7 +48,7 @@ public class UserMetaChangeService {
     }
 
     /**
-     * validation checks for executed, expirationDate for given userId and MetaOperationType
+     * returns an active(not executed, not expired) UserMetaChange for given userId and MetaOperationType
      * @param userId
      * @return
      */
