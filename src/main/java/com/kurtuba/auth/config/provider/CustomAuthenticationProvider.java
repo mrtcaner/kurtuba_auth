@@ -30,25 +30,25 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        String usernameEmail = authentication.getName();
+        String emailMobile = authentication.getName();
         String password = authentication.getCredentials().toString();
 
         //Authenticate
         try{
-            userService.authenticate(usernameEmail,password);
+            userService.authenticate(emailMobile,password);
         }catch (BusinessLogicException e){
             throw new BadCredentialsException("Invalid credentials");
         }
 
-        UserDetails userDetails = loadUserByUsername(usernameEmail);
+        UserDetails userDetails = loadUserByUsername(emailMobile);
         // Create a fully authenticated Authentication object
         return new UsernamePasswordAuthenticationToken(
                 userDetails, password, userDetails.getAuthorities());
     }
 
-    public UserDetails loadUserByUsername(String usernameEmail)
+    public UserDetails loadUserByUsername(String emailMobile)
             throws UsernameNotFoundException {
-        User user = userService.getUserByUsernameOrEmail(usernameEmail).orElseThrow(() ->
+        User user = userService.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
         );
 

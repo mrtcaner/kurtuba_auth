@@ -40,35 +40,22 @@ import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 @Service
 public class UserService {
 
-    @Value("${kurtuba.meta-change.validity.password-reset-code.minutes}")
-    private int passwordResetCodeValidityMinutes;
-
-    @Value("${kurtuba.meta-change.max-try-count}")
-    private int metaChangeMaxTryCount;
-
-    @Value("${kurtuba.meta-change.validity.email.activation-code.minutes}")
-    private int activationCodeValidityMinutes;
-
-    @Value("${kurtuba.meta-change.validity.email.change-code.minutes}")
-    private int emailChangeCodeValidityMinutes;
-
     private final UserRepository userRepository;
-
     private final UserRoleRepository userRoleRepository;
-
     private final UserTokenService userTokenService;
-
     private final MessageJobService messageJobService;
-
     private final UserMetaChangeService userMetaChangeService;
-
     private final RegisteredClientRepository registeredClientRepository;
-
     private final EntityManagerFactory entityManagerFactory;
 
-    private EntityManager em() {
-        return entityManagerFactory.createEntityManager();
-    }
+    @Value("${kurtuba.meta-change.validity.password-reset-code.minutes}")
+    private int passwordResetCodeValidityMinutes;
+    @Value("${kurtuba.meta-change.max-try-count}")
+    private int metaChangeMaxTryCount;
+    @Value("${kurtuba.meta-change.validity.email.activation-code.minutes}")
+    private int activationCodeValidityMinutes;
+    @Value("${kurtuba.meta-change.validity.email.change-code.minutes}")
+    private int emailChangeCodeValidityMinutes;
 
     public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository,
                        UserTokenService userTokenService, MessageJobService messageJobService,
@@ -84,43 +71,103 @@ public class UserService {
         this.entityManagerFactory = entityManagerFactory;
     }
 
-
-    /**
-     * Runs when sign in with Google
-     *
-     * @param username
-     */
     @Transactional
-    public void processOAuthPostLogin(String username) {
-        User existUser = userRepository.getUserByUsername(username).orElse(null);
+    public TokensResponseDto activateAccountByCode(String emailMobile, String code, String clientId, String clientSecret) {
+        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+        UserMetaChange userMetaChange = userMetaChangeService.findActiveMetaChangeOperationForUser(user.getId(),
+                MetaOperationType.ACCOUNT_ACTIVATION).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
+        validateAccountActivationUserMetaChange(userMetaChange, code);
+        return activateAccount(user, userMetaChange, clientId, clientSecret);
+    }
 
-        if (existUser == null) {
-            User newUser = new User();
-            newUser.setEmail(username);
-            newUser.setAuthProvider(AuthProviderType.GOOGLE);
-            newUser.setActivated(true);
+    @Transactional
+    public UserMetaChange activateAccountByLink(String linkParam) {
+        UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
+        validateAccountActivationUserMetaChange(userMetaChange, null);
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+        activateAccount(user, userMetaChange, null, null);
+        return userMetaChange;
+    }
 
-            userRepository.save(newUser);
+    private void validateAccountActivationUserMetaChange(UserMetaChange userMetaChange, String code) {
 
-            System.out.println("Created new user: " + username);
+        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.ACCOUNT_ACTIVATION)) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
         }
 
+        validateUserMetaChange(userMetaChange, code);
     }
 
-    /**
-     * Temporary method. Only user for local development. Will be removed
-     *
-     * @param user
-     */
-    @Transactional
-    public void saveUser(User user) {
+    private TokensResponseDto activateAccount(User user, UserMetaChange userMetaChange, String clientId, String clientSecret) {
+
+        if (user == null) {
+            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
+        }
+
+        if (user.isActivated()) {
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        validateAccountActivationUserMetaChange(userMetaChange, null);
+
+        user.setActivated(true);
+        if (userMetaChange.getContactType().equals(ContactType.EMAIL)) {
+            user.setEmailVerified(true);
+        } else {
+            user.setMobileVerified(true);
+        }
         userRepository.save(user);
+        userMetaChange.setUpdatedDate(LocalDateTime.now());
+        userMetaChange.setExecuted(true);
+        userMetaChangeService.update(userMetaChange);
+
+        return validateRegisteredClientAndGetTokens(user, clientId, clientSecret);
+
     }
 
-    public Optional<User> getUserByUsernameOrEmail(String email) {
-        return userRepository.getUserByEmailOrUsername(email);
+    @Transactional
+    public void changePassword(@Valid PasswordChangeDto passwordChangeDto, @NotEmpty String userId) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (!user.isActivated()) {
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        if (!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())) {
+            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_PASSWORD);
+        }
+
+        if (!passwordChangeDto.getNewPassword().equals(passwordChangeDto.getRepeatNewPassword())) {
+            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
+        }
+
+        user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
+        userRepository.save(user);
+        userMetaChangeService.create(UserMetaChange.builder()
+                .metaOperationType(MetaOperationType.PASSWORD_CHANGE)
+                .userId(user.getId())
+                .createdDate(LocalDateTime.now())
+                .updatedDate(LocalDateTime.now())
+                .executed(true)
+                .expirationDate(LocalDateTime.now())
+                .build());
+        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE);
     }
 
+    @Transactional
+    public TokensResponseDto generateTokensForLogin(String emailMobile, String pass,
+                                                    String registeredClientId, String registeredClientSecret) {
+        // authenticate user
+        User user = authenticate(emailMobile, pass);
+        return validateRegisteredClientAndGetTokens(user, registeredClientId, registeredClientSecret);
+
+
+    }
 
     /**
      * Used by both authorization server login(CustomAuthenticationProvider) and
@@ -130,8 +177,8 @@ public class UserService {
      */
 
 
-    public User authenticate(String emailUsername, String pass) {
-        User user = userRepository.getUserByEmailOrUsername(emailUsername).orElseThrow(() ->
+    public User authenticate(String emailMobile, String pass) {
+        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS));
 
         long timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 15;
@@ -176,13 +223,95 @@ public class UserService {
 
     }
 
-    @Transactional
-    public TokensResponseDto generateTokensForLogin(String emailUsername, String pass,
-                                                   String registeredClientId, String registeredClientSecret) {
-        // authenticate user
-        User user = authenticate(emailUsername, pass);
-        return validateRegisteredClientAndGetTokens(user, registeredClientId, registeredClientSecret);
+    private EntityManager em() {
+        return entityManagerFactory.createEntityManager();
+    }
 
+    private TokensResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret) {
+        if (StringUtils.hasLength(clientId)) {
+            RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
+                    new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
+            if (StringUtils.hasLength(client.getClientSecret())) {
+                if (!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
+                        .matches(clientSecret, client.getClientSecret())) {
+                    throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
+                }
+            }
+
+            // credentials validated
+            // generate tokens and return
+            Duration accessTokenValidity = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
+            Duration refreshTokenValidity = null;
+            if (client.isRefreshTokenEnabled()) {
+                refreshTokenValidity = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
+            }
+
+            Set<String> roles = null;
+            if (client.isScopeEnabled()) {
+                roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
+            }
+
+            //create token(s)
+            return userTokenService.createAndSaveTokens(user.getId(), client.getClientId(), Set.of(client.getClientName()),
+                    roles, accessTokenValidity, refreshTokenValidity);
+
+        }
+
+        return null;
+    }
+
+    public UserDto getUserByEmail(String email) {
+        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+        return UserDto.fromUser(user);
+    }
+
+    public Optional<User> getUserByEmailOrMobile(String email) {
+        return userRepository.getUserByEmailOrMobile(email);
+    }
+
+    public UserDto getUserById(String id) {
+        User user = userRepository.getUserById(id).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        return UserDto.fromUser(user);
+    }
+
+    public Optional<User> getUserByUsernameOrEmail(String email) {
+        return userRepository.getUserByEmailOrUsername(email);
+    }
+
+    public boolean isEmailAvailable(String email) {
+        return !userRepository.getUserByEmail(email).isPresent();
+    }
+
+    public boolean isMobileAvailable(String mobile) {
+        return !userRepository.getUserByMobile(mobile).isPresent();
+    }
+
+    public boolean isUsernameAvailable(String username) {
+        return !userRepository.getUserByUsername(username).isPresent();
+    }
+
+    /**
+     * Runs when sign in with Google
+     *
+     * @param username
+     */
+    @Transactional
+    public void processOAuthPostLogin(String username) {
+        User existUser = userRepository.getUserByUsername(username).orElse(null);
+
+        if (existUser == null) {
+            User newUser = new User();
+            newUser.setEmail(username);
+            newUser.setAuthProvider(AuthProviderType.GOOGLE);
+            newUser.setActivated(true);
+
+            userRepository.save(newUser);
+
+            System.out.println("Created new user: " + username);
+        }
 
     }
 
@@ -257,150 +386,6 @@ public class UserService {
         }
 
         return metaChange.getId();
-    }
-
-
-    @Transactional
-    public UserMetaChange verifyEmailByLink(@NotEmpty String linkParam) {
-        UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        validateEmailChangeUserMetaChange(userMetaChange, null);
-        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        saveNewEmail(userMetaChange, user);
-        return userMetaChange;
-    }
-
-    /**
-     * Verify email by rest request. User must enter the code mailed to them
-     *
-     * @param emailMobile
-     * @param code
-     * @return
-     */
-    @Transactional
-    public UserDto verifyEmailByCode(@NotEmpty String emailMobile, @NotEmpty String code) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        UserMetaChange userMetaChange = userMetaChangeService
-                .findActiveMetaChangeOperationForUser(user.getId(), MetaOperationType.EMAIL_CHANGE).orElseThrow(() ->
-                        new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-
-        validateEmailChangeUserMetaChange(userMetaChange, code);
-
-        return saveNewEmail(userMetaChange, user);
-    }
-
-    private UserDto saveNewEmail(UserMetaChange userMetaChange, User user) {
-
-        if (StringUtils.hasLength(user.getEmail())) {
-            //send change notification mail to old e-mail
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE);
-        }
-
-        user.setEmail(userMetaChange.getMeta());
-        user.setEmailVerified(true);
-        userRepository.save(user);
-        userMetaChange.setExecuted(true);
-        userMetaChange.setUpdatedDate(LocalDateTime.now());
-        userMetaChangeService.update(userMetaChange);
-
-        return UserDto.fromUser(user);
-    }
-
-    private void validateEmailChangeUserMetaChange(UserMetaChange userMetaChange, String code) {
-
-        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.EMAIL_CHANGE)) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
-        }
-
-        validateUserMetaChange(userMetaChange, code);
-    }
-
-    private void validateUserMetaChange(UserMetaChange userMetaChange, String code){
-
-        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
-
-        if (StringUtils.hasLength(code) && !userMetaChange.getCode().equals(code)){
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH);
-        }
-
-        if (userMetaChange.isExecuted()) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
-
-        if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
-    }
-
-
-    @Transactional
-    public String sendAccountActivationMessage(@NotEmpty String emailMobile, boolean byCode) {
-        if (emailMobile.contains("@")) {
-            //email
-            return sendAccountActivationMail(emailMobile, byCode);
-        } else {
-            return sendAccountActivationSMS(emailMobile, byCode);
-        }
-
-    }
-
-    /**
-     * Send activation SMS to the user's mobile number
-     * May contain code or link
-     *
-     * @return
-     */
-    @Transactional
-    public String sendAccountActivationSMS(@NotEmpty String mobile, boolean byCode) {
-        throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
-    }
-
-    /**
-     * Send activation MAIL to the user's email address
-     * May contain code or link
-     *
-     * @return
-     */
-    @Transactional
-    public String sendAccountActivationMail(@NotEmpty String email, boolean byCode) {
-
-        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        if (user.isActivated()) {
-            // already activated
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
-        }
-
-        UserMetaChange metaChange = UserMetaChange.builder()
-                .userId(user.getId())
-                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
-                .contactType(ContactType.EMAIL)
-                .meta(user.getEmail())
-                .executed(false)
-                .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(activationCodeValidityMinutes))
-                .maxTryCount(byCode ? metaChangeMaxTryCount : null)
-                .tryCount(byCode ? 0 : null)
-                .code(byCode ? generateVerificationCode() : null)
-                .linkParam(!byCode ?
-                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
-                .build();
-        userMetaChangeService.create(metaChange);
-        if (byCode) {
-            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode());
-        } else {
-            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam());
-        }
-
-        return metaChange.getId();
-
-
     }
 
     @Transactional
@@ -486,167 +471,50 @@ public class UserService {
 
     }
 
-
-    public UserDto getUserByEmail(String email) {
-        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        return UserDto.fromUser(user);
-    }
-
-    public UserDto getUserById(String id) {
-        User user = userRepository.getUserById(id).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        return UserDto.fromUser(user);
-    }
-
-    public boolean isUsernameAvailable(String username) {
-        return !userRepository.getUserByUsername(username).isPresent();
-    }
-
-    public boolean isEmailAvailable(String email) {
-        return !userRepository.getUserByEmail(email).isPresent();
-    }
-
-    public boolean isMobileAvailable(String mobile) {
-        return !userRepository.getUserByMobile(mobile).isPresent();
-    }
-
+    /**
+     * User registered and there is already a verified email(email change operation)
+     *
+     * @param userId
+     * @param email
+     * @return
+     */
     @Transactional
-    public void changePassword(@Valid PasswordChangeDto passwordChangeDto, @NotEmpty String userId) {
+    public UserMetaChange requestChangeEmail(String userId, String email, boolean byCode) {
         User user = userRepository.getUserById(userId).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if (!user.isActivated()) {
+        if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        if (!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_PASSWORD);
+        if (userRepository.getUserByEmail(email).isPresent()) {
+            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
         }
 
-        if (!passwordChangeDto.getNewPassword().equals(passwordChangeDto.getRepeatNewPassword())) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
-        }
-
-        user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
-        userRepository.save(user);
-        userMetaChangeService.create(UserMetaChange.builder()
-                .metaOperationType(MetaOperationType.PASSWORD_CHANGE)
+        UserMetaChange metaChange = UserMetaChange.builder()
                 .userId(user.getId())
+                .metaOperationType(MetaOperationType.EMAIL_CHANGE)
+                .contactType(ContactType.EMAIL)
+                .meta(email)
+                .executed(false)
                 .createdDate(LocalDateTime.now())
-                .updatedDate(LocalDateTime.now())
-                .executed(true)
-                .expirationDate(LocalDateTime.now())
-                .build());
-        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE);
-    }
+                .expirationDate(LocalDateTime.now().plusMinutes(emailChangeCodeValidityMinutes))
+                .maxTryCount(byCode ? metaChangeMaxTryCount : null)
+                .tryCount(byCode ? 0 : null)
+                .code(byCode ? generateVerificationCode() : null)
+                .linkParam(!byCode ?
+                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
+                .build();
+        userMetaChangeService.create(metaChange);
 
-
-    /**
-     * If password reset request is responded with a link, link has unique code.
-     *
-     * @param passwordResetByLinkDto
-     */
-    @Transactional
-    public void resetPasswordByLink(@Valid PasswordResetByLinkDto passwordResetByLinkDto) {
-        UserMetaChange userMetaChange = validatePasswordResetLinkParam(passwordResetByLinkDto.getLinkParam());
-        saveNewPassword(userMetaChange, passwordResetByLinkDto.getNewPassword(), passwordResetByLinkDto.getRepeatNewPassword());
-    }
-
-    public UserMetaChange validatePasswordResetLinkParam(String linkParam) {
-        UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        validatePasswordResetUserMetaChange(userMetaChange, null);
-        return userMetaChange;
-    }
-
-    /**
-     * If password reset request is responded with a code rather than a link, generated code is random-not unique.
-     * Hence, userMetaChangeId is required
-     *
-     * @param passwordResetByCodeDto
-     */
-    @Transactional
-    public TokensResponseDto resetPasswordByCode(@Valid PasswordResetByCodeDto passwordResetByCodeDto) {
-
-        UserMetaChange userMetaChange = userMetaChangeService
-                .findActiveMetaChangeOperationForUser(userRepository
-                        .getUserByEmailOrMobile(passwordResetByCodeDto.getEmailMobile()).orElseThrow(() ->
-                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId(),MetaOperationType.PASSWORD_RESET).orElseThrow(() ->
-                        new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-
-        validatePasswordResetUserMetaChange(userMetaChange, passwordResetByCodeDto.getCode());
-
-        saveNewPassword(userMetaChange, passwordResetByCodeDto.getNewPassword(), passwordResetByCodeDto.getRepeatNewPassword());
-        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        return validateRegisteredClientAndGetTokens(user, passwordResetByCodeDto.getClientId(), passwordResetByCodeDto.getClientSecret());
-
-    }
-
-    private void saveNewPassword(@NotNull UserMetaChange userMetaChange, String newPassword, String repeatNewPassword) {
-        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        if (!user.isActivated()) {
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        if (byCode) {
+            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode());
+        } else {
+            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam());
         }
 
-        if (!newPassword.equals(repeatNewPassword)) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
-        }
+        return metaChange;
 
-        user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
-        userRepository.save(user);
-        userMetaChange.setExecuted(true);
-        userMetaChange.setUpdatedDate(LocalDateTime.now());
-        userMetaChangeService.create(userMetaChange);
-
-        if (StringUtils.hasLength(user.getEmail())) {
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET);
-        }
-
-        //todo uncomment after SMS integration
-        /*if(StringUtils.hasLength(user.getMobile())){
-            messageJobService.sendUserMetaChangeNotificationSMS(user.getEmail(), MetaOperationType.PASSWORD_RESET);
-        }*/
-
-    }
-
-    private TokensResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret) {
-        if (StringUtils.hasLength(clientId)) {
-            RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
-                    new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
-            if (StringUtils.hasLength(client.getClientSecret())) {
-                if (!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
-                        .matches(clientSecret, client.getClientSecret())) {
-                    throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-                }
-            }
-
-            // credentials validated
-            // generate tokens and return
-            Duration accessTokenValidity = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
-            Duration refreshTokenValidity = null;
-            if (client.isRefreshTokenEnabled()) {
-                refreshTokenValidity = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
-            }
-
-            Set<String> roles = null;
-            if (client.isScopeEnabled()) {
-                roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
-            }
-
-            //create token(s)
-            return userTokenService.createAndSaveTokens(user.getId(), client.getClientId(), Set.of(client.getClientName()),
-                    roles, accessTokenValidity, refreshTokenValidity);
-
-        }
-
-        return null;
     }
 
     @Transactional
@@ -703,6 +571,50 @@ public class UserService {
 
     }
 
+    /**
+     * If password reset request is responded with a code rather than a link, generated code is random-not unique.
+     * Hence, userMetaChangeId is required
+     *
+     * @param passwordResetByCodeDto
+     */
+    @Transactional
+    public TokensResponseDto resetPasswordByCode(@Valid PasswordResetByCodeDto passwordResetByCodeDto) {
+
+        UserMetaChange userMetaChange = userMetaChangeService
+                .findActiveMetaChangeOperationForUser(userRepository
+                        .getUserByEmailOrMobile(passwordResetByCodeDto.getEmailMobile()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+                        ).getId(), MetaOperationType.PASSWORD_RESET).orElseThrow(() ->
+                        new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
+
+        validatePasswordResetUserMetaChange(userMetaChange, passwordResetByCodeDto.getCode());
+
+        saveNewPassword(userMetaChange, passwordResetByCodeDto.getNewPassword(), passwordResetByCodeDto.getRepeatNewPassword());
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        return validateRegisteredClientAndGetTokens(user, passwordResetByCodeDto.getClientId(), passwordResetByCodeDto.getClientSecret());
+
+    }
+
+    /**
+     * If password reset request is responded with a link, link has unique code.
+     *
+     * @param passwordResetByLinkDto
+     */
+    @Transactional
+    public void resetPasswordByLink(@Valid PasswordResetByLinkDto passwordResetByLinkDto) {
+        UserMetaChange userMetaChange = validatePasswordResetLinkParam(passwordResetByLinkDto.getLinkParam());
+        saveNewPassword(userMetaChange, passwordResetByLinkDto.getNewPassword(), passwordResetByLinkDto.getRepeatNewPassword());
+    }
+
+    public UserMetaChange validatePasswordResetLinkParam(String linkParam) {
+        UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
+        validatePasswordResetUserMetaChange(userMetaChange, null);
+        return userMetaChange;
+    }
+
     private void validatePasswordResetUserMetaChange(UserMetaChange userMetaChange, String code) {
 
         if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.PASSWORD_RESET)) {
@@ -712,43 +624,81 @@ public class UserService {
         validateUserMetaChange(userMetaChange, code);
     }
 
-    private void validateAccountActivationUserMetaChange(UserMetaChange userMetaChange, String code) {
-
-        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.ACCOUNT_ACTIVATION)) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
-        }
-
-        validateUserMetaChange(userMetaChange, code);
-    }
-
-    /**
-     * User registered and there is already a verified email(email change operation)
-     *
-     * @param userId
-     * @param email
-     * @return
-     */
-    @Transactional
-    public UserMetaChange requestChangeEmail(String userId, String email, boolean byCode) {
-        User user = userRepository.getUserById(userId).orElseThrow(() ->
+    private void saveNewPassword(@NotNull UserMetaChange userMetaChange, String newPassword, String repeatNewPassword) {
+        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
+        if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        if (userRepository.getUserByEmail(email).isPresent()) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
+        if (!newPassword.equals(repeatNewPassword)) {
+            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH);
+        }
+
+        user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
+        userRepository.save(user);
+        userMetaChange.setExecuted(true);
+        userMetaChange.setUpdatedDate(LocalDateTime.now());
+        userMetaChangeService.create(userMetaChange);
+
+        if (StringUtils.hasLength(user.getEmail())) {
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET);
+        }
+
+        //todo uncomment after SMS integration
+        /*if(StringUtils.hasLength(user.getMobile())){
+            messageJobService.sendUserMetaChangeNotificationSMS(user.getEmail(), MetaOperationType.PASSWORD_RESET);
+        }*/
+
+    }
+
+    /**
+     * Temporary method. Only user for local development. Will be removed
+     *
+     * @param user
+     */
+    @Transactional
+    public void saveUser(User user) {
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public String sendAccountActivationMessage(@NotEmpty String emailMobile, boolean byCode) {
+        if (emailMobile.contains("@")) {
+            //email
+            return sendAccountActivationMail(emailMobile, byCode);
+        } else {
+            return sendAccountActivationSMS(emailMobile, byCode);
+        }
+
+    }
+
+    /**
+     * Send activation MAIL to the user's email address
+     * May contain code or link
+     *
+     * @return
+     */
+    @Transactional
+    public String sendAccountActivationMail(@NotEmpty String email, boolean byCode) {
+
+        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isActivated()) {
+            // already activated
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
         UserMetaChange metaChange = UserMetaChange.builder()
                 .userId(user.getId())
-                .metaOperationType(MetaOperationType.EMAIL_CHANGE)
+                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
                 .contactType(ContactType.EMAIL)
-                .meta(email)
+                .meta(user.getEmail())
                 .executed(false)
                 .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(emailChangeCodeValidityMinutes))
+                .expirationDate(LocalDateTime.now().plusMinutes(activationCodeValidityMinutes))
                 .maxTryCount(byCode ? metaChangeMaxTryCount : null)
                 .tryCount(byCode ? 0 : null)
                 .code(byCode ? generateVerificationCode() : null)
@@ -756,15 +706,37 @@ public class UserService {
                         Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
                 .build();
         userMetaChangeService.create(metaChange);
-
         if (byCode) {
-            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode());
+            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode());
         } else {
-            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam());
+            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam());
         }
 
-        return metaChange;
+        return metaChange.getId();
 
+
+    }
+
+    /**
+     * Send activation SMS to the user's mobile number
+     * May contain code or link
+     *
+     * @return
+     */
+    @Transactional
+    public String sendAccountActivationSMS(@NotEmpty String mobile, boolean byCode) {
+        throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
+    }
+
+    @Transactional
+    public void updateAccountActivationTryCount(AccountActivationDto accountActivationDto) {
+        UserMetaChange userMetaChange = userMetaChangeService
+                .findActiveMetaChangeOperationForUser(userRepository
+                        .getUserByEmailOrMobile(accountActivationDto.getEmailMobile()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
+                        ).getId(), MetaOperationType.ACCOUNT_ACTIVATION).orElseThrow(() ->
+                        new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
+        updateUserMetaChangeTryCount(userMetaChange);
     }
 
     @Transactional
@@ -773,9 +745,16 @@ public class UserService {
                 .findActiveMetaChangeOperationForUser(userRepository
                         .getUserByEmailOrMobile(emailVerificationDto.getEmailMobile()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId(),MetaOperationType.EMAIL_CHANGE).orElseThrow(() ->
+                        ).getId(), MetaOperationType.EMAIL_CHANGE).orElseThrow(() ->
                         new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
         updateUserMetaChangeTryCount(userMetaChange);
+    }
+
+    @Transactional
+    public void updateUserMetaChangeTryCount(UserMetaChange userMetaChange) {
+        userMetaChange.setTryCount(userMetaChange.getTryCount() + 1);
+        userMetaChange.setUpdatedDate(LocalDateTime.now());
+        userMetaChangeService.update(userMetaChange);
     }
 
     @Transactional
@@ -789,70 +768,80 @@ public class UserService {
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
+    /**
+     * Verify email by rest request. User must enter the code mailed to them
+     *
+     * @param emailMobile
+     * @param code
+     * @return
+     */
     @Transactional
-    public void updateAccountActivationTryCount(AccountActivationDto accountActivationDto) {
+    public UserDto verifyEmailByCode(@NotEmpty String emailMobile, @NotEmpty String code) {
+        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
         UserMetaChange userMetaChange = userMetaChangeService
-                .findActiveMetaChangeOperationForUser(userRepository
-                        .getUserByEmailOrMobile(accountActivationDto.getEmailMobile()).orElseThrow(() ->
-                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId(),MetaOperationType.ACCOUNT_ACTIVATION).orElseThrow(() ->
+                .findActiveMetaChangeOperationForUser(user.getId(), MetaOperationType.EMAIL_CHANGE).orElseThrow(() ->
                         new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        updateUserMetaChangeTryCount(userMetaChange);
+
+        validateEmailChangeUserMetaChange(userMetaChange, code);
+
+        return saveNewEmail(userMetaChange, user);
     }
 
     @Transactional
-    public void updateUserMetaChangeTryCount(UserMetaChange userMetaChange) {
-        userMetaChange.setTryCount(userMetaChange.getTryCount() + 1);
-        userMetaChange.setUpdatedDate(LocalDateTime.now());
-        userMetaChangeService.update(userMetaChange);
-    }
-
-    @Transactional
-    public UserMetaChange activateAccountByLink(String linkParam) {
+    public UserMetaChange verifyEmailByLink(@NotEmpty String linkParam) {
         UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        validateAccountActivationUserMetaChange(userMetaChange, null);
+        validateEmailChangeUserMetaChange(userMetaChange, null);
         User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        activateAccount(user, userMetaChange, null, null);
+        saveNewEmail(userMetaChange, user);
         return userMetaChange;
     }
 
-    @Transactional
-    public TokensResponseDto activateAccountByCode(String emailMobile, String code, String clientId, String clientSecret) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        UserMetaChange userMetaChange = userMetaChangeService.findActiveMetaChangeOperationForUser(user.getId(),
-                MetaOperationType.ACCOUNT_ACTIVATION).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        validateAccountActivationUserMetaChange(userMetaChange, code);
-        return activateAccount(user, userMetaChange, clientId, clientSecret);
+    private void validateEmailChangeUserMetaChange(UserMetaChange userMetaChange, String code) {
+
+        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.EMAIL_CHANGE)) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
+        }
+
+        validateUserMetaChange(userMetaChange, code);
     }
 
-    private TokensResponseDto activateAccount(User user, UserMetaChange userMetaChange, String clientId, String clientSecret) {
+    private void validateUserMetaChange(UserMetaChange userMetaChange, String code) {
 
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
+        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
 
-        if (user.isActivated()) {
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        if (StringUtils.hasLength(code) && !userMetaChange.getCode().equals(code)) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH);
         }
 
-        validateAccountActivationUserMetaChange(userMetaChange, null);
-
-        user.setActivated(true);
-        if (userMetaChange.getContactType().equals(ContactType.EMAIL)) {
-            user.setEmailVerified(true);
-        } else {
-            user.setMobileVerified(true);
+        if (userMetaChange.isExecuted()) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
+
+        if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+    }
+
+    private UserDto saveNewEmail(UserMetaChange userMetaChange, User user) {
+
+        if (StringUtils.hasLength(user.getEmail())) {
+            //send change notification mail to old e-mail
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE);
+        }
+
+        user.setEmail(userMetaChange.getMeta());
+        user.setEmailVerified(true);
         userRepository.save(user);
-        userMetaChange.setUpdatedDate(LocalDateTime.now());
         userMetaChange.setExecuted(true);
+        userMetaChange.setUpdatedDate(LocalDateTime.now());
         userMetaChangeService.update(userMetaChange);
 
-        return validateRegisteredClientAndGetTokens(user, clientId, clientSecret);
-
+        return UserDto.fromUser(user);
     }
 }
