@@ -260,21 +260,16 @@ public class UserService {
         return null;
     }
 
-    public UserDto getUserByEmail(String email) {
-        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        return UserDto.fromUser(user);
+    public Optional<User> getUserByEmail(String email) {
+        return userRepository.getUserByEmail(email);
     }
 
     public Optional<User> getUserByEmailOrMobile(String email) {
         return userRepository.getUserByEmailOrMobile(email);
     }
 
-    public UserDto getUserById(String id) {
-        User user = userRepository.getUserById(id).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        return UserDto.fromUser(user);
+    public Optional<User> getUserById(String id) {
+        return userRepository.getUserById(id);
     }
 
     public Optional<User> getUserByUsernameOrEmail(String email) {

@@ -38,7 +38,8 @@ public class UserController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
     public ResponseEntity getUserById(@PathVariable @NotEmpty String id) {
-        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(id));
+        return ResponseEntity.status(HttpStatus.OK_200).body(UserDto.fromUser(userService.getUserById(id).orElseThrow(
+                () -> new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST))));
     }
 
     /**
@@ -52,13 +53,14 @@ public class UserController {
     public ResponseEntity getUserInfo(JwtAuthenticationToken authentication) {
 
         if (authentication == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).body("");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).build();
         }
         if (authentication.getAuthorities().contains(JWTClaimType.SCOPE.name() + "_" + AuthoritiesType.SERVICE.name())) {
             // SERVICEs are not users
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).body("");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).build();
         }
-        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(authentication.getName()));
+        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(authentication.getName())
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)));
     }
 
     /**

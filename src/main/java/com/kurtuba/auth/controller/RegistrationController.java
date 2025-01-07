@@ -42,7 +42,8 @@ public class RegistrationController {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
                 RegistrationResponseDto.builder()
                         .userMetaChangeId(userService.register(newUser))
-                        .user(userService.getUserByEmail(newUser.getEmail()))
+                        .user(UserDto.fromUser(userService.getUserByEmail(newUser.getEmail()).orElseThrow(() ->
+                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST))))
                         .build());
     }
 
