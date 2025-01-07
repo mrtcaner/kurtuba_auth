@@ -283,7 +283,7 @@ public class UserService {
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         UserMetaChange userMetaChange = userMetaChangeService
-                .findActiveEmailChangeByUserId(user.getId());
+                .findActiveMetaChangeOperationForUser(user.getId(), MetaOperationType.EMAIL_CHANGE);
 
         validateEmailChangeUserMetaChange(userMetaChange);
 
@@ -566,10 +566,10 @@ public class UserService {
     public TokensResponseDto resetPasswordByCode(@Valid PasswordResetByCodeDto passwordResetByCodeDto) {
 
         UserMetaChange userMetaChange = userMetaChangeService
-                .findActivePasswordResetByUserId(userRepository
+                .findActiveMetaChangeOperationForUser(userRepository
                         .getUserByEmailOrMobile(passwordResetByCodeDto.getEmailMobile()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId());
+                        ).getId(),MetaOperationType.PASSWORD_RESET);
 
         validatePasswordResetUserMetaChange(userMetaChange);
 
@@ -800,30 +800,30 @@ public class UserService {
     @Transactional
     public void updateEmailChangeTryCount(@Valid EmailVerificationDto emailVerificationDto) {
         UserMetaChange userMetaChange = userMetaChangeService
-                .findActiveEmailChangeByUserId(userRepository
+                .findActiveMetaChangeOperationForUser(userRepository
                         .getUserByEmailOrMobile(emailVerificationDto.getEmailMobile()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId());
+                        ).getId(),MetaOperationType.EMAIL_CHANGE);
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
     @Transactional
     public void updatePasswordResetTryCount(PasswordResetByCodeDto passwordResetByCodeDto) {
         UserMetaChange userMetaChange = userMetaChangeService
-                .findActivePasswordResetByUserId(userRepository
+                .findActiveMetaChangeOperationForUser(userRepository
                         .getUserByEmailOrMobile(passwordResetByCodeDto.getEmailMobile()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId());
+                        ).getId(), MetaOperationType.PASSWORD_RESET);
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
     @Transactional
     public void updateAccountActivationTryCount(AccountActivationDto accountActivationDto) {
         UserMetaChange userMetaChange = userMetaChangeService
-                .findActiveAccountActivationByUserId(userRepository
+                .findActiveMetaChangeOperationForUser(userRepository
                         .getUserByEmailOrMobile(accountActivationDto.getEmailMobile()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)
-                        ).getId());
+                        ).getId(),MetaOperationType.ACCOUNT_ACTIVATION);
         updateUserMetaChangeTryCount(userMetaChange);
     }
 
@@ -848,7 +848,8 @@ public class UserService {
     public TokensResponseDto activateAccountByCode(String emailMobile, String code, String clientId, String clientSecret) {
         User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        UserMetaChange userMetaChange = userMetaChangeService.findActiveAccountActivationByUserId(user.getId());
+        UserMetaChange userMetaChange = userMetaChangeService.findActiveMetaChangeOperationForUser(user.getId(),
+                MetaOperationType.ACCOUNT_ACTIVATION);
         validateAccountActivationUserMetaChange(userMetaChange, code);
         return activateAccount(user, userMetaChange, clientId, clientSecret);
     }

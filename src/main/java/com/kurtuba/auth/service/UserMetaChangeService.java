@@ -46,61 +46,14 @@ public class UserMetaChangeService {
     }
 
     /**
-     * validation checks for executed, expirationDate and MetaOperationType for ACCOUNT-ACTIVATION operation
+     * validation checks for executed, expirationDate for given userId and MetaOperationType
      * @param userId
      * @return
      */
-    public UserMetaChange findActiveAccountActivationByUserId(String userId){
+    public UserMetaChange findActiveMetaChangeOperationForUser(String userId, MetaOperationType metaOperationType){
         return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
-                userId, MetaOperationType.ACCOUNT_ACTIVATION, LocalDateTime.now()
+                userId, metaOperationType, LocalDateTime.now()
         );
     }
-
-    /**
-     * validation checks for executed, expirationDate and MetaOperationType for ACCOUNT-ACTIVATION operation
-     * @param linkParam
-     * @return
-     */
-    public UserMetaChange findActiveAccountActivationByLinkParam(String linkParam){
-        return userMetaChangeRepository.findByLinkParamAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
-                linkParam, MetaOperationType.ACCOUNT_ACTIVATION, LocalDateTime.now()
-        );
-    }
-
-    /**
-     * validation checks for executed, expirationDate and MetaOperationType for PASSWORD-RESET operation
-     * @param userId
-     * @return
-     */
-    public UserMetaChange findActivePasswordResetByUserId(String userId){
-        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
-                userId, MetaOperationType.PASSWORD_RESET, LocalDateTime.now()
-        );
-    }
-
-    /**
-     * validation checks for executed, expirationDate and MetaOperationType for EMAIL-CHANGE operation
-     * @param userId
-     * @return
-     */
-    public UserMetaChange findActiveEmailChangeByUserId(String userId){
-        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
-                userId, MetaOperationType.EMAIL_CHANGE, LocalDateTime.now()
-        );
-    }
-
-    /**
-     * validation checks for executed, expirationDate and MetaOperationType for MOBILE-CHANGE operation
-     * @param userId
-     * @return
-     */
-    public UserMetaChange findActiveMobileChangeByUserId(String userId){
-        return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(
-                userId, MetaOperationType.MOBILE_CHANGE, LocalDateTime.now()
-        );
-    }
-
-
-
 
 }
