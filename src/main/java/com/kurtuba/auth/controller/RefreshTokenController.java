@@ -73,7 +73,7 @@ public class RefreshTokenController {
 
         ResponseCookie cookie = ResponseCookie.from("jwt",
                         userTokenService.refreshWebClientWithCookieTokens(jwt, tokenRefreshWebRequestDto.getClientId(),
-                                tokenRefreshWebRequestDto.getClientSecret()))
+                                tokenRefreshWebRequestDto.getClientSecret()).accessToken)
                 .httpOnly(true)
                 .secure(false)
                 .path("/")
