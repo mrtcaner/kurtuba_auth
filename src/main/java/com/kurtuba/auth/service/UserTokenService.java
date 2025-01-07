@@ -63,16 +63,15 @@ public class UserTokenService {
         JsonObject decodedToken = TokenUtils.decodeTokenPayload(tokenRefreshRequestDto.getAccessToken());
         UserToken userToken = checkRefreshTokenState(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString());
         // token will be verified with the client used for its creation
-        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId());
+        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
         // verify signature
         Claims claims = verifyAccessToken(tokenRefreshRequestDto.getAccessToken(),
                 Duration.ofMinutes(tokenClient.getRefreshTokenTtlMinutes()).getSeconds());
 
         // client validation
-        RegisteredClient client = registeredClientRepository.findByClientId(tokenRefreshRequestDto.getClientId());
-        if (client == null) {
-            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-        }
+        RegisteredClient client = registeredClientRepository.findByClientId(tokenRefreshRequestDto.getClientId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
 
         if (StringUtils.hasLength(client.getClientSecret())) {
             if(!StringUtils.hasLength(tokenRefreshRequestDto.getClientSecret())){
@@ -130,15 +129,14 @@ public class UserTokenService {
         JsonObject decodedToken = TokenUtils.decodeTokenPayload(accessToken);
         UserToken userToken = checkRefreshTokenState(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString());
         // token will be verified with the client used for its creation
-        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId());
+        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
         // verify signature
         Claims claims = verifyAccessToken(accessToken, Duration.ofMinutes(tokenClient.getRefreshTokenTtlMinutes()).getSeconds());
 
         // client validation
-        RegisteredClient client = registeredClientRepository.findByClientId(clientId);
-        if (client == null) {
-            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-        }
+        RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
 
         if (StringUtils.hasLength(client.getClientSecret())) {
             if(!StringUtils.hasLength(clientSecret)){

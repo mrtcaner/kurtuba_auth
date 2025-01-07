@@ -1,6 +1,7 @@
 package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.*;
+import com.kurtuba.auth.data.enums.RegisteredClientType;
 import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
@@ -52,7 +53,8 @@ public class RegistrationController {
     public ResponseEntity<TokensResponseDto> registerViaAnotherProvider(@Valid @RequestBody RegistrationOtherProviderDto newUser) {
         RegistrationDto dto = userService.registerByAnotherProvider(newUser);
         TokensResponseDto tokenResponseDto = userService.generateTokensForLogin(dto.getEmail(), dto.getPassword(),
-                registeredClientRepository.findByClientName("kurtuba-mobile-client").getClientId(), "");
+                registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT).get(0).getClientId(),
+                "");
         return ResponseEntity
                 .status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
                 .body(tokenResponseDto);
