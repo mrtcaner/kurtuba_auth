@@ -5,12 +5,13 @@ import com.kurtuba.auth.data.model.RegisteredClient;
 import org.springframework.data.repository.CrudRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RegisteredClientRepository extends CrudRepository<RegisteredClient, String> {
 
-    RegisteredClient findByClientId(String clientId);
+    Optional<RegisteredClient> findByClientId(String clientId);
 
-    RegisteredClient findByClientName(String clientName);
+    Optional<RegisteredClient> findByClientName(String clientName);
 
     List<RegisteredClient> findByClientType(RegisteredClientType registeredClientType);
 

@@ -78,7 +78,9 @@ public class RefreshTokenController {
                 .secure(false)
                 .path("/")
                 .maxAge(registeredClientRepository
-                        .findByClientId(tokenRefreshWebRequestDto.getClientId()).getCookieMaxAgeSeconds())
+                        .findByClientId(tokenRefreshWebRequestDto.getClientId())
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID))
+                        .getCookieMaxAgeSeconds())
                 .build();
 
         return ResponseEntity.status(HttpStatus.OK)

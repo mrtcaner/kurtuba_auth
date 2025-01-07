@@ -616,10 +616,8 @@ public class UserService {
 
     private TokensResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret) {
         if (StringUtils.hasLength(clientId)) {
-            RegisteredClient client = registeredClientRepository.findByClientId(clientId);
-            if (client == null) {
-                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-            }
+            RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
+                    new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
             if (StringUtils.hasLength(client.getClientSecret())) {
                 if (!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
                         .matches(clientSecret, client.getClientSecret())) {

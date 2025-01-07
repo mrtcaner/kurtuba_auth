@@ -56,7 +56,8 @@ public class LoginController {
         TokensResponseDto tokenDto = userService.generateTokensForLogin(loginCredentials.getEmailUsername(),
                 loginCredentials.getPassword(), loginCredentials.getClientId(), loginCredentials.getClientSecret());
 
-        RegisteredClient client = registeredClientRepository.findByClientId(loginCredentials.getClientId());
+        RegisteredClient client = registeredClientRepository.findByClientId(loginCredentials.getClientId())
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
         if (client.isSendTokenInCookie()) {
             // return a cookie
             ResponseCookie cookie = ResponseCookie.from("jwt", tokenDto.accessToken)
@@ -85,7 +86,8 @@ public class LoginController {
      */
     @PostMapping("/service/login")
     public ResponseEntity login(@Valid @RequestBody LoginServiceCredentialsDto loginServiceCredentialsDto) {
-        RegisteredClient client = registeredClientRepository.findByClientId(loginServiceCredentialsDto.getClientId());
+        RegisteredClient client = registeredClientRepository.findByClientId(loginServiceCredentialsDto.getClientId())
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));;
         if(!RegisteredClientType.SERVICE.equals(client.getClientType())){
             throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
         }
