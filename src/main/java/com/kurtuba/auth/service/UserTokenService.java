@@ -15,6 +15,10 @@ import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TokenUtils;
 import com.nimbusds.jose.shaded.gson.JsonObject;
 import io.jsonwebtoken.Claims;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,110 +56,28 @@ public class UserTokenService {
     }
 
     @Transactional
-    public void save(UserToken userToken) {
-        userTokenRepository.save(userToken);
-    }
-
-    @Transactional
     public TokensResponseDto refreshUserTokens(TokenRefreshRequestDto tokenRefreshRequestDto) {
-
-        // token validation
-        JsonObject decodedToken = TokenUtils.decodeTokenPayload(tokenRefreshRequestDto.getAccessToken());
-        UserToken userToken = checkRefreshTokenState(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString());
-        // token will be verified with the client used for its creation
-        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
-        // verify signature
-        Claims claims = verifyAccessToken(tokenRefreshRequestDto.getAccessToken(),
-                Duration.ofMinutes(tokenClient.getRefreshTokenTtlMinutes()).getSeconds());
-
-        // client validation
-        RegisteredClient client = registeredClientRepository.findByClientId(tokenRefreshRequestDto.getClientId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
-
-        if (StringUtils.hasLength(client.getClientSecret())) {
-            if(!StringUtils.hasLength(tokenRefreshRequestDto.getClientSecret())){
-                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-            }
-            if (!new BCryptPasswordEncoder().matches(tokenRefreshRequestDto.getClientSecret(), client.getClientSecret())) {
-                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-            }
-        }
+        AccessTokenValidationResult result = validateAccessToken(tokenRefreshRequestDto.getAccessToken(), tokenRefreshRequestDto.getClientId(),
+                tokenRefreshRequestDto.getClientSecret());
 
         //Decode refresh token
         byte[] decodedBytes = Base64.getDecoder().decode(tokenRefreshRequestDto.getRefreshToken());
         String decodedRefreshToken = new String(decodedBytes);
 
         //Compare saved bcrypt hash with received token
-        if (!new BCryptPasswordEncoder().matches(decodedRefreshToken, userToken.getRefreshToken())) {
+        if (!new BCryptPasswordEncoder().matches(decodedRefreshToken, result.getUserToken().getRefreshToken())) {
             throw new BusinessLogicException(ErrorEnum.AUTH_REFRESH_TOKEN_INVALID);
         }
 
-        User user = userRepository.getUserById(claims.getSubject()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        // check user state
-        if(!user.isEmailVerified()){
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
-        }
-
-        if (!user.isActivated() || user.isLocked() || user.isShowCaptcha()) {
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
-        }
-
-            // delete old tokens
-            userTokenRepository.delete(userToken);
-
-            Set<String> roles = null;
-            if (client.isScopeEnabled()) {
-                roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
-            }
-
-            Duration accessTokenTtlMinutes = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
-            Duration refreshTokenTtlMinutes = null;
-            if (client.isRefreshTokenEnabled()) {
-                refreshTokenTtlMinutes = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
-            }
-            // then save new tokens
-            return createAndSaveTokens(claims.getSubject(), client.getClientId(), Set.of(client.getClientName()), roles,
-                    accessTokenTtlMinutes, refreshTokenTtlMinutes);
+        return getTokens(result);
     }
 
-
-    @Transactional
-    public String refreshWebClientWithCookieTokens(String accessToken, String clientId, String clientSecret) {
-
-        // token validation
-        JsonObject decodedToken = TokenUtils.decodeTokenPayload(accessToken);
-        UserToken userToken = checkRefreshTokenState(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString());
-        // token will be verified with the client used for its creation
-        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
-        // verify signature
-        Claims claims = verifyAccessToken(accessToken, Duration.ofMinutes(tokenClient.getRefreshTokenTtlMinutes()).getSeconds());
-
-        // client validation
-        RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
-
-        if (StringUtils.hasLength(client.getClientSecret())) {
-            if(!StringUtils.hasLength(clientSecret)){
-                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-            }
-            if (!new BCryptPasswordEncoder().matches(clientSecret, client.getClientSecret())) {
-                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-            }
-        }
-
-        // only the tokens issued for web-client(s) refreshed here
-        if (!RegisteredClientType.WEB.equals(client.getClientType())) {
-            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
-        }
-
-        User user = userRepository.getUserById(claims.getSubject()).orElseThrow(() ->
+    private TokensResponseDto getTokens(AccessTokenValidationResult result){
+        User user = userRepository.getUserById(result.getClaims().getSubject()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
         // check user state
-        if(!user.isEmailVerified()){
+        if (!user.isEmailVerified()) {
             throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
         }
 
@@ -163,26 +85,23 @@ public class UserTokenService {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        Set<String> auds = Set.of(client.getClientName());
-
         // delete old tokens
-        userTokenRepository.delete(userToken);
+        userTokenRepository.delete(result.getUserToken());
         // save new tokens
         Set<String> roles = null;
-        if (client.isScopeEnabled()) {
+        if (result.getRegisteredClient().isScopeEnabled()) {
             roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
         }
 
-        Duration accessTokenTtlMinutes = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
+        Duration accessTokenTtlMinutes = Duration.ofMinutes(result.getRegisteredClient().getAccessTokenTtlMinutes());
         Duration refreshTokenTtlMinutes = null;
-        if (client.isRefreshTokenEnabled()) {
-            refreshTokenTtlMinutes = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
+        if (result.getRegisteredClient().isRefreshTokenEnabled()) {
+            refreshTokenTtlMinutes = Duration.ofMinutes(result.getRegisteredClient().getRefreshTokenTtlMinutes());
         }
 
-        return createAndSaveTokens(claims.getSubject(), client.getClientId(), auds, roles,
-                accessTokenTtlMinutes,
-                refreshTokenTtlMinutes)
-                .getAccessToken();
+        return createAndSaveTokens(result.getClaims().getSubject(), result.getRegisteredClient().getClientId(),
+                Set.of(result.getRegisteredClient().getClientName()), roles,
+                accessTokenTtlMinutes, refreshTokenTtlMinutes);
     }
 
     /**
@@ -192,7 +111,7 @@ public class UserTokenService {
      */
     @Transactional
     public TokensResponseDto createAndSaveTokens(String userId, String clientId, Set<String> auds, Set<String> scopes,
-                                                Duration accessTokenValidityDuration, Duration refreshTokenValidityDuration) {
+                                                 Duration accessTokenValidityDuration, Duration refreshTokenValidityDuration) {
 
         String newAccessToken = tokenUtils.generateToken(userId, auds, scopes, accessTokenValidityDuration);
         String newRefreshToken = null;
@@ -224,9 +143,35 @@ public class UserTokenService {
         userTokenRepository.save(newUserToken);
 
         return TokensResponseDto.builder()
-                        .accessToken(newAccessToken)
-                        .refreshToken(newRefreshToken == null ? "" : newRefreshToken)
-                        .build();
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken == null ? "" : newRefreshToken)
+                .build();
+    }
+
+    private AccessTokenValidationResult validateAccessToken(String accessToken, String clientId, String clientSecret) {
+        // token validation
+        JsonObject decodedToken = TokenUtils.decodeTokenPayload(accessToken);
+        UserToken userToken = checkRefreshTokenState(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString());
+        // token will be verified with the client used for its creation
+        RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
+        // verify signature
+        Claims claims = verifyAccessToken(accessToken, Duration.ofMinutes(tokenClient.getRefreshTokenTtlMinutes()).getSeconds());
+
+        // client validation
+        RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
+
+        if (StringUtils.hasLength(client.getClientSecret())) {
+            if (!StringUtils.hasLength(clientSecret)) {
+                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
+            }
+            if (!new BCryptPasswordEncoder().matches(clientSecret, client.getClientSecret())) {
+                throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
+            }
+        }
+
+        return AccessTokenValidationResult.builder().claims(claims).registeredClient(client).userToken(userToken).build();
     }
 
     private Claims verifyAccessToken(String accessToken, long clockSkew) {
@@ -248,5 +193,33 @@ public class UserTokenService {
         return userToken;
     }
 
+    @Transactional
+    public TokensResponseDto refreshWebClientWithCookieTokens(String accessToken, String clientId, String clientSecret) {
 
+        AccessTokenValidationResult result = validateAccessToken(accessToken, clientId, clientSecret);
+
+        // only the tokens issued for web-client(s) refreshed here
+        if (!RegisteredClientType.WEB.equals(result.getRegisteredClient().getClientType())) {
+            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
+        }
+
+        return getTokens(result);
+
+    }
+
+    @Transactional
+    public void save(UserToken userToken) {
+        userTokenRepository.save(userToken);
+    }
+
+}
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+class AccessTokenValidationResult {
+    Claims claims;
+    RegisteredClient registeredClient;
+    UserToken userToken;
 }
