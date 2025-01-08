@@ -6,7 +6,7 @@ import com.kurtuba.auth.data.dto.LocalizationMessageUpdateDto;
 import com.kurtuba.auth.data.model.LocalizationMessage;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
-import com.kurtuba.auth.service.LocalizationService;
+import com.kurtuba.auth.service.LocalizationMessageService;
 import jakarta.validation.Valid;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
@@ -24,22 +24,22 @@ import java.util.List;
 public class LocalizationController {
 
     final
-    LocalizationService localizationService;
+    LocalizationMessageService localizationMessageService;
 
-    public LocalizationController(LocalizationService localizationService) {
-        this.localizationService = localizationService;
+    public LocalizationController(LocalizationMessageService localizationMessageService) {
+        this.localizationMessageService = localizationMessageService;
     }
 
     @GetMapping("/localization")
     public ResponseEntity<List<LocalizationMessageResponseDto>> getLocalizations(@RequestParam(name = "lang", required = false) String lang,
                                                                                  @RequestParam(name = "key", required = false) String key){
         if(!StringUtils.hasLength(lang) && !StringUtils.hasLength(key)){
-            return ResponseEntity.ok().body(localizationService.findAll().stream()
+            return ResponseEntity.ok().body(localizationMessageService.findAll().stream()
                     .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
         }
 
         if (StringUtils.hasLength(lang) && StringUtils.hasLength(lang)){
-            LocalizationMessage localizationMessage = localizationService.findByLanguageCodeAndKey(lang, key).orElse(null);
+            LocalizationMessage localizationMessage = localizationMessageService.findByLanguageCodeAndKey(lang, key);
             if(localizationMessage == null){
                 return ResponseEntity.ok().body(List.of());
             }
@@ -48,11 +48,11 @@ public class LocalizationController {
         }
 
         if (StringUtils.hasLength(lang)){
-            return ResponseEntity.ok().body(localizationService.findByLanguageCode(lang).stream()
+            return ResponseEntity.ok().body(localizationMessageService.findByLanguageCode(lang).stream()
                     .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
         }
 
-        return ResponseEntity.ok().body(localizationService.findByKey(key).stream()
+        return ResponseEntity.ok().body(localizationMessageService.findByKey(key).stream()
                 .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
 
     }
@@ -60,18 +60,18 @@ public class LocalizationController {
     @PostMapping("/localization")
     public ResponseEntity createLocalization(@Valid @RequestBody LocalizationMessageDto localizationMessageDto){
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(LocalizationMessageResponseDto.fromLocalization(localizationService.create(localizationMessageDto)));
+                .body(LocalizationMessageResponseDto.fromLocalization(localizationMessageService.create(localizationMessageDto)));
     }
 
     @PutMapping("/localization")
     public ResponseEntity updateLocalization(@Valid @RequestBody LocalizationMessageUpdateDto localizationMessageUpdateDto){
         // for the sake of proper cache management, changing lang and key is not allowed. So this swap needs to
         //take place
-        LocalizationMessage localizationMessage = localizationService.finById(localizationMessageUpdateDto.getId()).orElseThrow(() ->
+        LocalizationMessage localizationMessage = localizationMessageService.finById(localizationMessageUpdateDto.getId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_ID));
         localizationMessage.setMessage(localizationMessageUpdateDto.getMessage());
         return ResponseEntity.ok()
-                .body(LocalizationMessageResponseDto.fromLocalization(localizationService.update(LocalizationMessageDto
+                .body(LocalizationMessageResponseDto.fromLocalization(localizationMessageService.update(LocalizationMessageDto
                         .fromLocalization(localizationMessage))));
     }
 

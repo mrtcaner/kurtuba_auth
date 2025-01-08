@@ -17,12 +17,12 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
-public class LocalizationService {
+public class LocalizationMessageService {
 
     final
     LocalizationMessageRepository localizationMessageRepository;
 
-    public LocalizationService(LocalizationMessageRepository localizationMessageRepository) {
+    public LocalizationMessageService(LocalizationMessageRepository localizationMessageRepository) {
         this.localizationMessageRepository = localizationMessageRepository;
     }
 
@@ -44,14 +44,20 @@ public class LocalizationService {
     }
 
     @Cacheable(value = "localization", key = "#languageCode + '_' + #key")
-    public Optional<LocalizationMessage> findByLanguageCodeAndKey(String languageCode, String key) {
+    public Optional<LocalizationMessage> findByLanguageCodeAndKeyAndReturnOptional(String languageCode, String key) {
         return localizationMessageRepository.findByLanguageCodeAndKey(languageCode, key);
+    }
+
+    @Cacheable(value = "localization", key = "#languageCode + '_' + #key")
+    public LocalizationMessage findByLanguageCodeAndKey(String languageCode, String key) {
+        return localizationMessageRepository.findByLanguageCodeAndKey(languageCode, key).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER));
     }
 
     @CachePut(value = "localization", key = "#localizationMessageDto.languageCode + '_' + #localizationMessageDto.key")
     @Transactional
     public LocalizationMessage create(@Valid LocalizationMessageDto localizationMessageDto) {
-        findByLanguageCodeAndKey(localizationMessageDto.getLanguageCode(), localizationMessageDto.getKey())
+        findByLanguageCodeAndKeyAndReturnOptional(localizationMessageDto.getLanguageCode(), localizationMessageDto.getKey())
                 .ifPresent(localization -> {
             throw new BusinessLogicException(ErrorEnum.LOCALIZATION_ALREADY_EXISTS);
         });

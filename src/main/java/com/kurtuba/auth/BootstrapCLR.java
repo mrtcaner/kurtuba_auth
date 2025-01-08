@@ -1,16 +1,12 @@
 package com.kurtuba.auth;
 
-import com.kurtuba.auth.data.dto.LocalizationMessageDto;
-import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
 import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
-import com.kurtuba.auth.service.LocalizationService;
+import com.kurtuba.auth.service.LocalizationMessageService;
 import com.kurtuba.auth.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
-
-import java.time.LocalDateTime;
 
 @Component
 public class BootstrapCLR implements CommandLineRunner {
@@ -22,7 +18,7 @@ public class BootstrapCLR implements CommandLineRunner {
     private RegisteredClientRepository registeredClientRepository;
 
     @Autowired
-    private LocalizationService localizationService;
+    private LocalizationMessageService localizationMessageService;
 
     @Autowired
     private LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;

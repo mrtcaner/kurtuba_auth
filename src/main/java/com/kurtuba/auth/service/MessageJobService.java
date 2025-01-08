@@ -39,11 +39,11 @@ public class MessageJobService {
     MessageJobRepository messageJobRepository;
 
     final
-    LocalizationService localizationService;
+    LocalizationMessageService localizationMessageService;
 
-    public MessageJobService(MessageJobRepository messageJobRepository, LocalizationService localizationService) {
+    public MessageJobService(MessageJobRepository messageJobRepository, LocalizationMessageService localizationMessageService) {
         this.messageJobRepository = messageJobRepository;
-        this.localizationService = localizationService;
+        this.localizationMessageService = localizationMessageService;
     }
 
     @Transactional
@@ -64,25 +64,18 @@ public class MessageJobService {
     public void sendAccountActivationCodeMail(@NotEmpty String recipient, @NotEmpty String verificationCode, String lang) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.prologue")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.prologue").getMessage())
                 .verificationCode(verificationCode)
                 .verificationLink("")
                 .verifyEmailBtnLabel("")
                 .displayCode("block")
                 .displayLink("none")
-                .epilogue(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.epilogue")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .epilogue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.epilogue").getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch").getMessage())
                 .build();
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
@@ -95,8 +88,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService
+                            .findByLanguageCodeAndKey(lang, "mail.account.activation.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -109,28 +102,21 @@ public class MessageJobService {
     public void sendAccountActivationLinkMail(String recipient, String verificationCode, String lang) {
 
         String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "auth/registration/activation/link/" + verificationCode;
+                "/auth/registration/activation/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.prologue")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.prologue").getMessage())
                 .verificationLink(verificationLink)
                 .verificationCode("")
-                .verifyEmailBtnLabel(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.button.label")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .verifyEmailBtnLabel(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.button.label").getMessage())
                 .displayCode("none")
                 .displayLink("block")
                 .epilogue("")
-                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch").getMessage())
                 .build();
 
         try {
@@ -144,8 +130,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService
+                            .findByLanguageCodeAndKey(lang, "mail.account.activation.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -164,16 +150,16 @@ public class MessageJobService {
             htmlFileContent = htmlFileContent.replace("${resetCode}", resetCode);
             htmlFileContent = htmlFileContent.replace("${displayCode}", "block");
             htmlFileContent = htmlFileContent.replace("${displayLink}", "none");
-            htmlFileContent = htmlFileContent.replace("${prologue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.code.prologue")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.epilogue")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${closing}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing.subject")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.get-in-touch")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${prologue}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.code.prologue").getMessage());
+            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.epilogue").getMessage());
+            htmlFileContent = htmlFileContent.replace("${closing}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing").getMessage());
+            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing.subject").getMessage());
+            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.get-in-touch").getMessage());
 
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -183,8 +169,7 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -205,16 +190,16 @@ public class MessageJobService {
             htmlFileContent = htmlFileContent.replace("${resetLink}", resetLink);
             htmlFileContent = htmlFileContent.replace("${displayLink}", "block");
             htmlFileContent = htmlFileContent.replace("${displayCode}", "none");
-            htmlFileContent = htmlFileContent.replace("${prologue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.link.prologue")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.epilogue")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${closing}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing.subject")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.get-in-touch")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${prologue}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.link.prologue").getMessage());
+            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.epilogue").getMessage());
+            htmlFileContent = htmlFileContent.replace("${closing}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing").getMessage());
+            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing.subject").getMessage());
+            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.password.reset.content.get-in-touch").getMessage());
 
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -224,8 +209,7 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -238,24 +222,18 @@ public class MessageJobService {
     public void sendUserEmailChangeCodeMail(String recipient, String verificationCode, String lang) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.code.prologue")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.code.prologue").getMessage())
                 .verificationCode(verificationCode)
                 .verificationLink("")
                 .verifyEmailBtnLabel("")
                 .displayCode("block")
                 .displayLink("none")
                 .epilogue("")
-                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch").getMessage())
                 .build();
 
         try {
@@ -269,8 +247,7 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -286,25 +263,18 @@ public class MessageJobService {
                 "/user/email/verification/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.prologue")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.prologue").getMessage())
                 .verificationLink(verificationLink)
-                .verifyEmailBtnLabel(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.button.label")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .verifyEmailBtnLabel(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.button.label").getMessage())
                 .verificationCode("")
                 .displayCode("none")
                 .displayLink("block")
                 .epilogue("")
-                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
-                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch")
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch").getMessage())
                 .build();
 
         try {
@@ -318,8 +288,7 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -336,20 +305,20 @@ public class MessageJobService {
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
-            htmlFileContent = htmlFileContent.replace("${greet}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.greet")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${prologue}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.prologue")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${context}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.context")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.epilogue")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${closing}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.closing")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.closing.subject")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
-            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.get-in-touch")
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${greet}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.greet").getMessage());
+            htmlFileContent = htmlFileContent.replace("${prologue}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.prologue").getMessage());
+            htmlFileContent = htmlFileContent.replace("${context}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.context").getMessage());
+            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.epilogue").getMessage());
+            htmlFileContent = htmlFileContent.replace("${closing}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.closing").getMessage());
+            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.closing.subject").getMessage());
+            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationMessageService
+                    .findByLanguageCodeAndKey(lang, "mail.account.modification.content.get-in-touch").getMessage());
             htmlFileContent = htmlFileContent.replaceAll("metaName", metaName);
 
             messageJobRepository.save(MessageJob.builder()
@@ -360,8 +329,7 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.subject")
-                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.modification.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
