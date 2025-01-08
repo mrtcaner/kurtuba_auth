@@ -14,7 +14,11 @@ public class EmailVerificationMailDto {
     String verificationCode;
     String displayCode;
     String verificationLink;
+    String verifyEmailBtnLabel;
     String displayLink;
-    String msg1;
-    String msg2;
+    String epilogue;
+    String prologue;
+    String closing;
+    String closingSubject;
+    String getInTouch;
 }

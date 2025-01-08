@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LocalizationUpdateDto {
+public class LocalizationMessageUpdateDto {
 
     @NotEmpty
     private String id;

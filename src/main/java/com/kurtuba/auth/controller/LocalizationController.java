@@ -1,9 +1,9 @@
 package com.kurtuba.auth.controller;
 
-import com.kurtuba.auth.data.dto.LocalizationDto;
-import com.kurtuba.auth.data.dto.LocalizationResponseDto;
-import com.kurtuba.auth.data.dto.LocalizationUpdateDto;
-import com.kurtuba.auth.data.model.Localization;
+import com.kurtuba.auth.data.dto.LocalizationMessageDto;
+import com.kurtuba.auth.data.dto.LocalizationMessageResponseDto;
+import com.kurtuba.auth.data.dto.LocalizationMessageUpdateDto;
+import com.kurtuba.auth.data.model.LocalizationMessage;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.LocalizationService;
@@ -31,48 +31,48 @@ public class LocalizationController {
     }
 
     @GetMapping("/localization")
-    public ResponseEntity<List<LocalizationResponseDto>> getLocalizations(@RequestParam(name = "lang", required = false) String lang,
-                                                                             @RequestParam(name = "key", required = false) String key){
+    public ResponseEntity<List<LocalizationMessageResponseDto>> getLocalizations(@RequestParam(name = "lang", required = false) String lang,
+                                                                                 @RequestParam(name = "key", required = false) String key){
         if(!StringUtils.hasLength(lang) && !StringUtils.hasLength(key)){
             return ResponseEntity.ok().body(localizationService.findAll().stream()
-                    .map(localization -> LocalizationResponseDto.fromLocalization(localization)).toList());
+                    .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
         }
 
         if (StringUtils.hasLength(lang) && StringUtils.hasLength(lang)){
-            Localization localization = localizationService.findByLanguageCodeAndKey(lang, key).orElse(null);
-            if(localization == null){
+            LocalizationMessage localizationMessage = localizationService.findByLanguageCodeAndKey(lang, key).orElse(null);
+            if(localizationMessage == null){
                 return ResponseEntity.ok().body(List.of());
             }
 
-            return ResponseEntity.ok().body(List.of(LocalizationResponseDto.fromLocalization(localization)));
+            return ResponseEntity.ok().body(List.of(LocalizationMessageResponseDto.fromLocalization(localizationMessage)));
         }
 
         if (StringUtils.hasLength(lang)){
             return ResponseEntity.ok().body(localizationService.findByLanguageCode(lang).stream()
-                    .map(localization -> LocalizationResponseDto.fromLocalization(localization)).toList());
+                    .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
         }
 
         return ResponseEntity.ok().body(localizationService.findByKey(key).stream()
-                .map(localization -> LocalizationResponseDto.fromLocalization(localization)).toList());
+                .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
 
     }
 
     @PostMapping("/localization")
-    public ResponseEntity createLocalization(@Valid @RequestBody LocalizationDto localizationDto){
+    public ResponseEntity createLocalization(@Valid @RequestBody LocalizationMessageDto localizationMessageDto){
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(LocalizationResponseDto.fromLocalization(localizationService.create(localizationDto)));
+                .body(LocalizationMessageResponseDto.fromLocalization(localizationService.create(localizationMessageDto)));
     }
 
     @PutMapping("/localization")
-    public ResponseEntity updateLocalization(@Valid @RequestBody LocalizationUpdateDto localizationUpdateDto){
+    public ResponseEntity updateLocalization(@Valid @RequestBody LocalizationMessageUpdateDto localizationMessageUpdateDto){
         // for the sake of proper cache management, changing lang and key is not allowed. So this swap needs to
         //take place
-        Localization localization = localizationService.finById(localizationUpdateDto.getId()).orElseThrow(() ->
+        LocalizationMessage localizationMessage = localizationService.finById(localizationMessageUpdateDto.getId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_ID));
-        localization.setMessage(localizationUpdateDto.getMessage());
+        localizationMessage.setMessage(localizationMessageUpdateDto.getMessage());
         return ResponseEntity.ok()
-                .body(LocalizationResponseDto.fromLocalization(localizationService.update(LocalizationDto
-                        .fromLocalization(localization))));
+                .body(LocalizationMessageResponseDto.fromLocalization(localizationService.update(LocalizationMessageDto
+                        .fromLocalization(localizationMessage))));
     }
 
     @CacheEvict(value = "localization", allEntries = true)
