@@ -8,8 +8,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -26,5 +24,14 @@ public class LocalizationDto {
 
     @NotEmpty
     private String message;
+
+    public static LocalizationDto fromLocalization(Localization localization){
+        return LocalizationDto.builder()
+                .id(localization.getId())
+                .languageCode(localization.getLanguageCode())
+                .key(localization.getKey())
+                .message(localization.getMessage())
+                .build();
+    }
 
 }

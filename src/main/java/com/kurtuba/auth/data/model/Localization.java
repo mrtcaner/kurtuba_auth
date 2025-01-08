@@ -28,7 +28,6 @@ public class Localization {
     private String languageCode;
 
     @NotEmpty
-    @Column(unique=true)
     private String key;
 
     @NotEmpty

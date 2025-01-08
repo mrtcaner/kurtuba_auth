@@ -2,9 +2,14 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.LocalizationDto;
 import com.kurtuba.auth.data.dto.LocalizationResponseDto;
+import com.kurtuba.auth.data.dto.LocalizationUpdateDto;
 import com.kurtuba.auth.data.model.Localization;
+import com.kurtuba.auth.error.enums.ErrorEnum;
+import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.LocalizationService;
 import jakarta.validation.Valid;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -54,12 +59,26 @@ public class LocalizationController {
 
     @PostMapping("/localization")
     public ResponseEntity createLocalization(@Valid @RequestBody LocalizationDto localizationDto){
-        return ResponseEntity.ok().body(localizationService.save(localizationDto));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(LocalizationResponseDto.fromLocalization(localizationService.create(localizationDto)));
     }
 
     @PutMapping("/localization")
-    public ResponseEntity updateLocalization(@Valid @RequestBody LocalizationDto localizationDto){
-        return ResponseEntity.ok().body(localizationService.update(localizationDto));
+    public ResponseEntity updateLocalization(@Valid @RequestBody LocalizationUpdateDto localizationUpdateDto){
+        // for the sake of proper cache management, changing lang and key is not allowed. So this swap needs to
+        //take place
+        Localization localization = localizationService.finById(localizationUpdateDto.getId()).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_ID));
+        localization.setMessage(localizationUpdateDto.getMessage());
+        return ResponseEntity.ok()
+                .body(LocalizationResponseDto.fromLocalization(localizationService.update(LocalizationDto
+                        .fromLocalization(localization))));
+    }
+
+    @CacheEvict(value = "localization", allEntries = true)
+    @DeleteMapping("/localization/cache")
+    public ResponseEntity deleteLocalizationCache(){
+        return ResponseEntity.ok().build();
     }
 
 }
