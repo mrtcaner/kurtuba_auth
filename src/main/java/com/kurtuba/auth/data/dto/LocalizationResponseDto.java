@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class LocalizationResponseDto {
 
+    private String id;
     private String languageCode;
     private String key;
     private String message;
@@ -23,6 +24,7 @@ public class LocalizationResponseDto {
 
     public static LocalizationResponseDto fromLocalization(Localization localization){
         return LocalizationResponseDto.builder()
+                .id(localization.getId())
                 .languageCode(localization.getLanguageCode())
                 .key(localization.getKey())
                 .message(localization.getMessage())

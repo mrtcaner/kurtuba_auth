@@ -29,7 +29,8 @@ public enum ErrorEnum {
     USER_REGISTRATION_CONTACT_TYPE_MOBILE_MISSING("Mobile contact is preferred but no number is provided",1319),
     USER_MOBILE_NOT_VERIFIED("User mobile is not verified",1320),
     MAIL_UNABLE_TO_SEND("Unable to send mail",1400),
-    LOCALIZATION_INVALID_RESOURCE_ID("Invalid resource id",1500);
+    LOCALIZATION_INVALID_RESOURCE_ID("Invalid resource id",1500),
+    LOCALIZATION_ALREADY_EXISTS("Localization already exits",1501);
 
 
 
