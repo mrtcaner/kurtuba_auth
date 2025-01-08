@@ -156,7 +156,7 @@ public class UserService {
                 .executed(true)
                 .expirationDate(LocalDateTime.now())
                 .build());
-        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE);
+        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE, user.getLanguage());
     }
 
     @Transactional
@@ -371,9 +371,9 @@ public class UserService {
         // in case there are both email and mobile contacts, only one can be used to activate account.
         if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
             if (newUser.isVerificationByCode()) {
-                messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode());
+                messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getLanguage());
             } else {
-                messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam());
+                messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getLanguage());
             }
         } else {
             // todo implement send sms
@@ -503,9 +503,9 @@ public class UserService {
         userMetaChangeService.create(metaChange);
 
         if (byCode) {
-            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode());
+            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode(), user.getLanguage());
         } else {
-            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam());
+            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam(), user.getLanguage());
         }
 
         return metaChange;
@@ -551,9 +551,9 @@ public class UserService {
         if (emailMobile.contains("@")) {
             //email
             if (byCode == true) {
-                messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode());
+                messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(), user.getLanguage());
             } else {
-                messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam());
+                messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getLanguage());
             }
         } else {
             //mobile
@@ -638,7 +638,7 @@ public class UserService {
         userMetaChangeService.create(userMetaChange);
 
         if (StringUtils.hasLength(user.getEmail())) {
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET);
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET, user.getLanguage());
         }
 
         //todo uncomment after SMS integration
@@ -702,9 +702,9 @@ public class UserService {
                 .build();
         userMetaChangeService.create(metaChange);
         if (byCode) {
-            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode());
+            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getLanguage());
         } else {
-            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam());
+            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getLanguage());
         }
 
         return metaChange.getId();
@@ -827,7 +827,7 @@ public class UserService {
 
         if (StringUtils.hasLength(user.getEmail())) {
             //send change notification mail to old e-mail
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE);
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE, user.getLanguage());
         }
 
         user.setEmail(userMetaChange.getMeta());

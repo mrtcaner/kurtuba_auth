@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "localization")
-public class Localization {
+@Table(name = "localization_available_locale")
+public class LocalizationAvailableLocale {
 
     private static final long serialVersionUID = 1L;
 
@@ -28,10 +28,7 @@ public class Localization {
     private String languageCode;
 
     @NotEmpty
-    private String key;
-
-    @NotEmpty
-    private String message;
+    private String countryCode;
 
     @NotNull
     private LocalDateTime createdDate;

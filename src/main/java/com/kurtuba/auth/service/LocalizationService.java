@@ -1,8 +1,8 @@
 package com.kurtuba.auth.service;
 
-import com.kurtuba.auth.data.dto.LocalizationDto;
-import com.kurtuba.auth.data.model.Localization;
-import com.kurtuba.auth.data.repository.LocalizationRepository;
+import com.kurtuba.auth.data.dto.LocalizationMessageDto;
+import com.kurtuba.auth.data.model.LocalizationMessage;
+import com.kurtuba.auth.data.repository.LocalizationMessageRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import jakarta.validation.Valid;
@@ -20,62 +20,61 @@ import java.util.Optional;
 public class LocalizationService {
 
     final
-    LocalizationRepository localizationRepository;
+    LocalizationMessageRepository localizationMessageRepository;
 
-
-    public LocalizationService(LocalizationRepository localizationRepository) {
-        this.localizationRepository = localizationRepository;
+    public LocalizationService(LocalizationMessageRepository localizationMessageRepository) {
+        this.localizationMessageRepository = localizationMessageRepository;
     }
 
-    public Optional<Localization> finById(String id) {
-        return localizationRepository.findById(id);
+    public Optional<LocalizationMessage> finById(String id) {
+        return localizationMessageRepository.findById(id);
     }
 
-    public List<Localization> findAll() {
-        return (List<Localization>) localizationRepository.findAll();
+    public List<LocalizationMessage> findAll() {
+        return (List<LocalizationMessage>) localizationMessageRepository.findAll();
     }
 
 
-    public List<Localization> findByLanguageCode(String languageCode) {
-        return (List<Localization>) localizationRepository.findByLanguageCode(languageCode);
+    public List<LocalizationMessage> findByLanguageCode(String languageCode) {
+        return (List<LocalizationMessage>) localizationMessageRepository.findByLanguageCode(languageCode);
     }
 
-    public List<Localization> findByKey(String key) {
-        return (List<Localization>) localizationRepository.findByKey(key);
+    public List<LocalizationMessage> findByKey(String key) {
+        return (List<LocalizationMessage>) localizationMessageRepository.findByKey(key);
     }
 
     @Cacheable(value = "localization", key = "#languageCode + '_' + #key")
-    public Optional<Localization> findByLanguageCodeAndKey(String languageCode, String key) {
-        return localizationRepository.findByLanguageCodeAndKey(languageCode, key);
+    public Optional<LocalizationMessage> findByLanguageCodeAndKey(String languageCode, String key) {
+        return localizationMessageRepository.findByLanguageCodeAndKey(languageCode, key);
     }
 
-    @CachePut(value = "localization", key = "#localizationDto.languageCode + '_' + #localizationDto.key")
+    @CachePut(value = "localization", key = "#localizationMessageDto.languageCode + '_' + #localizationMessageDto.key")
     @Transactional
-    public Localization create(@Valid LocalizationDto localizationDto) {
-        findByLanguageCodeAndKey(localizationDto.getLanguageCode(), localizationDto.getKey())
+    public LocalizationMessage create(@Valid LocalizationMessageDto localizationMessageDto) {
+        findByLanguageCodeAndKey(localizationMessageDto.getLanguageCode(), localizationMessageDto.getKey())
                 .ifPresent(localization -> {
             throw new BusinessLogicException(ErrorEnum.LOCALIZATION_ALREADY_EXISTS);
         });
-        return localizationRepository.save(Localization.builder()
+        return localizationMessageRepository.save(LocalizationMessage.builder()
 
-                .languageCode(localizationDto.getLanguageCode())
-                .key(localizationDto.getKey())
-                .message(localizationDto.getMessage())
+                .languageCode(localizationMessageDto.getLanguageCode())
+                .key(localizationMessageDto.getKey())
+                .message(localizationMessageDto.getMessage())
                 .createdDate(LocalDateTime.now()).build());
     }
 
-    @CacheEvict(value = "localization", key = "#localizationDto.languageCode + '_' + #localizationDto.key")
+    @CacheEvict(value = "localization", key = "#localizationMessageDto.languageCode + '_' + #localizationMessageDto.key")
     @Transactional
-    public Localization update(@Valid LocalizationDto localizationDto) {
-        Localization localization = localizationRepository.findById(localizationDto.getId()).orElseThrow(() ->
+    public LocalizationMessage update(@Valid LocalizationMessageDto localizationMessageDto) {
+        LocalizationMessage localizationMessage = localizationMessageRepository.findById(localizationMessageDto.getId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_ID));
-        return localizationRepository.save(
-                Localization.builder()
-                        .id(localization.getId())
-                        .languageCode(localizationDto.getLanguageCode())
-                        .key(localizationDto.getKey())
-                        .message(localizationDto.getMessage())
-                        .createdDate(localization.getCreatedDate())
+        return localizationMessageRepository.save(
+                LocalizationMessage.builder()
+                        .id(localizationMessage.getId())
+                        .languageCode(localizationMessageDto.getLanguageCode())
+                        .key(localizationMessageDto.getKey())
+                        .message(localizationMessageDto.getMessage())
+                        .createdDate(localizationMessage.getCreatedDate())
                         .updatedDate(LocalDateTime.now())
                         .build());
     }

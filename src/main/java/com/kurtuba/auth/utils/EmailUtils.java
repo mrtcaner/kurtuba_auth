@@ -15,12 +15,16 @@ public class EmailUtils {
         String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
         htmlFileContent = htmlFileContent.replace("${title}", verificationMailDto.getTitle());
         htmlFileContent = htmlFileContent.replace("${greet}", verificationMailDto.getGreet());
-        htmlFileContent = htmlFileContent.replace("${msg1}", verificationMailDto.getMsg1());
+        htmlFileContent = htmlFileContent.replace("${prologue}", verificationMailDto.getPrologue());
         htmlFileContent = htmlFileContent.replace("${verificationLink}", verificationMailDto.getVerificationLink());
+        htmlFileContent = htmlFileContent.replace("${verifyEmail}", verificationMailDto.getVerifyEmailBtnLabel());
         htmlFileContent = htmlFileContent.replace("${verificationCode}", verificationMailDto.getVerificationCode());
         htmlFileContent = htmlFileContent.replace("${displayCode}", verificationMailDto.getDisplayCode());
         htmlFileContent = htmlFileContent.replace("${displayLink}", verificationMailDto.getDisplayLink());
-        htmlFileContent = htmlFileContent.replace("${msg2}", verificationMailDto.getMsg2());
+        htmlFileContent = htmlFileContent.replace("${epilogue}", verificationMailDto.getEpilogue());
+        htmlFileContent = htmlFileContent.replace("${closing}", verificationMailDto.getClosing());
+        htmlFileContent = htmlFileContent.replace("${closingSubject}", verificationMailDto.getClosingSubject());
+        htmlFileContent = htmlFileContent.replace("${getInTouch}", verificationMailDto.getClosingSubject());
         return htmlFileContent;
     }
 

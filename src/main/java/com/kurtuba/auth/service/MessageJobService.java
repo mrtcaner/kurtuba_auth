@@ -38,8 +38,12 @@ public class MessageJobService {
     final
     MessageJobRepository messageJobRepository;
 
-    public MessageJobService(MessageJobRepository messageJobRepository) {
+    final
+    LocalizationService localizationService;
+
+    public MessageJobService(MessageJobRepository messageJobRepository, LocalizationService localizationService) {
         this.messageJobRepository = messageJobRepository;
+        this.localizationService = localizationService;
     }
 
     @Transactional
@@ -57,16 +61,28 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendAccountActivationCodeMail(@NotEmpty String recipient, @NotEmpty String verificationCode) {
+    public void sendAccountActivationCodeMail(@NotEmpty String recipient, @NotEmpty String verificationCode, String lang) {
+
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title("THANKS FOR SIGNING UP!")
-                .greet("Hi")
-                .msg1("You're almost ready to get started. Here is your activation code")
+                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.prologue")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .verificationCode(verificationCode)
                 .verificationLink("")
+                .verifyEmailBtnLabel("")
                 .displayCode("block")
                 .displayLink("none")
-                .msg2("You can login to Kurtuba with your existing credentials to enter the code")
+                .epilogue(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.epilogue")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .build();
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
@@ -79,7 +95,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Account Activation Code")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -89,19 +106,31 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendAccountActivationLinkMail(String recipient, String verificationCode) {
+    public void sendAccountActivationLinkMail(String recipient, String verificationCode, String lang) {
+
         String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
                 "auth/registration/activation/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title("THANKS FOR SIGNING UP!")
-                .greet("Hi")
-                .msg1("You're almost ready to get started. Click below to verify your mail address")
+                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.prologue")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .verificationLink(verificationLink)
                 .verificationCode("")
+                .verifyEmailBtnLabel(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.button.label")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .displayCode("none")
                 .displayLink("block")
-                .msg2("")
+                .epilogue("")
+                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .build();
 
         try {
@@ -115,7 +144,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Account Activation")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.activation.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -126,7 +156,7 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendPasswordResetCodeMail(@NotEmpty String recipient, @NotEmpty String resetCode) {
+    public void sendPasswordResetCodeMail(@NotEmpty String recipient, @NotEmpty String resetCode, String lang) {
 
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
@@ -134,6 +164,16 @@ public class MessageJobService {
             htmlFileContent = htmlFileContent.replace("${resetCode}", resetCode);
             htmlFileContent = htmlFileContent.replace("${displayCode}", "block");
             htmlFileContent = htmlFileContent.replace("${displayLink}", "none");
+            htmlFileContent = htmlFileContent.replace("${prologue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.code.prologue")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.epilogue")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${closing}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing.subject")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.get-in-touch")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
 
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -143,7 +183,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Password Reset Code")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -154,7 +195,8 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendPasswordResetLinkMail(String recipient, String resetCode) {
+    public void sendPasswordResetLinkMail(String recipient, String resetCode, String lang) {
+
         String resetLink = authServerProtocol + authServerIp + ":" + authServerPort +
                 "/user/password/reset/password-reset/" + resetCode;
         try {
@@ -163,6 +205,16 @@ public class MessageJobService {
             htmlFileContent = htmlFileContent.replace("${resetLink}", resetLink);
             htmlFileContent = htmlFileContent.replace("${displayLink}", "block");
             htmlFileContent = htmlFileContent.replace("${displayCode}", "none");
+            htmlFileContent = htmlFileContent.replace("${prologue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.link.prologue")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.epilogue")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${closing}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.closing.subject")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.content.get-in-touch")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
 
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
@@ -172,7 +224,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Password Reset")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -182,17 +235,27 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserEmailChangeCodeMail(String recipient, String verificationCode) {
+    public void sendUserEmailChangeCodeMail(String recipient, String verificationCode, String lang) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title("Verify Your E-mail Address!")
-                .greet("Hi")
-                .msg1("Here is your verification code")
+                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.code.prologue")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .verificationCode(verificationCode)
                 .verificationLink("")
+                .verifyEmailBtnLabel("")
                 .displayCode("block")
                 .displayLink("none")
-                .msg2("")
+                .epilogue("")
+                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .build();
 
         try {
@@ -206,7 +269,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Email Verification Code")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -216,20 +280,31 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserEmailChangeLinkMail(String recipient, String verificationCode) {
+    public void sendUserEmailChangeLinkMail(String recipient, String verificationCode, String lang) {
 
         String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
                 "/user/email/verification/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title("Verify Your E-mail Address!")
-                .greet("Hi")
-                .msg1("Click below to verify your email address")
+                .title(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .greet(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .prologue(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.prologue")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .verificationLink(verificationLink)
+                .verifyEmailBtnLabel(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.button.label")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .verificationCode("")
                 .displayCode("none")
                 .displayLink("block")
-                .msg2("")
+                .epilogue("")
+                .closing(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .closingSubject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
+                .getInTouch(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch")
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                 .build();
 
         try {
@@ -243,7 +318,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Email Verification")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -253,12 +329,27 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType) {
+    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType, String lang) {
+
         String metaName = metaOperationType == MetaOperationType.PASSWORD_CHANGE || metaOperationType == MetaOperationType.PASSWORD_RESET ? "password" :
                 "email";
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            htmlFileContent = htmlFileContent.replace("${greet}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.greet")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${prologue}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.prologue")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${context}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.context")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${epilogue}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.epilogue")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${closing}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.closing")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${closingSubject}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.closing.subject")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
+            htmlFileContent = htmlFileContent.replace("${getInTouch}", localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.content.get-in-touch")
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage());
             htmlFileContent = htmlFileContent.replaceAll("metaName", metaName);
 
             messageJobRepository.save(MessageJob.builder()
@@ -269,7 +360,8 @@ public class MessageJobService {
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject("Kurtuba Account Modification")
+                    .subject(localizationService.findByLanguageCodeAndKey(lang, "mail.account.modification.subject")
+                            .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_PARAMETER)).getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
                     .build());
@@ -279,7 +371,7 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserMetaChangeNotificationSMS(String recipient, MetaOperationType metaOperationType) {
+    public void sendUserMetaChangeNotificationSMS(String recipient, MetaOperationType metaOperationType, String lang) {
         // todo implement send sms
         throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
     }
