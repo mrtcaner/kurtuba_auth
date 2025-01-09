@@ -1,13 +1,10 @@
 package com.kurtuba.auth.data.model;
 
-import com.kurtuba.auth.data.enums.AuthoritiesType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotEmpty;
+
 import jakarta.validation.constraints.NotNull;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -21,17 +18,20 @@ import java.time.LocalDateTime;
 public class UserRole implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
-    @NotEmpty
-    @Column(name = "user_id")
-    private String userId;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "user_id", referencedColumnName = "id")
+    @ToString.Exclude
+    @JsonIgnore
+    private User user;
 
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    private AuthoritiesType role;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "role_id", referencedColumnName = "id")
+    private Role role;
 
     @NotNull
     LocalDateTime createdDate;

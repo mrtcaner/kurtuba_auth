@@ -1,9 +1,11 @@
 package com.kurtuba.auth.data.dto;
 
 
-import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.AuthProviderType;
+import com.kurtuba.auth.data.enums.ContactType;
+import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
 import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.data.model.UserSetting;
 import com.kurtuba.auth.utils.Utils;
 import com.kurtuba.auth.utils.annotation.EmailAddress;
 import com.kurtuba.auth.utils.annotation.MobileNumber;
@@ -53,10 +55,10 @@ public class RegistrationDto {
     private AuthProviderType authProvider;
 
     @NotEmpty
-    private String language;
+    private String languageCode;
 
     @NotEmpty
-    private String country;
+    private String countryCode;
 
     @NotNull
     @Enumerated
@@ -73,15 +75,19 @@ public class RegistrationDto {
                 .password(password)
                 .authProvider(authProvider)
                 .mobile(mobile)
-                .canChangeUsername(false)
+                .userSetting(UserSetting.builder()
+                        .canChangeUsername(false)
+                        .locale(LocalizationAvailableLocale.builder()
+                                .languageCode(languageCode)
+                                .countryCode(countryCode)
+                                .build())
+                        .build())
                 .activated(false)
                 .locked(false)
                 .failedLoginCount(0)
                 .showCaptcha(false)
                 .emailVerified(false)
                 .mobileVerified(false)
-                .language(language)
-                .country(country)
                 .createdDate(LocalDateTime.now())
                 .build();
     }

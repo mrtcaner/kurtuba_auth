@@ -5,13 +5,10 @@ import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
-import com.kurtuba.auth.data.model.RegisteredClient;
-import com.kurtuba.auth.data.model.User;
-import com.kurtuba.auth.data.model.UserMetaChange;
-import com.kurtuba.auth.data.model.UserRole;
+import com.kurtuba.auth.data.model.*;
+import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.data.repository.UserRepository;
-import com.kurtuba.auth.data.repository.UserRoleRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TokenUtils;
@@ -41,12 +38,13 @@ import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UserRoleRepository userRoleRepository;
+    private final UserRoleService userRoleService;
     private final UserTokenService userTokenService;
     private final MessageJobService messageJobService;
     private final UserMetaChangeService userMetaChangeService;
     private final RegisteredClientRepository registeredClientRepository;
     private final EntityManagerFactory entityManagerFactory;
+    private final LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
 
     @Value("${kurtuba.meta-change.validity.password-reset-code.minutes}")
     private int passwordResetCodeValidityMinutes;
@@ -57,18 +55,18 @@ public class UserService {
     @Value("${kurtuba.meta-change.validity.email.change-code.minutes}")
     private int emailChangeCodeValidityMinutes;
 
-    public UserService(UserRepository userRepository, UserRoleRepository userRoleRepository,
-                       UserTokenService userTokenService, MessageJobService messageJobService,
-                       UserMetaChangeService userMetaChangeService,
-                       RegisteredClientRepository registeredClientRepository,
-                       EntityManagerFactory entityManagerFactory) {
+    public UserService(UserRepository userRepository, UserRoleService userRoleService, UserTokenService userTokenService,
+                       MessageJobService messageJobService, UserMetaChangeService userMetaChangeService,
+                       RegisteredClientRepository registeredClientRepository, EntityManagerFactory entityManagerFactory,
+                       LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository) {
         this.userRepository = userRepository;
-        this.userRoleRepository = userRoleRepository;
+        this.userRoleService = userRoleService;
         this.userTokenService = userTokenService;
         this.messageJobService = messageJobService;
         this.userMetaChangeService = userMetaChangeService;
         this.registeredClientRepository = registeredClientRepository;
         this.entityManagerFactory = entityManagerFactory;
+        this.localizationAvailableLocaleRepository = localizationAvailableLocaleRepository;
     }
 
     @Transactional
@@ -156,7 +154,7 @@ public class UserService {
                 .executed(true)
                 .expirationDate(LocalDateTime.now())
                 .build());
-        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE, user.getLanguage());
+        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE, user.getUserSetting().getLocale().getLanguageCode());
     }
 
     @Transactional
@@ -248,7 +246,7 @@ public class UserService {
 
             Set<String> roles = null;
             if (client.isScopeEnabled()) {
-                roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
+                roles = user.getUserRoles().stream().map(role -> role.getRole().getName()).collect(Collectors.toSet());
             }
 
             //create token(s)
@@ -337,12 +335,30 @@ public class UserService {
 
         User user = newUser.toUser();
         if (StringUtils.hasLength(user.getUsername())) {
-            user.setCanChangeUsername(false);
+            user.getUserSetting().setCanChangeUsername(false);
         } else {
-            user.setCanChangeUsername(true);
+            user.getUserSetting().setCanChangeUsername(true);
         }
 
+        user.getUserSetting().setLocale(localizationAvailableLocaleRepository
+                .findByLanguageCodeAndCountryCode(user.getUserSetting().getLocale().getLanguageCode(),
+                        user.getUserSetting().getLocale().getCountryCode())
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION)));
+        user.getUserSetting().setCreatedDate(LocalDateTime.now());
+        user.getUserSetting().setUser(user);
+
+        //first save user and userSettings
         userRepository.save(user);
+
+        // and then save user roles
+        user.setUserRoles(List.of(
+                userRoleService.create(UserRole.builder()
+                        .user(user)
+                        .role(Role.builder().name(AuthoritiesType.USER.name()).build())
+                        .createdDate(LocalDateTime.now())
+                        .build())
+                ));
+
 
         UserMetaChange metaChange = UserMetaChange.builder()
                 .userId(user.getId())
@@ -360,20 +376,13 @@ public class UserService {
                 .build();
 
         userMetaChangeService.create(metaChange);
-        user.setUserRoles(List.of(
-                UserRole.builder()
-                        .userId(user.getId())
-                        .role(AuthoritiesType.USER)
-                        .createdDate(LocalDateTime.now())
-                        .build()));
-        userRoleRepository.saveAll(user.getUserRoles());
 
         // in case there are both email and mobile contacts, only one can be used to activate account.
         if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
             if (newUser.isVerificationByCode()) {
-                messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getLanguage());
+                messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
             } else {
-                messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getLanguage());
+                messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
             }
         } else {
             // todo implement send sms
@@ -421,19 +430,27 @@ public class UserService {
             user.setEmailVerified(true);
             String pass = UUID.randomUUID().toString();
             user.setPassword(new BCryptPasswordEncoder().encode(pass));
-            String provisionalUsername = user.getEmail().split("@")[0];
+            /*String provisionalUsername = user.getEmail().split("@")[0];
             if (provisionalUsername.length() > 25) {
                 provisionalUsername = provisionalUsername.substring(0, 25);
             }
-            user.setUsername(provisionalUsername + "." + generateRandomAlphanumericString(6));
-            user.setCanChangeUsername(true);
+            user.setUsername(provisionalUsername + "." + generateRandomAlphanumericString(6));*/
+            user.getUserSetting().setCanChangeUsername(true);
+            user.getUserSetting().setLocale(localizationAvailableLocaleRepository
+                    .findByLanguageCodeAndCountryCode(user.getUserSetting().getLocale().getLanguageCode(),
+                            user.getUserSetting().getLocale().getCountryCode())
+                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION)));
+            user.getUserSetting().setCreatedDate(LocalDateTime.now());
+            user.getUserSetting().setUser(user);
+            // save user and userSettings
             userRepository.save(user);
             user.setUserRoles(List.of(
                     UserRole.builder()
-                            .userId(user.getId())
-                            .role(AuthoritiesType.USER)
+                            .user(user)
+                            .role(Role.builder().name(AuthoritiesType.USER.name()).build())
                             .build()));
-            userRoleRepository.saveAll(user.getUserRoles());
+            // save roles
+            userRoleService.create(user.getUserRoles().get(0));
             decodedUser.setPassword(pass);
             return decodedUser;
         }
@@ -503,9 +520,9 @@ public class UserService {
         userMetaChangeService.create(metaChange);
 
         if (byCode) {
-            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode(), user.getLanguage());
+            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
         } else {
-            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam(), user.getLanguage());
+            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
         }
 
         return metaChange;
@@ -551,9 +568,9 @@ public class UserService {
         if (emailMobile.contains("@")) {
             //email
             if (byCode == true) {
-                messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(), user.getLanguage());
+                messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
             } else {
-                messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getLanguage());
+                messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
             }
         } else {
             //mobile
@@ -638,7 +655,7 @@ public class UserService {
         userMetaChangeService.create(userMetaChange);
 
         if (StringUtils.hasLength(user.getEmail())) {
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET, user.getLanguage());
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET, user.getUserSetting().getLocale().getLanguageCode());
         }
 
         //todo uncomment after SMS integration
@@ -702,9 +719,9 @@ public class UserService {
                 .build();
         userMetaChangeService.create(metaChange);
         if (byCode) {
-            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getLanguage());
+            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
         } else {
-            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getLanguage());
+            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
         }
 
         return metaChange.getId();
@@ -827,7 +844,7 @@ public class UserService {
 
         if (StringUtils.hasLength(user.getEmail())) {
             //send change notification mail to old e-mail
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE, user.getLanguage());
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE, user.getUserSetting().getLocale().getLanguageCode());
         }
 
         user.setEmail(userMetaChange.getMeta());

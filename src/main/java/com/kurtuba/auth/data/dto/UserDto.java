@@ -4,6 +4,7 @@ package com.kurtuba.auth.data.dto;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserRole;
+import com.kurtuba.auth.data.model.UserSetting;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,15 +22,12 @@ public class UserDto {
     private String name;
     private String surname;
     private String email;
+    private String mobile;
     private String username;
     private List<UserRole> userRoles;
-    private String bio;
-    private String profilePicture;
-    private String profileCover;
-    private boolean canChangeUsername;
+    private UserSetting userSetting;
     private LocalDateTime birthdate;
     private AuthProviderType authProvider;
-    private String mobile;
     private boolean activated;
     private boolean locked;
     private int failedLoginCount;
@@ -37,8 +35,6 @@ public class UserDto {
     private boolean emailVerified;
     private boolean mobileVerified;
     private LocalDateTime lastLoginAttempt;
-    private String language;
-    private String country;
     private LocalDateTime createdDate;
 
     public User toUser() {
@@ -49,10 +45,7 @@ public class UserDto {
                 .email(email)
                 .username(username)
                 .userRoles(userRoles)
-                .bio(bio)
-                .profilePic(profilePicture)
-                .profileCover(profileCover)
-                .canChangeUsername(canChangeUsername)
+                .userSetting(userSetting)
                 .birthdate(birthdate)
                 .authProvider(authProvider)
                 .mobile(mobile)
@@ -63,8 +56,6 @@ public class UserDto {
                 .emailVerified(emailVerified)
                 .mobileVerified(mobileVerified)
                 .lastLoginAttempt(lastLoginAttempt)
-                .language(language)
-                .country(country)
                 .createdDate(createdDate)
                 .build();
     }
@@ -77,10 +68,7 @@ public class UserDto {
                 .email(user.getEmail())
                 .username(user.getUsername())
                 .userRoles(user.getUserRoles())
-                .bio(user.getBio())
-                .profilePicture(user.getProfilePic())
-                .profileCover(user.getProfileCover())
-                .canChangeUsername(user.isCanChangeUsername())
+                .userSetting(user.getUserSetting())
                 .birthdate(user.getBirthdate())
                 .authProvider(user.getAuthProvider())
                 .mobile(user.getMobile())
@@ -91,8 +79,6 @@ public class UserDto {
                 .emailVerified(user.isEmailVerified())
                 .mobileVerified(user.isMobileVerified())
                 .lastLoginAttempt(user.getLastLoginAttempt())
-                .language(user.getLanguage())
-                .country(user.getCountry())
                 .createdDate(user.getCreatedDate())
                 .build();
     }
