@@ -91,7 +91,7 @@ public class UserTokenService {
         // save new tokens
         Set<String> roles = null;
         if (result.getRegisteredClient().isScopeEnabled()) {
-            roles = user.getUserRoles().stream().map(role -> role.getRole().name()).collect(Collectors.toSet());
+            roles = user.getUserRoles().stream().map(role -> role.getRole().getName()).collect(Collectors.toSet());
         }
 
         Duration accessTokenTtlMinutes = Duration.ofMinutes(result.getRegisteredClient().getAccessTokenTtlMinutes());

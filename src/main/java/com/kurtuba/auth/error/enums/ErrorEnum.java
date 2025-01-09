@@ -30,8 +30,10 @@ public enum ErrorEnum {
     USER_MOBILE_NOT_VERIFIED("User mobile is not verified",1320),
     MAIL_UNABLE_TO_SEND("Unable to send mail",1400),
     LOCALIZATION_INVALID_RESOURCE_ID("Invalid resource id",1500),
+    LOCALIZATION_ALREADY_EXISTS("Localization already exits",1501),
     LOCALIZATION_INVALID_RESOURCE_PARAMETER("Invalid resource parameter (languageCode-key)",1502),
-    LOCALIZATION_ALREADY_EXISTS("Localization already exits",1501);
+    LOCALIZATION_UNSUPPORTED_REGION("Unsupported region",1503),
+    ROLE_INVALID("Invalid role",1600);
 
 
 

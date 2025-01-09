@@ -55,18 +55,11 @@ public class User implements Serializable {
     @NotEmpty
     private String password;
 
-    @OneToMany(fetch = FetchType.EAGER)
-    @JoinColumn(referencedColumnName = "id", name = "user_id")
-    @JsonIgnore
+    @OneToOne(fetch = FetchType.EAGER, mappedBy = "user", cascade = CascadeType.ALL)
+    private UserSetting userSetting;
+
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "user")
     private List<UserRole> userRoles;
-
-    String bio;
-
-    String profilePic;
-
-    String profileCover;
-
-    boolean canChangeUsername;
 
     private boolean activated;
 
@@ -87,11 +80,6 @@ public class User implements Serializable {
     @Nullable
     private LocalDateTime lastLoginAttempt;
 
-    @NotEmpty
-    private String language;
-
-    @NotEmpty
-    private String country;
 
     @NotNull
     private LocalDateTime createdDate;

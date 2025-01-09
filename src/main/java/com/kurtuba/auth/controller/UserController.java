@@ -59,8 +59,10 @@ public class UserController {
             // SERVICEs are not users
             return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).build();
         }
-        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getUserById(authentication.getName())
-                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)));
+        return ResponseEntity.status(HttpStatus.OK_200)
+                .body(UserDto.fromUser(userService.getUserById(authentication.getName())
+                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST)))
+        );
     }
 
     /**
@@ -77,7 +79,8 @@ public class UserController {
     }
 
     /**
-     *  Creates a password reset request byCode or Link
+     * Creates a password reset request byCode or Link
+     *
      * @param passwordResetRequestDto
      * @return
      */
@@ -94,13 +97,14 @@ public class UserController {
      * <p>
      * if client credentials are provided then return token(s)
      * else empty string
+     *
      * @param passwordResetByCodeDto
      * @return
      */
     @PutMapping("/password/reset/code")
     public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
         try {
-           return ResponseEntity.status(HttpStatus.OK_200).body(userService.resetPasswordByCode(passwordResetByCodeDto));
+            return ResponseEntity.status(HttpStatus.OK_200).body(userService.resetPasswordByCode(passwordResetByCodeDto));
         } catch (BusinessLogicException e) {
             if (ErrorEnum.USER_META_CHANGE_CODE_MISMATCH.getCode().equals(e.getErrorCode())) {
                 userService.updatePasswordResetTryCount(passwordResetByCodeDto);
@@ -246,6 +250,7 @@ public class UserController {
 
     /**
      * Verifies email using code
+     *
      * @param verificationDto
      * @return
      */
@@ -265,6 +270,7 @@ public class UserController {
 
     /**
      * Verifies email using link parameter
+     *
      * @param linkParam is Base64 encoded UUID
      * @return genericResult.html
      */

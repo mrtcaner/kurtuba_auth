@@ -53,7 +53,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         );
 
         List<SimpleGrantedAuthority> auths = new ArrayList<>();
-        user.getUserRoles().stream().map(auth -> auths.add(new SimpleGrantedAuthority(auth.getRole().name())));
+        user.getUserRoles().stream().map(auth -> auths.add(new SimpleGrantedAuthority(auth.getRole().getName())));
         return KurtubaUserDetailsDto.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())
