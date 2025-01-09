@@ -48,7 +48,7 @@ public class User implements Serializable {
     @MobileNumber(notEmpty = false)
     private String mobile;
 
-    @NotEmpty
+    @Nullable
     @EmailAddress(notEmpty = false)
     private String email;
 
