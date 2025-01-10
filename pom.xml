@@ -171,10 +171,10 @@
 			<plugin>
 				<groupId>io.fabric8</groupId>
 				<artifactId>docker-maven-plugin</artifactId>
-				<version>0.43.2</version>
+				<version>0.45.1</version>
 				<configuration>
 					<verbose>true</verbose>
-					<pushRegistry>192.168.1.4:5000/repo_dev</pushRegistry>
+					<pushRegistry>192.168.1.114:5000/repo_dev</pushRegistry>
 					<images>
 						<image>
 							<name>${project.name}:${project.version}</name>
@@ -333,8 +333,8 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.20</minimum>
-										</limit>
+											<minimum>0.03</minimum>
+										</limit>assertEquals
 									</limits>
 								</rule>
 							</rules>

@@ -54,9 +54,6 @@ public class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
-    @Spy
-    private Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-
 
     RegistrationDto registrationDto;
 
