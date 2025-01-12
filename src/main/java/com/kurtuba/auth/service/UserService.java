@@ -326,12 +326,6 @@ public class UserService {
 
     }
 
-    /**
-     * Temporary method. Only user for local development. Will be removed
-     *
-     * @param user
-     * @return
-     */
     @Transactional
     public User saveUser(User user) {
        return userRepository.save(user);

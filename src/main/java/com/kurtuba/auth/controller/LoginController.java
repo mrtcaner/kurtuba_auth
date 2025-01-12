@@ -8,7 +8,7 @@ import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
-import com.kurtuba.auth.service.AuthenticationService;
+import com.kurtuba.auth.service.LoginsService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.TokenUtils;
 import jakarta.validation.Valid;
@@ -30,7 +30,7 @@ public class LoginController {
     UserService userService;
 
     final
-    AuthenticationService authenticationService;
+    LoginsService loginsService;
 
     final
     RegisteredClientRepository registeredClientRepository;
@@ -38,9 +38,9 @@ public class LoginController {
     final
     TokenUtils tokenUtils;
 
-    public LoginController(UserService userService, AuthenticationService authenticationService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
+    public LoginController(UserService userService, LoginsService loginsService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
         this.userService = userService;
-        this.authenticationService = authenticationService;
+        this.loginsService = loginsService;
         this.registeredClientRepository = registeredClientRepository;
         this.tokenUtils = tokenUtils;
     }
@@ -56,7 +56,7 @@ public class LoginController {
         }
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
-        TokensResponseDto tokenDto = authenticationService.authenticateAndGetTokens(loginCredentials.getEmailUsername(),
+        TokensResponseDto tokenDto = loginsService.authenticateAndGetTokens(loginCredentials.getEmailUsername(),
                 loginCredentials.getPassword(), loginCredentials.getClientId(), loginCredentials.getClientSecret());
 
         RegisteredClient client = registeredClientRepository.findByClientId(loginCredentials.getClientId())

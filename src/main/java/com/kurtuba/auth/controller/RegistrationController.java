@@ -6,7 +6,7 @@ import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
-import com.kurtuba.auth.service.AuthenticationService;
+import com.kurtuba.auth.service.LoginsService;
 import com.kurtuba.auth.service.RegistrationService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.Utils;
@@ -33,13 +33,13 @@ public class RegistrationController {
 
     final RegisteredClientRepository registeredClientRepository;
 
-    final AuthenticationService authenticationService;
+    final LoginsService loginService;
 
-    public RegistrationController(UserService userService, RegistrationService registrationService, RegisteredClientRepository registeredClientRepository, AuthenticationService authenticationService) {
+    public RegistrationController(UserService userService, RegistrationService registrationService, RegisteredClientRepository registeredClientRepository, LoginsService loginService) {
         this.registrationService = registrationService;
         this.userService = userService;
         this.registeredClientRepository = registeredClientRepository;
-        this.authenticationService = authenticationService;
+        this.loginService = loginService;
     }
 
     @PostMapping("/registration")
@@ -61,7 +61,7 @@ public class RegistrationController {
     @PostMapping("/registration/other-provider")
     public ResponseEntity<TokensResponseDto> registerViaAnotherProvider(@Valid @RequestBody RegistrationOtherProviderDto newUser) {
         RegistrationDto dto = registrationService.registerByAnotherProvider(newUser);
-        TokensResponseDto tokenResponseDto = authenticationService.authenticateAndGetTokens(dto.getEmail(), dto.getPassword(),
+        TokensResponseDto tokenResponseDto = loginService.authenticateAndGetTokens(dto.getEmail(), dto.getPassword(),
                 registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT).get(0).getClientId(),
                 "");
         return ResponseEntity
