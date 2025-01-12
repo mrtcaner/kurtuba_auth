@@ -4,6 +4,7 @@ import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.dto.KurtubaUserDetailsDto;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
+import com.kurtuba.auth.service.AuthenticationService;
 import com.kurtuba.auth.service.UserService;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,8 +25,12 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
     final
     UserService userService;
 
-    public CustomAuthenticationProvider(UserService userService) {
+    final
+    AuthenticationService authenticationService;
+
+    public CustomAuthenticationProvider(UserService userService, AuthenticationService authenticationService) {
         this.userService = userService;
+        this.authenticationService = authenticationService;
     }
 
     @Override
@@ -35,7 +40,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
 
         //Authenticate
         try{
-            userService.authenticate(emailMobile,password);
+            authenticationService.authenticate(emailMobile,password);
         }catch (BusinessLogicException e){
             throw new BadCredentialsException("Invalid credentials");
         }

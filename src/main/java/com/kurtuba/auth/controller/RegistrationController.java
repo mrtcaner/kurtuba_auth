@@ -6,6 +6,8 @@ import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
+import com.kurtuba.auth.service.AuthenticationService;
+import com.kurtuba.auth.service.RegistrationService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.Utils;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -27,11 +29,17 @@ public class RegistrationController {
 
     final UserService userService;
 
+    final RegistrationService registrationService;
+
     final RegisteredClientRepository registeredClientRepository;
 
-    public RegistrationController(UserService userService, RegisteredClientRepository registeredClientRepository) {
+    final AuthenticationService authenticationService;
+
+    public RegistrationController(UserService userService, RegistrationService registrationService, RegisteredClientRepository registeredClientRepository, AuthenticationService authenticationService) {
+        this.registrationService = registrationService;
         this.userService = userService;
         this.registeredClientRepository = registeredClientRepository;
+        this.authenticationService = authenticationService;
     }
 
     @PostMapping("/registration")
@@ -41,7 +49,7 @@ public class RegistrationController {
     public ResponseEntity register(@Valid @RequestBody RegistrationDto newUser) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
                 RegistrationResponseDto.builder()
-                        .userMetaChangeId(userService.register(newUser))
+                        .userMetaChangeId(registrationService.register(newUser))
                         .user(UserDto.fromUser(userService.getUserByEmail(newUser.getEmail()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST))))
                         .build());
@@ -52,8 +60,8 @@ public class RegistrationController {
                     schema = @Schema(implementation = TokensResponseDto.class))})
     @PostMapping("/registration/other-provider")
     public ResponseEntity<TokensResponseDto> registerViaAnotherProvider(@Valid @RequestBody RegistrationOtherProviderDto newUser) {
-        RegistrationDto dto = userService.registerByAnotherProvider(newUser);
-        TokensResponseDto tokenResponseDto = userService.authenticateAndGetTokens(dto.getEmail(), dto.getPassword(),
+        RegistrationDto dto = registrationService.registerByAnotherProvider(newUser);
+        TokensResponseDto tokenResponseDto = authenticationService.authenticateAndGetTokens(dto.getEmail(), dto.getPassword(),
                 registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT).get(0).getClientId(),
                 "");
         return ResponseEntity
@@ -114,7 +122,7 @@ public class RegistrationController {
     @PutMapping("/registration/activation")
     public ResponseEntity activateAccountByCode(@Valid @RequestBody AccountActivationDto accountActivationDto) {
         try {
-            TokensResponseDto tokens = userService.activateAccountByCode(accountActivationDto.getEmailMobile(), accountActivationDto.getCode(),
+            TokensResponseDto tokens = registrationService.activateAccountByCode(accountActivationDto.getEmailMobile(), accountActivationDto.getCode(),
                     accountActivationDto.getClientId(), accountActivationDto.getClientSecret());
 
             return tokens == null ? ResponseEntity.status(HttpStatus.OK_200).build() :
@@ -136,7 +144,7 @@ public class RegistrationController {
     public ModelAndView activateAccountByLink(@NotBlank @PathVariable String linkParam) {
         ModelAndView modelAndView = new ModelAndView();
         try {
-            UserMetaChange umc = userService.activateAccountByLink(linkParam);
+            UserMetaChange umc = registrationService.activateAccountByLink(linkParam);
             modelAndView.setViewName("genericResult.html");//sucess
             modelAndView.addAllObjects(ResultPageDto.builder()
                     .success(true)

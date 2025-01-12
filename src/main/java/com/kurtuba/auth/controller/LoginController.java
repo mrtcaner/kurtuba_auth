@@ -8,6 +8,7 @@ import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
+import com.kurtuba.auth.service.AuthenticationService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.TokenUtils;
 import jakarta.validation.Valid;
@@ -20,8 +21,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("auth")
@@ -31,13 +30,17 @@ public class LoginController {
     UserService userService;
 
     final
+    AuthenticationService authenticationService;
+
+    final
     RegisteredClientRepository registeredClientRepository;
 
     final
     TokenUtils tokenUtils;
 
-    public LoginController(UserService userService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
+    public LoginController(UserService userService, AuthenticationService authenticationService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
         this.userService = userService;
+        this.authenticationService = authenticationService;
         this.registeredClientRepository = registeredClientRepository;
         this.tokenUtils = tokenUtils;
     }
@@ -53,13 +56,14 @@ public class LoginController {
         }
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
-        TokensResponseDto tokenDto = userService.authenticateAndGetTokens(loginCredentials.getEmailUsername(),
+        TokensResponseDto tokenDto = authenticationService.authenticateAndGetTokens(loginCredentials.getEmailUsername(),
                 loginCredentials.getPassword(), loginCredentials.getClientId(), loginCredentials.getClientSecret());
 
         RegisteredClient client = registeredClientRepository.findByClientId(loginCredentials.getClientId())
                 .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
         if (client.isSendTokenInCookie()) {
             // return a cookie
+            // HttpStatus-204
             ResponseCookie cookie = ResponseCookie.from("jwt", tokenDto.accessToken)
                     .httpOnly(true)
                     .secure(false)
@@ -67,11 +71,12 @@ public class LoginController {
                     .maxAge(client.getCookieMaxAgeSeconds())
                     .build();
 
-            return ResponseEntity.status(HttpStatus.OK)
+            return ResponseEntity.status(HttpStatus.NO_CONTENT)
                     .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                    .body("");
+                    .build();
         } else {
             // return token json
+            // HttpStatus-200
             return ResponseEntity.status(HttpStatus.OK)
                     .body(tokenDto);
         }

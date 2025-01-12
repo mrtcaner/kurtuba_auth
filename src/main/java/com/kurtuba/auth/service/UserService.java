@@ -2,47 +2,38 @@ package com.kurtuba.auth.service;
 
 import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.AuthProviderType;
-import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
-import com.kurtuba.auth.data.model.*;
+import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
-import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
-import com.kurtuba.auth.utils.TokenUtils;
-import com.nimbusds.jose.shaded.gson.JsonObject;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.EntityTransaction;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Base64;
+import java.util.Optional;
+import java.util.UUID;
 
+import static com.kurtuba.auth.utils.ServiceUtils.validateUserMetaChange;
 import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UserRoleService userRoleService;
     private final UserTokenService userTokenService;
     private final MessageJobService messageJobService;
     private final UserMetaChangeService userMetaChangeService;
-    private final RegisteredClientRepository registeredClientRepository;
-    private final EntityManagerFactory entityManagerFactory;
     private final LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
 
     @Value("${kurtuba.meta-change.validity.password-reset-code.minutes}")
@@ -54,76 +45,14 @@ public class UserService {
     @Value("${kurtuba.meta-change.validity.email.change-code.minutes}")
     private int emailChangeCodeValidityMinutes;
 
-    public UserService(UserRepository userRepository, UserRoleService userRoleService, UserTokenService userTokenService,
+    public UserService(UserRepository userRepository, UserTokenService userTokenService,
                        MessageJobService messageJobService, UserMetaChangeService userMetaChangeService,
-                       RegisteredClientRepository registeredClientRepository, EntityManagerFactory entityManagerFactory,
                        LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository) {
         this.userRepository = userRepository;
-        this.userRoleService = userRoleService;
         this.userTokenService = userTokenService;
         this.messageJobService = messageJobService;
         this.userMetaChangeService = userMetaChangeService;
-        this.registeredClientRepository = registeredClientRepository;
-        this.entityManagerFactory = entityManagerFactory;
         this.localizationAvailableLocaleRepository = localizationAvailableLocaleRepository;
-    }
-
-    @Transactional
-    public TokensResponseDto activateAccountByCode(String emailMobile, String code, String clientId, String clientSecret) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        UserMetaChange userMetaChange = userMetaChangeService.findActiveMetaChangeOperationForUser(user.getId(),
-                MetaOperationType.ACCOUNT_ACTIVATION).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        validateAccountActivationUserMetaChange(userMetaChange, code);
-        return activateAccount(user, userMetaChange, clientId, clientSecret);
-    }
-
-    @Transactional
-    public UserMetaChange activateAccountByLink(String linkParam) {
-        UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
-        validateAccountActivationUserMetaChange(userMetaChange, null);
-        User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-        activateAccount(user, userMetaChange, null, null);
-        return userMetaChange;
-    }
-
-    private void validateAccountActivationUserMetaChange(UserMetaChange userMetaChange, String code) {
-
-        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.ACCOUNT_ACTIVATION)) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
-        }
-
-        validateUserMetaChange(userMetaChange, code);
-    }
-
-    private TokensResponseDto activateAccount(User user, UserMetaChange userMetaChange, String clientId, String clientSecret) {
-
-        if (user == null) {
-            throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
-        }
-
-        if (user.isActivated()) {
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
-        }
-
-        validateAccountActivationUserMetaChange(userMetaChange, null);
-
-        user.setActivated(true);
-        if (userMetaChange.getContactType().equals(ContactType.EMAIL)) {
-            user.setEmailVerified(true);
-        } else {
-            user.setMobileVerified(true);
-        }
-        userRepository.save(user);
-        userMetaChange.setUpdatedDate(LocalDateTime.now());
-        userMetaChange.setExecuted(true);
-        userMetaChangeService.update(userMetaChange);
-
-        return validateRegisteredClientAndGetTokens(user, clientId, clientSecret);
-
     }
 
     @Transactional
@@ -156,106 +85,6 @@ public class UserService {
         messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE, user.getUserSetting().getLocale().getLanguageCode());
     }
 
-    @Transactional
-    public TokensResponseDto authenticateAndGetTokens(String emailMobile, String pass,
-                                                      String registeredClientId, String registeredClientSecret) {
-        // authenticate user
-        User user = authenticate(emailMobile, pass);
-        return validateRegisteredClientAndGetTokens(user, registeredClientId, registeredClientSecret);
-
-
-    }
-
-    /**
-     * Used by both authorization server login(CustomAuthenticationProvider) and
-     * custom rest request login(EmailPassLoginController)
-     * <p>
-     * transaction is managed manually because we may save data to db and then throw BusinessLogicException
-     */
-
-
-    public User authenticate(String emailMobile, String pass) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS));
-
-        long timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 15;
-        if (user.isLocked() && LocalDateTime.now().isBefore(user.getLastLoginAttempt().plusMinutes(timeToWait))) {
-            throw new BusinessLogicException(ErrorEnum.LOGIN_USER_LOCKED.getCode(), "Account locked until " + user.getLastLoginAttempt().plusMinutes(timeToWait));
-        }
-
-        user.setLastLoginAttempt(LocalDateTime.now());
-        String dbPass = user.getPassword();
-        EntityTransaction transaction = null;
-        try (EntityManager em = em()) {
-            transaction = em.getTransaction();
-            transaction.begin();
-            user = em.find(User.class, user.getId());
-            if (!BCrypt.checkpw(pass, dbPass)) {
-                user.setFailedLoginCount(user.getFailedLoginCount() + 1);
-
-                if (user.getFailedLoginCount() >= 5) {
-                    user.setShowCaptcha(true);
-                }
-
-                if (user.getFailedLoginCount() >= 10) {
-                    user.setLocked(true);
-                    em.persist(user);
-                    transaction.commit();
-                    timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 15;
-                    throw new BusinessLogicException(ErrorEnum.LOGIN_USER_LOCKED.getCode(), "Account locked until " + user.getLastLoginAttempt().plusMinutes(timeToWait));
-                }
-                em.persist(user);
-                transaction.commit();
-                throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
-
-            }
-            user.setFailedLoginCount(0);
-            user.setShowCaptcha(false);
-            user.setLocked(false);
-            em.persist(user);
-            transaction.commit();
-            return user;
-
-        }
-
-    }
-
-    private EntityManager em() {
-        return entityManagerFactory.createEntityManager();
-    }
-
-    private TokensResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret) {
-        if (StringUtils.hasLength(clientId)) {
-            RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
-                    new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
-            if (StringUtils.hasLength(client.getClientSecret())) {
-                if (!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
-                        .matches(clientSecret, client.getClientSecret())) {
-                    throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
-                }
-            }
-
-            // credentials validated
-            // generate tokens and return
-            Duration accessTokenValidity = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
-            Duration refreshTokenValidity = null;
-            if (client.isRefreshTokenEnabled()) {
-                refreshTokenValidity = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
-            }
-
-            Set<String> roles = null;
-            if (client.isScopeEnabled()) {
-                roles = user.getUserRoles().stream().map(role -> role.getRole().getName()).collect(Collectors.toSet());
-            }
-
-            //create token(s)
-            return userTokenService.createAndSaveTokens(user.getId(), client.getClientId(), client.getAuds(),
-                    roles, accessTokenValidity, refreshTokenValidity);
-
-        }
-
-        return null;
-    }
 
     public Optional<User> getUserByEmail(String email) {
         return userRepository.getUserByEmail(email);
@@ -267,6 +96,14 @@ public class UserService {
 
     public Optional<User> getUserById(String id) {
         return userRepository.getUserById(id);
+    }
+
+    public Optional<User> getUserByMobile(String mobile) {
+        return userRepository.getUserByMobile(mobile);
+    }
+
+    public Optional<User> getUserByUsername(String userName) {
+        return userRepository.getUserByUsername(userName);
     }
 
     public Optional<User> getUserByUsernameOrEmail(String email) {
@@ -304,181 +141,6 @@ public class UserService {
 
             System.out.println("Created new user: " + username);
         }
-
-    }
-
-    @Transactional
-    public String register(@Valid RegistrationDto newUser) {
-        if (StringUtils.hasLength(newUser.getEmail()) && userRepository.getUserByEmail(newUser.getEmail()).isPresent()) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
-        }
-
-        if (StringUtils.hasLength(newUser.getMobile()) && userRepository.getUserByMobile(newUser.getMobile()).isPresent()) {
-            throw new BusinessLogicException(ErrorEnum.USER_MOBILE_ALREADY_EXISTS);
-        }
-
-        if (StringUtils.hasLength(newUser.getUsername()) && userRepository.getUserByUsername(newUser.getUsername()).isPresent()) {
-            throw new BusinessLogicException(ErrorEnum.USER_USERNAME_ALREADY_EXISTS);
-        }
-
-        if (!StringUtils.hasLength(newUser.getEmail()) && !StringUtils.hasLength(newUser.getMobile())) {
-            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_REQUIRED);
-        }
-
-        if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) && !StringUtils.hasLength(newUser.getEmail())) {
-            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_REQUIRED);
-        }
-
-        String pass = newUser.getPassword();
-        newUser.setPassword(new BCryptPasswordEncoder().encode(pass));
-
-        User user = newUser.toUser();
-        if (StringUtils.hasLength(user.getUsername())) {
-            user.getUserSetting().setCanChangeUsername(false);
-        } else {
-            user.getUserSetting().setCanChangeUsername(true);
-        }
-
-        user.getUserSetting().setLocale(localizationAvailableLocaleRepository
-                .findByLanguageCodeAndCountryCode(user.getUserSetting().getLocale().getLanguageCode(),
-                        user.getUserSetting().getLocale().getCountryCode())
-                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION)));
-        user.getUserSetting().setCreatedDate(LocalDateTime.now());
-        user.getUserSetting().setUser(user);
-
-        //first save user and userSettings
-        User savedUser = userRepository.save(user);
-
-        // and then save user roles
-        user.setUserRoles(List.of(
-                userRoleService.create(UserRole.builder()
-                        .user(user)
-                        .role(Role.builder().name(AuthoritiesType.USER.name()).build())
-                        .createdDate(LocalDateTime.now())
-                        .build())
-                ));
-
-
-        UserMetaChange metaChange = UserMetaChange.builder()
-                .userId(savedUser.getId())
-                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
-                .contactType(newUser.getPreferredVerificationContact())
-                .meta(newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) ? savedUser.getEmail() : savedUser.getMobile())
-                .executed(false)
-                .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(activationCodeValidityMinutes))
-                .maxTryCount(newUser.isVerificationByCode() ? metaChangeMaxTryCount : null)
-                .tryCount(newUser.isVerificationByCode() ? 0 : null)
-                .code(newUser.isVerificationByCode() ? generateVerificationCode() : null)
-                .linkParam(!newUser.isVerificationByCode() ?
-                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
-                .build();
-
-        UserMetaChange savedMetaChange = userMetaChangeService.create(metaChange);
-
-        // in case there are both email and mobile contacts, only one can be used to activate account.
-        if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
-            if (newUser.isVerificationByCode()) {
-                messageJobService.sendAccountActivationCodeMail(savedUser.getEmail(), savedMetaChange.getCode(), savedUser.getUserSetting().getLocale().getLanguageCode());
-            } else {
-                messageJobService.sendAccountActivationLinkMail(savedUser.getEmail(), savedMetaChange.getLinkParam(), savedUser.getUserSetting().getLocale().getLanguageCode());
-            }
-        } else {
-            // todo implement send sms
-            throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
-        }
-
-        return savedMetaChange.getId();
-    }
-
-    @Transactional
-    public RegistrationDto registerByAnotherProvider(@Valid RegistrationOtherProviderDto newUserByOtherProvider) {
-
-        RegistrationDto decodedUser = null;
-        if (newUserByOtherProvider.getProvider().equals(AuthProviderType.GOOGLE)) {
-            try {
-                decodedUser = TokenUtils.decodeGoogleToken(newUserByOtherProvider.getToken(), newUserByOtherProvider.getClientId());
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN);
-            }
-        }
-        if (newUserByOtherProvider.getProvider().equals(AuthProviderType.FACEBOOK)) {
-            try {
-
-                JsonObject jsonUser = TokenUtils.decodeTokenPayload(newUserByOtherProvider.getToken());
-                decodedUser = new RegistrationDto();
-                decodedUser.setEmail(jsonUser.get("email").getAsString());
-                decodedUser.setName(jsonUser.get("given_name").getAsString());
-                decodedUser.setSurname(jsonUser.get("family_name").getAsString());
-                decodedUser.setAuthProvider(AuthProviderType.FACEBOOK);
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN);
-            }
-        }
-
-        //else check twitter etc. then...
-
-        //check if user already exists
-        User existingUser = userRepository.getUserByEmail(decodedUser.getEmail()).orElse(null);
-
-        if (existingUser == null) {
-            //this user never existed, let make one and return a token
-            User user = decodedUser.toUser();
-            user.setEmailVerified(true);
-            String pass = UUID.randomUUID().toString();
-            user.setPassword(new BCryptPasswordEncoder().encode(pass));
-            /*String provisionalUsername = user.getEmail().split("@")[0];
-            if (provisionalUsername.length() > 25) {
-                provisionalUsername = provisionalUsername.substring(0, 25);
-            }
-            user.setUsername(provisionalUsername + "." + generateRandomAlphanumericString(6));*/
-            user.getUserSetting().setCanChangeUsername(true);
-            user.getUserSetting().setLocale(localizationAvailableLocaleRepository
-                    .findByLanguageCodeAndCountryCode(user.getUserSetting().getLocale().getLanguageCode(),
-                            user.getUserSetting().getLocale().getCountryCode())
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION)));
-            user.getUserSetting().setCreatedDate(LocalDateTime.now());
-            user.getUserSetting().setUser(user);
-            // save user and userSettings
-            userRepository.save(user);
-            user.setUserRoles(List.of(
-                    UserRole.builder()
-                            .user(user)
-                            .role(Role.builder().name(AuthoritiesType.USER.name()).build())
-                            .build()));
-            // save roles
-            userRoleService.create(user.getUserRoles().get(0));
-            decodedUser.setPassword(pass);
-            return decodedUser;
-        }
-
-        if (existingUser.getAuthProvider().equals(AuthProviderType.KURTUBA)) {
-            //this is a regular user and we cannot return a token without changing pass so have to log in properly. Throw error
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
-        }
-
-        if (existingUser.getAuthProvider().equals(newUserByOtherProvider.getProvider())) {
-            //this email with given provider exists. check active, lock etc fields and return a token
-            if (existingUser.isActivated() && !existingUser.isLocked()) {
-                String pass = UUID.randomUUID().toString();
-                existingUser.setPassword(new BCryptPasswordEncoder().encode(pass));
-                decodedUser.setPassword(pass);
-                userRepository.save(existingUser);
-                return decodedUser;//accessTokenUtil.getAccessToken(existingUser.getEmail(), pass);
-            }
-
-        }
-
-        //This email with different provider exists. TODO Check active, lock etc fields and return a token
-        //That also means as long as user uses other providers with same email, same user will be logged in
-        String pass = UUID.randomUUID().toString();
-        existingUser.setPassword(new BCryptPasswordEncoder().encode(pass));
-        existingUser.setAuthProvider(decodedUser.getAuthProvider());
-        decodedUser.setPassword(pass);
-        userRepository.save(existingUser);
-        return decodedUser;//accessTokenUtil.getAccessToken(existingUser.getEmail(), pass);
 
     }
 
@@ -604,7 +266,7 @@ public class UserService {
         User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        return validateRegisteredClientAndGetTokens(user, passwordResetByCodeDto.getClientId(), passwordResetByCodeDto.getClientSecret());
+        return userTokenService.validateRegisteredClientAndGetTokens(user, passwordResetByCodeDto.getClientId(), passwordResetByCodeDto.getClientSecret());
 
     }
 
@@ -668,10 +330,11 @@ public class UserService {
      * Temporary method. Only user for local development. Will be removed
      *
      * @param user
+     * @return
      */
     @Transactional
-    public void saveUser(User user) {
-        userRepository.save(user);
+    public User saveUser(User user) {
+       return userRepository.save(user);
     }
 
     @Transactional
@@ -818,25 +481,6 @@ public class UserService {
         }
 
         validateUserMetaChange(userMetaChange, code);
-    }
-
-    private void validateUserMetaChange(UserMetaChange userMetaChange, String code) {
-
-        if (userMetaChange.getMaxTryCount() != null && userMetaChange.getTryCount() >= userMetaChange.getMaxTryCount()) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
-
-        if (StringUtils.hasLength(code) && !userMetaChange.getCode().equals(code)) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_MISMATCH);
-        }
-
-        if (userMetaChange.isExecuted()) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
-
-        if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
     }
 
     private UserDto saveNewEmail(UserMetaChange userMetaChange, User user) {

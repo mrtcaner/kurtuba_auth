@@ -195,7 +195,7 @@ class JwkGenerator {
 
         // generate secret key for jwe
         // this secret will be used to open the encrypted jwkJson
-        Key key = getPasswordBasedKey("AES",256,"M0asv8end09".toCharArray());
+        Key key = getPasswordBasedKey("AES",256,"8vn79b64urcmenvb5974".toCharArray());
         String secretString = Encoders.BASE64.encode(key.getEncoded());
         System.out.println("Secret key: " + secretString);
 

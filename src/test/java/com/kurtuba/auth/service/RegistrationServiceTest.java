@@ -6,7 +6,6 @@ import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
 import com.kurtuba.auth.data.model.*;
 import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
-import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TestUtils;
@@ -31,10 +30,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class UserServiceTest {
-
-    @Mock
-    private UserRepository userRepository;
+public class RegistrationServiceTest {
 
     @Mock
     private UserMetaChangeService userMetaChangeService;
@@ -48,8 +44,11 @@ public class UserServiceTest {
     @Mock
     private MessageJobService messageJobService;
 
-    @InjectMocks
+    @Mock
     private UserService userService;
+
+    @InjectMocks
+    private RegistrationService registrationService;
 
 
     RegistrationDto registrationDto;
@@ -137,7 +136,7 @@ public class UserServiceTest {
                     .createdDate(LocalDateTime.now())
                     .build();
 
-            when(userRepository.save(any(User.class))).then(invocationOnMock -> {
+            when(userService.saveUser(any(User.class))).then(invocationOnMock -> {
                 User usr = invocationOnMock.getArgument(0);
                 assertEquals(usr.getName(), savedUser.getName());
                 assertEquals(usr.getSurname(), savedUser.getSurname());
@@ -187,7 +186,7 @@ public class UserServiceTest {
         public void createUser_whenGivenValidRegistrationDto_thenReturnSavedUser() {
             doNothing().when(messageJobService).sendAccountActivationCodeMail(anyString(), anyString(), anyString());
             //default registrationDto is set to account activation by email using code
-            String metaChangeId = userService.register(registrationDto);
+            String metaChangeId = registrationService.register(registrationDto);
             assertEquals(metaChangeId, emailActivationCodeUserMetaChange.getId());
         }
 
@@ -196,13 +195,13 @@ public class UserServiceTest {
             doNothing().when(messageJobService).sendAccountActivationLinkMail(anyString(), anyString(), anyString());
             //default registrationDto is set to account activation by email using code
             registrationDto.setVerificationByCode(false);
-            String metaChangeId = userService.register(registrationDto);
+            String metaChangeId = registrationService.register(registrationDto);
             assertEquals(metaChangeId, emailActivationLinkUserMetaChange.getId());
         }
     }
 
     @Nested
-    class SecondNestedClass{
+    class SecondNestedClass {
 
         @BeforeEach
         public void setup() {
@@ -226,13 +225,11 @@ public class UserServiceTest {
         public void createUser_whenGivenMissingEmailAndMobile_thenThrowException() {
             registrationDto.setEmail("");
             registrationDto.setMobile("");
-            BusinessLogicException exception = assertThrows(BusinessLogicException.class, () -> userService.register(registrationDto));
+            BusinessLogicException exception = assertThrows(BusinessLogicException.class, () -> registrationService.register(registrationDto));
             assertEquals(exception.getErrorCode(), (int) ErrorEnum.USER_CONTACT_REQUIRED.getCode());
 
         }
     }
-
-
 
 
 }

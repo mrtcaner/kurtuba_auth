@@ -266,6 +266,40 @@ public class UserTokenService {
         userTokenRepository.save(userToken);
     }
 
+    @Transactional
+    public TokensResponseDto validateRegisteredClientAndGetTokens(User user, String clientId, String clientSecret) {
+        if (StringUtils.hasLength(clientId)) {
+            RegisteredClient client = registeredClientRepository.findByClientId(clientId).orElseThrow(() ->
+                    new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
+            if (StringUtils.hasLength(client.getClientSecret())) {
+                if (!StringUtils.hasLength(clientSecret) || !new BCryptPasswordEncoder()
+                        .matches(clientSecret, client.getClientSecret())) {
+                    throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID_CREDENTIALS);
+                }
+            }
+
+            // credentials validated
+            // generate tokens and return
+            Duration accessTokenValidity = Duration.ofMinutes(client.getAccessTokenTtlMinutes());
+            Duration refreshTokenValidity = null;
+            if (client.isRefreshTokenEnabled()) {
+                refreshTokenValidity = Duration.ofMinutes(client.getRefreshTokenTtlMinutes());
+            }
+
+            Set<String> roles = null;
+            if (client.isScopeEnabled()) {
+                roles = user.getUserRoles().stream().map(role -> role.getRole().getName()).collect(Collectors.toSet());
+            }
+
+            //create token(s)
+            return createAndSaveTokens(user.getId(), client.getClientId(), client.getAuds(),
+                    roles, accessTokenValidity, refreshTokenValidity);
+
+        }
+
+        return null;
+    }
+
 }
 
 @Data
