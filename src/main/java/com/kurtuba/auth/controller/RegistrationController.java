@@ -6,7 +6,7 @@ import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
-import com.kurtuba.auth.service.LoginsService;
+import com.kurtuba.auth.service.LoginService;
 import com.kurtuba.auth.service.RegistrationService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.Utils;
@@ -33,9 +33,9 @@ public class RegistrationController {
 
     final RegisteredClientRepository registeredClientRepository;
 
-    final LoginsService loginService;
+    final LoginService loginService;
 
-    public RegistrationController(UserService userService, RegistrationService registrationService, RegisteredClientRepository registeredClientRepository, LoginsService loginService) {
+    public RegistrationController(UserService userService, RegistrationService registrationService, RegisteredClientRepository registeredClientRepository, LoginService loginService) {
         this.registrationService = registrationService;
         this.userService = userService;
         this.registeredClientRepository = registeredClientRepository;

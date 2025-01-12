@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class LoginsService {
+public class LoginService {
 
     final
     UserTokenService userTokenService;
@@ -13,7 +13,7 @@ public class LoginsService {
     final
     AuthenticationService authenticationService;
 
-    public LoginsService(UserTokenService userTokenService, AuthenticationService authenticationService) {
+    public LoginService(UserTokenService userTokenService, AuthenticationService authenticationService) {
         this.userTokenService = userTokenService;
         this.authenticationService = authenticationService;
     }

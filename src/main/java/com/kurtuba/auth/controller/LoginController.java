@@ -8,7 +8,7 @@ import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
-import com.kurtuba.auth.service.LoginsService;
+import com.kurtuba.auth.service.LoginService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.utils.TokenUtils;
 import jakarta.validation.Valid;
@@ -30,7 +30,7 @@ public class LoginController {
     UserService userService;
 
     final
-    LoginsService loginsService;
+    LoginService loginService;
 
     final
     RegisteredClientRepository registeredClientRepository;
@@ -38,9 +38,9 @@ public class LoginController {
     final
     TokenUtils tokenUtils;
 
-    public LoginController(UserService userService, LoginsService loginsService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
+    public LoginController(UserService userService, LoginService loginService, RegisteredClientRepository registeredClientRepository, TokenUtils tokenUtils) {
         this.userService = userService;
-        this.loginsService = loginsService;
+        this.loginService = loginService;
         this.registeredClientRepository = registeredClientRepository;
         this.tokenUtils = tokenUtils;
     }
@@ -56,7 +56,7 @@ public class LoginController {
         }
         //throws exception if authentication fails
         //no exception means successful authentication. Generate token and return
-        TokensResponseDto tokenDto = loginsService.authenticateAndGetTokens(loginCredentials.getEmailUsername(),
+        TokensResponseDto tokenDto = loginService.authenticateAndGetTokens(loginCredentials.getEmailUsername(),
                 loginCredentials.getPassword(), loginCredentials.getClientId(), loginCredentials.getClientSecret());
 
         RegisteredClient client = registeredClientRepository.findByClientId(loginCredentials.getClientId())
@@ -92,7 +92,7 @@ public class LoginController {
     @PostMapping("/service/login")
     public ResponseEntity login(@Valid @RequestBody LoginServiceCredentialsDto loginServiceCredentialsDto) {
         RegisteredClient client = registeredClientRepository.findByClientId(loginServiceCredentialsDto.getClientId())
-                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));;
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
         if(!RegisteredClientType.SERVICE.equals(client.getClientType())){
             throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
         }
