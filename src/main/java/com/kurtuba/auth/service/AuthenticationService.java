@@ -42,10 +42,6 @@ public class AuthenticationService {
             throw new BusinessLogicException(ErrorEnum.LOGIN_USER_LOCKED.getCode(), "Account locked until " + user.getLastLoginAttempt().plusMinutes(timeToWait));
         }
 
-        if (!user.isActivated()) {
-            throw new BusinessLogicException(ErrorEnum.USER_ACTIVATION_NOT_ACTIVATED);
-        }
-
         user.setLastLoginAttempt(LocalDateTime.now());
         String dbPass = user.getPassword();
         // check password
@@ -66,6 +62,11 @@ public class AuthenticationService {
             throw new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS);
 
         }
+        // password matched but is account activated?
+        if (!user.isActivated()) {
+            throw new BusinessLogicException(ErrorEnum.USER_ACTIVATION_NOT_ACTIVATED);
+        }
+
         user.setFailedLoginCount(0);
         user.setShowCaptcha(false);
         user.setLocked(false);

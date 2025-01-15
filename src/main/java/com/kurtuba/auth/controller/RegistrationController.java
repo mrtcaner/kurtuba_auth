@@ -42,7 +42,7 @@ public class RegistrationController {
         this.loginService = loginService;
     }
 
-    @PostMapping("/")
+    @PostMapping("")
     @ApiResponse(responseCode = "201", description = "User created successfully",
             content = {@Content(mediaType = "application/json",
                     schema = @Schema(implementation = RegistrationResponseDto.class))})
