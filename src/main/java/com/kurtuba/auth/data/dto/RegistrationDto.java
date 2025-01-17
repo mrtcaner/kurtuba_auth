@@ -46,7 +46,7 @@ public class RegistrationDto {
     private String username;
 
     @NotBlank
-    @Size(min = 8, max = 100, message = "Password length must be between 8-100 characters")
+    @Size(min = 6, max = 100, message = "Password length must be between 6-100 characters")
     @Pattern(regexp = Utils.PASSWORD_REGEX)
     private String password;
 
