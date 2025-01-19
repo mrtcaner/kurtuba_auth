@@ -1,5 +1,6 @@
 package com.kurtuba.auth;
 
+import com.kurtuba.auth.data.dto.LocalizationMessageDto;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
@@ -32,6 +33,20 @@ public class BootstrapCLR implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+
+
+        /*localizationMessageService.create(LocalizationMessageDto.builder()
+                .languageCode("en")
+                .key("sms.account.activation.message")
+                .message("Kurtuba activation code: ")
+                .build());
+
+        localizationMessageService.create(LocalizationMessageDto.builder()
+                .languageCode("en")
+                .key("sms.account.activation.sender")
+                .message("KURTUBA")
+                .build());*/
+
 
         /*localizationAvailableLocaleRepository.save(
                 LocalizationAvailableLocale.builder()

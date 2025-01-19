@@ -2,10 +2,13 @@ package com.kurtuba.auth.scheduled;
 
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MessageJobStateType;
+import com.kurtuba.auth.data.enums.MessageServiceProviderType;
 import com.kurtuba.auth.data.model.EmailDetails;
 import com.kurtuba.auth.data.model.MessageJob;
+import com.kurtuba.auth.service.ISMSService;
 import com.kurtuba.auth.service.MessageJobService;
 import com.kurtuba.auth.service.EmailService;
+import com.twilio.rest.verify.v2.service.Verification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,9 +24,13 @@ public class MessageSenderScheduledJob {
     final
     MessageJobService messageJobService;
 
-    public MessageSenderScheduledJob(EmailService emailService, MessageJobService messageJobService) {
+    final
+    ISMSService smsService;
+
+    public MessageSenderScheduledJob(EmailService emailService, MessageJobService messageJobService, ISMSService smsService) {
         this.emailService = emailService;
         this.messageJobService = messageJobService;
+        this.smsService = smsService;
     }
 
     @Scheduled(fixedDelay = 5000)
@@ -49,36 +56,40 @@ public class MessageSenderScheduledJob {
                 }
                 emailJob.setUpdatedDate(LocalDateTime.now());
             }
-            messageJobService.saveEmailJob(emailJob);
+            messageJobService.saveMessageJob(emailJob);
         });
 
     }
 
-    @Scheduled(fixedDelay = 5000)
+    /*@Scheduled(fixedDelay = 5000)
     public void sendSMS() {
-        List<MessageJob> jobs = messageJobService.findByStateAndContactTypeAndSendAfterDateBefore(MessageJobStateType.PENDING,
-                ContactType.MOBILE, LocalDateTime.now());
-       /* jobs.forEach(smsJob -> {
+    }*/
+
+    @Scheduled(fixedDelay = 5000)
+    public void sendTwilioVerificationSMS() {
+        List<MessageJob> jobs = messageJobService
+                .findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(MessageJobStateType.PENDING,
+                ContactType.MOBILE, MessageServiceProviderType.TWILIO_VERIFY, LocalDateTime.now());
+        jobs.forEach(smsJob -> {
             try{
-                emailService.sendMultipartMail(EmailDetails.builder()
-                        .sender(smsJob.getSender())
-                        .recipient(smsJob.getRecipient())
-                        .subject(smsJob.getSubject())
-                        .msgBody(smsJob.getMessage())
-                        .build());
+                Verification verification = smsService.sendVerificationSMS(smsJob.getRecipient());
+                smsJob.setSid(verification.getSid());
                 smsJob.setUpdatedDate(LocalDateTime.now());
                 smsJob.setTryCount(smsJob.getTryCount()+1);
                 smsJob.setState(MessageJobStateType.SUCCESS);
+                messageJobService.saveMessageJob(smsJob);
+
             }catch (Exception e){
                 smsJob.setError(e.getMessage());
                 smsJob.setTryCount(smsJob.getTryCount()+1);
+                // stays in pending state as long as maxTryCount reached
                 if(smsJob.getTryCount() >= smsJob.getMaxTryCount()){
                     smsJob.setState(MessageJobStateType.FAILED);
                 }
                 smsJob.setUpdatedDate(LocalDateTime.now());
             }
-            messageJobService.saveEmailJob(smsJob);
-        });*/
+            messageJobService.saveMessageJob(smsJob);
+        });
 
     }
 

@@ -100,7 +100,7 @@ public class RegistrationController {
             content = {@Content(mediaType = "application/json",
                     schema = @Schema(implementation = UserMetaChangeDto.class))})
     @PostMapping("/activation")
-    public ResponseEntity<UserMetaChangeDto> resendAccountActivationLink(@Valid @RequestBody AccountActivationRequestDto accountActivationRequestDto) {
+    public ResponseEntity<UserMetaChangeDto> resendAccountActivationMessage(@Valid @RequestBody AccountActivationRequestDto accountActivationRequestDto) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
                 UserMetaChangeDto.builder().userMetaChangeId(userService.sendAccountActivationMessage(accountActivationRequestDto.getEmailMobile(),
                         accountActivationRequestDto.isByCode())).build()

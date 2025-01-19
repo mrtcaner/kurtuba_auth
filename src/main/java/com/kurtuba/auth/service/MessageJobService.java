@@ -3,17 +3,20 @@ package com.kurtuba.auth.service;
 import com.kurtuba.auth.data.dto.EmailVerificationMailDto;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MessageJobStateType;
+import com.kurtuba.auth.data.enums.MessageServiceProviderType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
 import com.kurtuba.auth.data.model.MessageJob;
 import com.kurtuba.auth.data.repository.MessageJobRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.EmailUtils;
+import com.kurtuba.auth.utils.annotation.MobileNumber;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ResourceUtils;
+import org.springframework.validation.annotation.Validated;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -21,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@Validated
 public class MessageJobService {
 
     @Value("${auth.server.protocol}")
@@ -35,6 +39,9 @@ public class MessageJobService {
     @Value("${kurtuba.job.email.send.max-try-count}")
     private String emailSendMaxTryCount;
 
+    @Value("${kurtuba.job.sms.send.max-try-count}")
+    private String smsSendMaxTryCount;
+
     final
     MessageJobRepository messageJobRepository;
 
@@ -47,7 +54,7 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void saveEmailJob(MessageJob messageJob) {
+    public void saveMessageJob(MessageJob messageJob) {
         messageJobRepository.save(messageJob);
     }
 
@@ -60,8 +67,13 @@ public class MessageJobService {
         return messageJobRepository.findByStateAndContactTypeAndSendAfterDateBefore(jobState, contactType, before);
     }
 
+    public List<MessageJob> findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(MessageJobStateType jobState,
+                                                                            ContactType contactType, MessageServiceProviderType serviceProvider, LocalDateTime before) {
+        return messageJobRepository.findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(jobState, contactType,serviceProvider, before);
+    }
+
     @Transactional
-    public void sendAccountActivationCodeMail(@NotBlank String recipient, @NotBlank String verificationCode, String lang) {
+    public void sendAccountActivationCodeMail(@NotBlank String recipient, @NotBlank String verificationCode, @NotBlank String lang) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
                 .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title").getMessage())
@@ -83,6 +95,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
@@ -98,11 +111,42 @@ public class MessageJobService {
         }
     }
 
+    public void sendVerificationCodeSMS(@NotBlank String mobileNumber, @NotBlank String code, @NotBlank String languageCode) {
+        messageJobRepository.save(MessageJob.builder()
+                .createdDate(LocalDateTime.now())
+                .contactType(ContactType.MOBILE)
+                //.serviceProvider(MessageServiceProviderType.KURTUBA) // todo: let it throw exception until proper implementation of regular sms send
+                .maxTryCount(Integer.valueOf(smsSendMaxTryCount))
+                .sendAfterDate(LocalDateTime.now())
+                .state(MessageJobStateType.PENDING)
+                .tryCount(0)
+                .recipient(mobileNumber)
+                //user languageCode here and translate
+                .message("sms.account.activation.message"+ code)
+                .sender("sms.account.activation.sender")
+                .build());
+    }
+
+    public void sendVerificationCodeSMSViaTwilio(@MobileNumber String mobileNumber) {
+        messageJobRepository.save(MessageJob.builder()
+                .createdDate(LocalDateTime.now())
+                .contactType(ContactType.MOBILE)
+                .serviceProvider(MessageServiceProviderType.TWILIO_VERIFY)
+                .maxTryCount(Integer.valueOf(smsSendMaxTryCount))
+                .sendAfterDate(LocalDateTime.now())
+                .state(MessageJobStateType.PENDING)
+                .tryCount(0)
+                .recipient(mobileNumber)
+                .message(MessageServiceProviderType.TWILIO_VERIFY.name())
+                .sender(MessageServiceProviderType.TWILIO_VERIFY.name())
+                .build());
+    }
+
     @Transactional
     public void sendAccountActivationLinkMail(String recipient, String verificationCode, String lang) {
 
         String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/auth/registration/activation/link/" + verificationCode;
+                "/registration/activation/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
                 .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title").getMessage())
@@ -125,6 +169,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
@@ -164,6 +209,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
@@ -204,6 +250,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
@@ -242,6 +289,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
@@ -283,6 +331,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
@@ -324,6 +373,7 @@ public class MessageJobService {
             messageJobRepository.save(MessageJob.builder()
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
+                    .serviceProvider(MessageServiceProviderType.KURTUBA)
                     .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)

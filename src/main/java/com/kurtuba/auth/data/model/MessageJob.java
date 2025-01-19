@@ -2,6 +2,7 @@ package com.kurtuba.auth.data.model;
 
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MessageJobStateType;
+import com.kurtuba.auth.data.enums.MessageServiceProviderType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -32,7 +33,6 @@ public class MessageJob {
     @NotBlank
     String recipient;
 
-    @NotBlank
     String subject;
 
     @NotBlank
@@ -44,11 +44,17 @@ public class MessageJob {
     ContactType contactType;
 
     @NotNull
+    @Enumerated(EnumType.STRING)
+    MessageJobStateType state;
+
+    @NotNull
     LocalDateTime sendAfterDate;
 
     @NotNull
     @Enumerated(EnumType.STRING)
-    MessageJobStateType state;
+    MessageServiceProviderType serviceProvider;
+
+    String sid;
 
     String error;
 

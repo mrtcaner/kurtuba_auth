@@ -50,7 +50,7 @@ public class RegistrationControllerIT {
 
         String jsonVal = mapper.writeValueAsString(registrationDto);
 
-        MvcResult result = mockMvc.perform(post("/auth/registration")
+        MvcResult result = mockMvc.perform(post("/registration")
                 .contentType(APPLICATION_JSON)
                 .content(jsonVal)
                 .accept(APPLICATION_JSON)).andReturn();

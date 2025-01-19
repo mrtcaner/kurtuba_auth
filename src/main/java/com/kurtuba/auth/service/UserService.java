@@ -11,6 +11,7 @@ import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.ServiceUtils;
+import com.kurtuba.auth.utils.annotation.MobileNumber;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -19,6 +20,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -29,6 +31,7 @@ import java.util.UUID;
 import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 
 @Service
+@Validated
 public class UserService {
 
     private final UserRepository userRepository;
@@ -40,10 +43,14 @@ public class UserService {
 
     @Value("${kurtuba.meta-change.validity.password-reset-code.minutes}")
     private int passwordResetCodeValidityMinutes;
-    @Value("${kurtuba.meta-change.max-try-count}")
-    private int metaChangeMaxTryCount;
+    @Value("${kurtuba.meta-change.email-max-try-count}")
+    private int metaChangeEmailMaxTryCount;
+    @Value("${kurtuba.meta-change.sms-max-try-count}")
+    private int metaChangeSmsMaxTryCount;
     @Value("${kurtuba.meta-change.validity.email.activation-code.minutes}")
-    private int activationCodeValidityMinutes;
+    private int activationEmailCodeValidityMinutes;
+    @Value("${kurtuba.meta-change.validity.sms.activation-code.minutes}")
+    private int activationSmsCodeValidityMinutes;
     @Value("${kurtuba.meta-change.validity.email.change-code.minutes}")
     private int emailChangeCodeValidityMinutes;
 
@@ -175,7 +182,7 @@ public class UserService {
                 .executed(false)
                 .createdDate(LocalDateTime.now())
                 .expirationDate(LocalDateTime.now().plusMinutes(emailChangeCodeValidityMinutes))
-                .maxTryCount(byCode ? metaChangeMaxTryCount : null)
+                .maxTryCount(byCode ? metaChangeEmailMaxTryCount : null)
                 .tryCount(byCode ? 0 : null)
                 .code(byCode ? generateVerificationCode() : null)
                 .linkParam(!byCode ?
@@ -215,16 +222,38 @@ public class UserService {
             }
         }
 
+
+        Integer maxTryCount = null;
+        if(byCode) {
+            if (emailMobile.contains("@")) {
+                maxTryCount = metaChangeEmailMaxTryCount;
+            } else {
+                maxTryCount = metaChangeSmsMaxTryCount;
+            }
+        }
+
+        // linkParam is only available for email
+        String linkParam = null;
+        if(!byCode && emailMobile.contains("@")){
+            linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
+        }
+
+        // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
+        // during code verification, auth server will dispatch the code verification to twilio and get the result
+        String code = null;
+        if(byCode && emailMobile.contains("@")){
+            code = generateVerificationCode();
+        }
+
         UserMetaChange metaChange = UserMetaChange.builder()
                 .metaOperationType(MetaOperationType.PASSWORD_RESET)
                 .contactType(emailMobile.contains("@") ? ContactType.EMAIL : ContactType.MOBILE)
                 .executed(false)
                 .expirationDate(LocalDateTime.now().plusMinutes(passwordResetCodeValidityMinutes))
-                .maxTryCount(byCode ? metaChangeMaxTryCount : null)
+                .maxTryCount(maxTryCount)
                 .tryCount(byCode ? 0 : null)
-                .code(byCode ? generateVerificationCode() : null)
-                .linkParam(!byCode ?
-                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
+                .code(code)
+                .linkParam(linkParam)
                 .createdDate(LocalDateTime.now())
                 .userId(user.getId())
                 .build();
@@ -238,8 +267,7 @@ public class UserService {
             }
         } else {
             //mobile
-            // todo implement send sms
-            throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
+            messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile());
         }
         userMetaChangeService.create(metaChange);
 
@@ -341,7 +369,7 @@ public class UserService {
             //email
             return sendAccountActivationMail(emailMobile, byCode);
         } else {
-            return sendAccountActivationSMS(emailMobile, byCode);
+            return sendAccountActivationSMS(emailMobile);
         }
 
     }
@@ -370,8 +398,8 @@ public class UserService {
                 .meta(user.getEmail())
                 .executed(false)
                 .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(activationCodeValidityMinutes))
-                .maxTryCount(byCode ? metaChangeMaxTryCount : null)
+                .expirationDate(LocalDateTime.now().plusMinutes(activationEmailCodeValidityMinutes))
+                .maxTryCount(byCode ? metaChangeEmailMaxTryCount : null)
                 .tryCount(byCode ? 0 : null)
                 .code(byCode ? generateVerificationCode() : null)
                 .linkParam(!byCode ?
@@ -391,13 +419,36 @@ public class UserService {
 
     /**
      * Send activation SMS to the user's mobile number
-     * May contain code or link
+     * May contain code
      *
      * @return
      */
     @Transactional
-    public String sendAccountActivationSMS(@NotBlank String mobile, boolean byCode) {
-        throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
+    public String sendAccountActivationSMS(@MobileNumber String mobile) {
+        User user = userRepository.getUserByEmailOrMobile(mobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isActivated()) {
+            // already activated
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        UserMetaChange metaChange = UserMetaChange.builder()
+                .userId(user.getId())
+                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
+                .contactType(ContactType.MOBILE)
+                .meta(user.getMobile())
+                .executed(false)
+                .createdDate(LocalDateTime.now())
+                .expirationDate(LocalDateTime.now().plusMinutes(activationSmsCodeValidityMinutes))
+                .maxTryCount(metaChangeSmsMaxTryCount)
+                .tryCount(0)
+                .code(null)
+                .linkParam(null)
+                .build();
+        userMetaChangeService.create(metaChange);
+        messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile());
+        return metaChange.getId();
     }
 
     /**

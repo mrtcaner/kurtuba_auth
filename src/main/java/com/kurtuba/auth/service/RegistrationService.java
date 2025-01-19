@@ -58,10 +58,14 @@ public class RegistrationService {
     final
     ServiceUtils serviceUtils;
 
-    @Value("${kurtuba.meta-change.max-try-count}")
-    private int metaChangeMaxTryCount;
+    @Value("${kurtuba.meta-change.email-max-try-count}")
+    private int metaChangeEmailMaxTryCount;
+    @Value("${kurtuba.meta-change.sms-max-try-count}")
+    private int metaChangeSMSMaxTryCount;
     @Value("${kurtuba.meta-change.validity.email.activation-code.minutes}")
-    private int activationCodeValidityMinutes;
+    private int activationEmailCodeValidityMinutes;
+    @Value("${kurtuba.meta-change.validity.sms.activation-code.minutes}")
+    private int activationSmsCodeValidityMinutes;
 
     public RegistrationService(UserService userService, UserMetaChangeService userMetaChangeService, AuthenticationService authenticationService, UserTokenService userTokenService, MessageJobService messageJobService, UserRoleService userRoleService, LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository, ServiceUtils serviceUtils) {
         this.userService = userService;
@@ -108,7 +112,7 @@ public class RegistrationService {
                         .build())
         ));
 
-        return createMetaChangeAndSendActivationMail(savedUser, newUser).getId();
+        return createMetaChangeAndSendActivationMessage(savedUser, newUser).getId();
     }
 
     private void validateRegistrationRequirements(RegistrationDto newUser) {
@@ -133,20 +137,53 @@ public class RegistrationService {
         }
     }
 
-    private UserMetaChange createMetaChangeAndSendActivationMail(User savedUser, RegistrationDto newUser) {
+    // check 10 min before sending new after max try count reached
+    // add sid column to message job
+    // if verification successful then add sid also to user meta change? yes
+    private UserMetaChange createMetaChangeAndSendActivationMessage(User savedUser, RegistrationDto newUser) {
+        String meta = newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) ? savedUser.getEmail()
+                : savedUser.getMobile();
+
+        Integer maxTryCount = null;
+        if(newUser.isVerificationByCode()) {
+            if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
+                maxTryCount = metaChangeEmailMaxTryCount;
+            } else {
+                maxTryCount = metaChangeSMSMaxTryCount;
+            }
+        }
+
+        // default validity duration of link/code is email code validity minutes
+        int validityDurationMinutes = activationEmailCodeValidityMinutes;
+        if(newUser.getPreferredVerificationContact().equals(ContactType.MOBILE)){
+            //in case of mobile, use twilio's default validity duration(10 minutes)
+            validityDurationMinutes = activationSmsCodeValidityMinutes;
+        }
+        // linkParam is only available for email
+        String linkParam = null;
+        if(!newUser.isVerificationByCode() && newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
+            linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
+        }
+
+        // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
+        // during code verification, auth server will dispatch the code verification to twilio and get the result
+        String code = null;
+        if(newUser.isVerificationByCode() && newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
+            code = generateVerificationCode();
+        }
+
         UserMetaChange metaChange = UserMetaChange.builder()
                 .userId(savedUser.getId())
                 .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
                 .contactType(newUser.getPreferredVerificationContact())
-                .meta(newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) ? savedUser.getEmail() : savedUser.getMobile())
+                .meta(meta)
                 .executed(false)
                 .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(activationCodeValidityMinutes))
-                .maxTryCount(newUser.isVerificationByCode() ? metaChangeMaxTryCount : null)
-                .tryCount(newUser.isVerificationByCode() ? 0 : null)
-                .code(newUser.isVerificationByCode() ? generateVerificationCode() : null)
-                .linkParam(!newUser.isVerificationByCode() ?
-                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
+                .expirationDate(LocalDateTime.now().plusMinutes(validityDurationMinutes))
+                .maxTryCount(maxTryCount)
+                .tryCount(maxTryCount == null ? null : 0)
+                .code(code)
+                .linkParam(linkParam)
                 .build();
 
         UserMetaChange savedMetaChange = userMetaChangeService.create(metaChange);
@@ -159,8 +196,7 @@ public class RegistrationService {
                 messageJobService.sendAccountActivationLinkMail(savedUser.getEmail(), savedMetaChange.getLinkParam(), savedUser.getUserSetting().getLocale().getLanguageCode());
             }
         } else {
-            // todo implement send sms
-            throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
+            messageJobService.sendVerificationCodeSMSViaTwilio(savedUser.getMobile());
         }
 
         return savedMetaChange;
