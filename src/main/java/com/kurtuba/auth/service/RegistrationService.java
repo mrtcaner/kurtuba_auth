@@ -135,6 +135,10 @@ public class RegistrationService {
         if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) && !StringUtils.hasLength(newUser.getEmail())) {
             throw new BusinessLogicException(ErrorEnum.USER_CONTACT_REQUIRED);
         }
+
+        if (newUser.getPreferredVerificationContact().equals(ContactType.MOBILE) && !StringUtils.hasLength(newUser.getMobile())) {
+            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_REQUIRED);
+        }
     }
 
     // check 10 min before sending new after max try count reached
@@ -144,33 +148,26 @@ public class RegistrationService {
         String meta = newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) ? savedUser.getEmail()
                 : savedUser.getMobile();
 
-        Integer maxTryCount = null;
-        if(newUser.isVerificationByCode()) {
-            if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
-                maxTryCount = metaChangeEmailMaxTryCount;
-            } else {
-                // twilio's default max try count
-                maxTryCount = metaChangeSMSMaxTryCount;
-            }
-        }
-
         // default validity duration of link/code is email code validity minutes
         int validityDurationMinutes = activationEmailCodeValidityMinutes;
-        if(newUser.getPreferredVerificationContact().equals(ContactType.MOBILE)){
+        String linkParam = null;
+        String code = null;
+        Integer maxTryCount = null;
+        if(newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
+            if(newUser.isVerificationByCode()) {
+                maxTryCount = metaChangeEmailMaxTryCount;
+                code = generateVerificationCode();
+            }else{
+                // linkParam is only available for email
+                linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
+            }
+        }else{
+            // twilio's default max try count
+            // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
+            // during code verification, auth server will dispatch the code verification to twilio and get the result
+            maxTryCount = metaChangeSMSMaxTryCount;
             //in case of mobile, use twilio's default validity duration(10 minutes)
             validityDurationMinutes = activationSmsCodeValidityMinutes;
-        }
-        // linkParam is only available for email
-        String linkParam = null;
-        if(!newUser.isVerificationByCode() && newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
-            linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
-        }
-
-        // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
-        // during code verification, auth server will dispatch the code verification to twilio and get the result
-        String code = null;
-        if(newUser.isVerificationByCode() && newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
-            code = generateVerificationCode();
         }
 
         UserMetaChange metaChange = UserMetaChange.builder()

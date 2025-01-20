@@ -231,26 +231,23 @@ public class UserService {
         }
 
 
-        Integer maxTryCount = null;
-        if(byCode) {
-            if (emailMobile.contains("@")) {
-                maxTryCount = metaChangeEmailMaxTryCount;
-            } else {
-                maxTryCount = metaChangeSmsMaxTryCount;
-            }
-        }
-
-        // linkParam is only available for email
         String linkParam = null;
-        if(!byCode && emailMobile.contains("@")){
-            linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
-        }
-
-        // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
-        // during code verification, auth server will dispatch the code verification to twilio and get the result
         String code = null;
-        if(byCode && emailMobile.contains("@")){
-            code = generateVerificationCode();
+        Integer maxTryCount = null;
+        if(emailMobile.contains("@")){
+            if(byCode) {
+                maxTryCount = metaChangeEmailMaxTryCount;
+                code = generateVerificationCode();
+            }else{
+                // linkParam is only available for email
+                linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
+            }
+        }else{
+            // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
+            // during code verification, auth server will dispatch the code verification to twilio and get the result
+            // maxTryCount cannot be null for MOBILE
+            // twilio's default max try count
+            maxTryCount = metaChangeSmsMaxTryCount;
         }
 
         UserMetaChange metaChange = UserMetaChange.builder()
@@ -268,7 +265,7 @@ public class UserService {
 
         if (emailMobile.contains("@")) {
             //email
-            if (byCode == true) {
+            if (byCode) {
                 messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(),
                         user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
             } else {
