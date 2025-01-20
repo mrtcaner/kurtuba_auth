@@ -1,13 +1,9 @@
 server:
   port: 8080
 
-
 auth:
   server:
     issuer-url: http://192.168.1.2:8080
-    protocol: http://
-    ip: 192.168.1.2
-    port: 8080
 
 logging:
   level:
@@ -33,7 +29,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://${auth.server.ip}:${auth.server.port}/oauth2/jwks
+          jwk-set-uri: ${auth.server.issuer-url}/oauth2/jwks
   mail:
     host: 192.168.1.114
     port: 1025
@@ -51,11 +47,14 @@ management:
         include: health, info, env
 
 kurtuba:
+  server:
+    url: http://192.168.1.2:8080
   jwk:
     file: "jwk.json"
     keys: '{"32abb5cf-a1fb-4cdd-9af7-fe517a0bda47": "pkBJlIfLcEW0tvIutbZjsjwBYOZ2DkRw2Hiy5S+m+uI=", "f5a7e70c-fb73-42ab-b217-841ea4e5d5b1": "A5kZEy3jC4ChSTtbq92AsARDrqslb+J7WmWwkMevhds=", "12e87ac2-9ee3-4bab-85ca-758cbd998b26":"2lWwOTIvMxfwO1n9TwOvtuuOaTva95vmW8kyGYaoe6w="}'
   meta-change:
-    max-try-count: 3
+    email-max-try-count: 3
+    sms-max-try-count: 5
     validity:
       password-reset-code:
         minutes: 60
@@ -64,9 +63,37 @@ kurtuba:
           minutes: 10080
         change-code:
           minutes: 1440
+      sms:
+        activation-code:
+          minutes: 10
+          change-code:
+            minutes: 10
   job:
     email:
       send:
         max-try-count: 3
+    sms:
+      send:
+        max-try-count: 3
+  twilio:
+    ireland:
+      live:
+        sid: ACd82ad60d868b08db708955e21f58b0f2
+        auth-token: f75d4ebdbc7edd0cf5bcad9b5df03706
+      test:
+        sid: AC2279ef6334328e0d2c8b4cdcca0af6b6
+        auth-token: d4371e36fde066293acf68d0d56021df
+    us:
+      live:
+        sid: ACd82ad60d868b08db708955e21f58b0f2
+        auth-token: e0ddb3c4e16064d993ff20abbc035eb5
+      test:
+        sid: AC2279ef6334328e0d2c8b4cdcca0af6b6
+        auth-token: d4371e36fde066293acf68d0d56021df
+
+    messaging-service:
+      sid: MG45eae3dc33e19930ae531d2146bf96f8
+    verify-service:
+      sid: VAc14a7585f6613cf1abab1c992024fc2b
 
 

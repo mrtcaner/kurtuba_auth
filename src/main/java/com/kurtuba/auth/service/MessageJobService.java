@@ -27,14 +27,8 @@ import java.util.List;
 @Validated
 public class MessageJobService {
 
-    @Value("${auth.server.protocol}")
-    private String authServerProtocol;
-
-    @Value("${auth.server.ip}")
-    private String authServerIp;
-
-    @Value("${auth.server.port}")
-    private String authServerPort;
+    @Value("${kurtuba.server.url}")
+    private String kurtubaServerUrl;
 
     @Value("${kurtuba.job.email.send.max-try-count}")
     private String emailSendMaxTryCount;
@@ -48,7 +42,8 @@ public class MessageJobService {
     final
     LocalizationMessageService localizationMessageService;
 
-    public MessageJobService(MessageJobRepository messageJobRepository, LocalizationMessageService localizationMessageService) {
+    public MessageJobService(MessageJobRepository messageJobRepository,
+                             LocalizationMessageService localizationMessageService) {
         this.messageJobRepository = messageJobRepository;
         this.localizationMessageService = localizationMessageService;
     }
@@ -63,32 +58,47 @@ public class MessageJobService {
     }
 
     public List<MessageJob> findByStateAndContactTypeAndSendAfterDateBefore(MessageJobStateType jobState,
-                                                                            ContactType contactType, LocalDateTime before) {
+                                                                            ContactType contactType,
+                                                                            LocalDateTime before) {
         return messageJobRepository.findByStateAndContactTypeAndSendAfterDateBefore(jobState, contactType, before);
     }
 
     public List<MessageJob> findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(MessageJobStateType jobState,
-                                                                            ContactType contactType, MessageServiceProviderType serviceProvider, LocalDateTime before) {
-        return messageJobRepository.findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(jobState, contactType,serviceProvider, before);
+                                                                                                         ContactType contactType, MessageServiceProviderType serviceProvider, LocalDateTime before) {
+        return messageJobRepository.findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(jobState, contactType, serviceProvider, before);
     }
 
     @Transactional
-    public void sendAccountActivationCodeMail(@NotBlank String recipient, @NotBlank String verificationCode, @NotBlank String lang) {
+    public void sendAccountActivationCodeMail(@NotBlank String recipient, @NotBlank String verificationCode,
+                                              @NotBlank String lang, String userMetaChangeId) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title").getMessage())
-                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet").getMessage())
-                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.prologue").getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".code.prologue").getMessage())
                 .verificationCode(verificationCode)
                 .verificationLink("")
                 .verifyEmailBtnLabel("")
                 .displayCode("block")
                 .displayLink("none")
-                .epilogue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.code.epilogue").getMessage())
-                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing").getMessage())
-                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject").getMessage())
-                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch").getMessage())
+                .epilogue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".code.epilogue").getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation" +
+                        ".content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation" +
+                        ".content.get-in-touch").getMessage())
                 .build();
+        createAccountActivationMessageJob(recipient, lang, verificationMailDto, userMetaChangeId);
+    }
+
+    private void createAccountActivationMessageJob(@NotBlank String recipient, @NotBlank String lang,
+                                                   EmailVerificationMailDto verificationMailDto,
+                                                   String userMetaChangeId) {
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
@@ -96,7 +106,7 @@ public class MessageJobService {
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
                     .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
+                    .maxTryCount(Integer.parseInt(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
@@ -105,89 +115,84 @@ public class MessageJobService {
                             .findByLanguageCodeAndKey(lang, "mail.account.activation.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
+                    .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
             throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
         }
     }
 
-    public void sendVerificationCodeSMS(@NotBlank String mobileNumber, @NotBlank String code, @NotBlank String languageCode) {
+    @Transactional
+    public void sendVerificationCodeSMS(@NotBlank String mobileNumber, @NotBlank String code,
+                                        @NotBlank String languageCode, String userMetaChangeId) {
         messageJobRepository.save(MessageJob.builder()
                 .createdDate(LocalDateTime.now())
                 .contactType(ContactType.MOBILE)
-                //.serviceProvider(MessageServiceProviderType.KURTUBA) // todo: let it throw exception until proper implementation of regular sms send
-                .maxTryCount(Integer.valueOf(smsSendMaxTryCount))
+                //.serviceProvider(MessageServiceProviderType.KURTUBA) // todo: let it throw exception until proper
+                // implementation of regular sms send
+                .maxTryCount(Integer.parseInt(smsSendMaxTryCount))
                 .sendAfterDate(LocalDateTime.now())
                 .state(MessageJobStateType.PENDING)
                 .tryCount(0)
                 .recipient(mobileNumber)
                 //user languageCode here and translate
-                .message("sms.account.activation.message"+ code)
+                .message("sms.account.activation.message" + code)
                 .sender("sms.account.activation.sender")
+                .userMetaChangeId(userMetaChangeId)
                 .build());
     }
 
-    public void sendVerificationCodeSMSViaTwilio(@MobileNumber String mobileNumber) {
+    @Transactional
+    public void sendVerificationCodeSMSViaTwilio(@MobileNumber String mobileNumber, String userMetaChangeId) {
         messageJobRepository.save(MessageJob.builder()
                 .createdDate(LocalDateTime.now())
                 .contactType(ContactType.MOBILE)
                 .serviceProvider(MessageServiceProviderType.TWILIO_VERIFY)
-                .maxTryCount(Integer.valueOf(smsSendMaxTryCount))
+                .maxTryCount(Integer.parseInt(smsSendMaxTryCount))
                 .sendAfterDate(LocalDateTime.now())
                 .state(MessageJobStateType.PENDING)
                 .tryCount(0)
                 .recipient(mobileNumber)
                 .message(MessageServiceProviderType.TWILIO_VERIFY.name())
                 .sender(MessageServiceProviderType.TWILIO_VERIFY.name())
+                .userMetaChangeId(userMetaChangeId)
                 .build());
     }
 
     @Transactional
-    public void sendAccountActivationLinkMail(String recipient, String verificationCode, String lang) {
+    public void sendAccountActivationLinkMail(String recipient, String verificationCode, String lang,
+                                              String userMetaChangeId) {
 
-        String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/registration/activation/link/" + verificationCode;
+        String verificationLink = kurtubaServerUrl + "/registration/activation/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.title").getMessage())
-                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.greet").getMessage())
-                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.prologue").getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".link.prologue").getMessage())
                 .verificationLink(verificationLink)
                 .verificationCode("")
-                .verifyEmailBtnLabel(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.link.button.label").getMessage())
+                .verifyEmailBtnLabel(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account" +
+                        ".activation.content.link.button.label").getMessage())
                 .displayCode("none")
                 .displayLink("block")
                 .epilogue("")
-                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing").getMessage())
-                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.closing.subject").getMessage())
-                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content.get-in-touch").getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation.content" +
+                        ".closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation" +
+                        ".content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.activation" +
+                        ".content.get-in-touch").getMessage())
                 .build();
 
-        try {
-            String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
-
-            messageJobRepository.save(MessageJob.builder()
-                    .createdDate(LocalDateTime.now())
-                    .contactType(ContactType.EMAIL)
-                    .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
-                    .sendAfterDate(LocalDateTime.now())
-                    .state(MessageJobStateType.PENDING)
-                    .tryCount(0)
-                    .recipient(recipient)
-                    .subject(localizationMessageService
-                            .findByLanguageCodeAndKey(lang, "mail.account.activation.subject").getMessage())
-                    .message(htmlFileContent)
-                    .sender("sender-test@example.com")
-                    .build());
-
-        } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
-        }
+        createAccountActivationMessageJob(recipient, lang, verificationMailDto, userMetaChangeId);
     }
 
     @Transactional
-    public void sendPasswordResetCodeMail(@NotBlank String recipient, @NotBlank String resetCode, String lang) {
+    public void sendPasswordResetCodeMail(@NotBlank String recipient, @NotBlank String resetCode, String lang,
+                                          String userMetaChangeId) {
 
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
@@ -210,7 +215,7 @@ public class MessageJobService {
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
                     .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
+                    .maxTryCount(Integer.parseInt(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
@@ -218,6 +223,7 @@ public class MessageJobService {
                     .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
+                    .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
             throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
@@ -226,10 +232,9 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendPasswordResetLinkMail(String recipient, String resetCode, String lang) {
+    public void sendPasswordResetLinkMail(String recipient, String resetCode, String lang, String userMetaChangeId) {
 
-        String resetLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/user/password/reset/password-reset/" + resetCode;
+        String resetLink = kurtubaServerUrl + "/user/password/reset/password-reset/" + resetCode;
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
@@ -251,7 +256,7 @@ public class MessageJobService {
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
                     .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
+                    .maxTryCount(Integer.parseInt(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
@@ -259,6 +264,7 @@ public class MessageJobService {
                     .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.password.reset.subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
+                    .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
             throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
@@ -266,23 +272,35 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserEmailChangeCodeMail(String recipient, String verificationCode, String lang) {
+    public void sendUserEmailChangeCodeMail(String recipient, String verificationCode, String lang,
+                                            String userMetaChangeId) {
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title").getMessage())
-                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet").getMessage())
-                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.code.prologue").getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".code.prologue").getMessage())
                 .verificationCode(verificationCode)
                 .verificationLink("")
                 .verifyEmailBtnLabel("")
                 .displayCode("block")
                 .displayLink("none")
                 .epilogue("")
-                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing").getMessage())
-                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject").getMessage())
-                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch").getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification" +
+                        ".content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification" +
+                        ".content.get-in-touch").getMessage())
                 .build();
 
+        createEmailChangeMessageJob(recipient, lang, verificationMailDto, userMetaChangeId);
+    }
+
+    private void createEmailChangeMessageJob(String recipient, String lang,
+                                             EmailVerificationMailDto verificationMailDto, String userMetaChangeId) {
         try {
             String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
 
@@ -290,14 +308,16 @@ public class MessageJobService {
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
                     .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
+                    .maxTryCount(Integer.parseInt(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject").getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification" +
+                            ".subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
+                    .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
             throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
@@ -305,51 +325,42 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserEmailChangeLinkMail(String recipient, String verificationCode, String lang) {
+    public void sendUserEmailChangeLinkMail(String recipient, String verificationCode, String lang,
+                                            String userMetaChangeId) {
 
-        String verificationLink = authServerProtocol + authServerIp + ":" + authServerPort +
-                "/user/email/verification/link/" + verificationCode;
+        String verificationLink = kurtubaServerUrl + "/user/email/verification/link/" + verificationCode;
 
         EmailVerificationMailDto verificationMailDto = EmailVerificationMailDto.builder()
-                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.title").getMessage())
-                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.greet").getMessage())
-                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.prologue").getMessage())
+                .title(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".title").getMessage())
+                .greet(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".greet").getMessage())
+                .prologue(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".link.prologue").getMessage())
                 .verificationLink(verificationLink)
-                .verifyEmailBtnLabel(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.link.button.label").getMessage())
+                .verifyEmailBtnLabel(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email" +
+                        ".verification.content.link.button.label").getMessage())
                 .verificationCode("")
                 .displayCode("none")
                 .displayLink("block")
                 .epilogue("")
-                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing").getMessage())
-                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.closing.subject").getMessage())
-                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content.get-in-touch").getMessage())
+                .closing(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.content" +
+                        ".closing").getMessage())
+                .closingSubject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification" +
+                        ".content.closing.subject").getMessage())
+                .getInTouch(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification" +
+                        ".content.get-in-touch").getMessage())
                 .build();
 
-        try {
-            String htmlFileContent = EmailUtils.setEmailVerificationMessageBody(verificationMailDto);
-
-            messageJobRepository.save(MessageJob.builder()
-                    .createdDate(LocalDateTime.now())
-                    .contactType(ContactType.EMAIL)
-                    .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
-                    .sendAfterDate(LocalDateTime.now())
-                    .state(MessageJobStateType.PENDING)
-                    .tryCount(0)
-                    .recipient(recipient)
-                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.email.verification.subject").getMessage())
-                    .message(htmlFileContent)
-                    .sender("sender-test@example.com")
-                    .build());
-        } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
-        }
+        createEmailChangeMessageJob(recipient, lang, verificationMailDto, userMetaChangeId);
     }
 
     @Transactional
-    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType, String lang) {
+    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType, String lang
+            , String userMetaChangeId) {
 
-        String metaName = metaOperationType == MetaOperationType.PASSWORD_CHANGE || metaOperationType == MetaOperationType.PASSWORD_RESET ? "password" :
+        String metaName =
+                metaOperationType == MetaOperationType.PASSWORD_CHANGE || metaOperationType == MetaOperationType.PASSWORD_RESET ? "password" :
                 "email";
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
@@ -374,14 +385,16 @@ public class MessageJobService {
                     .createdDate(LocalDateTime.now())
                     .contactType(ContactType.EMAIL)
                     .serviceProvider(MessageServiceProviderType.KURTUBA)
-                    .maxTryCount(Integer.valueOf(emailSendMaxTryCount))
+                    .maxTryCount(Integer.parseInt(emailSendMaxTryCount))
                     .sendAfterDate(LocalDateTime.now())
                     .state(MessageJobStateType.PENDING)
                     .tryCount(0)
                     .recipient(recipient)
-                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.modification.subject").getMessage())
+                    .subject(localizationMessageService.findByLanguageCodeAndKey(lang, "mail.account.modification" +
+                            ".subject").getMessage())
                     .message(htmlFileContent)
                     .sender("sender-test@example.com")
+                    .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
             throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
@@ -389,7 +402,8 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserMetaChangeNotificationSMS(String recipient, MetaOperationType metaOperationType, String lang) {
+    public void sendUserMetaChangeNotificationSMS(String recipient, MetaOperationType metaOperationType, String lang,
+                                                  String userMetaChangeId) {
         // todo implement send sms
         throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
     }

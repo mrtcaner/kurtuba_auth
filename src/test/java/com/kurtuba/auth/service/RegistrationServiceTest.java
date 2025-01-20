@@ -184,7 +184,8 @@ public class RegistrationServiceTest {
 
         @Test
         public void createUser_whenGivenValidRegistrationDto_thenReturnSavedUser() {
-            doNothing().when(messageJobService).sendAccountActivationCodeMail(anyString(), anyString(), anyString());
+            doNothing().when(messageJobService).sendAccountActivationCodeMail(anyString(), anyString(), anyString(),
+                    anyString());
             //default registrationDto is set to account activation by email using code
             String metaChangeId = registrationService.register(registrationDto);
             assertEquals(metaChangeId, emailActivationCodeUserMetaChange.getId());
@@ -192,7 +193,8 @@ public class RegistrationServiceTest {
 
         @Test
         public void createUser_whenGivenValidRegistrationDtoWithVerifyByLink_thenReturnSavedUser() {
-            doNothing().when(messageJobService).sendAccountActivationLinkMail(anyString(), anyString(), anyString());
+            doNothing().when(messageJobService).sendAccountActivationLinkMail(anyString(), anyString(), anyString(),
+                    anyString());
             //default registrationDto is set to account activation by email using code
             registrationDto.setVerificationByCode(false);
             String metaChangeId = registrationService.register(registrationDto);
@@ -225,7 +227,8 @@ public class RegistrationServiceTest {
         public void createUser_whenGivenMissingEmailAndMobile_thenThrowException() {
             registrationDto.setEmail("");
             registrationDto.setMobile("");
-            BusinessLogicException exception = assertThrows(BusinessLogicException.class, () -> registrationService.register(registrationDto));
+            BusinessLogicException exception = assertThrows(BusinessLogicException.class,
+                    () -> registrationService.register(registrationDto));
             assertEquals(exception.getErrorCode(), (int) ErrorEnum.USER_CONTACT_REQUIRED.getCode());
 
         }

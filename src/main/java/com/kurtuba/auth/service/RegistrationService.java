@@ -149,6 +149,7 @@ public class RegistrationService {
             if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
                 maxTryCount = metaChangeEmailMaxTryCount;
             } else {
+                // twilio's default max try count
                 maxTryCount = metaChangeSMSMaxTryCount;
             }
         }
@@ -191,12 +192,14 @@ public class RegistrationService {
         // in case there are both email and mobile contacts, only one can be used to activate account.
         if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
             if (newUser.isVerificationByCode()) {
-                messageJobService.sendAccountActivationCodeMail(savedUser.getEmail(), savedMetaChange.getCode(), savedUser.getUserSetting().getLocale().getLanguageCode());
+                messageJobService.sendAccountActivationCodeMail(savedUser.getEmail(), savedMetaChange.getCode(),
+                        savedUser.getUserSetting().getLocale().getLanguageCode(), savedMetaChange.getId());
             } else {
-                messageJobService.sendAccountActivationLinkMail(savedUser.getEmail(), savedMetaChange.getLinkParam(), savedUser.getUserSetting().getLocale().getLanguageCode());
+                messageJobService.sendAccountActivationLinkMail(savedUser.getEmail(), savedMetaChange.getLinkParam(),
+                        savedUser.getUserSetting().getLocale().getLanguageCode(), savedMetaChange.getId());
             }
         } else {
-            messageJobService.sendVerificationCodeSMSViaTwilio(savedUser.getMobile());
+            messageJobService.sendVerificationCodeSMSViaTwilio(savedUser.getMobile(), savedMetaChange.getId());
         }
 
         return savedMetaChange;
@@ -333,8 +336,6 @@ public class RegistrationService {
         if (user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
-
-        validateAccountActivationUserMetaChange(userMetaChange, null);
 
         user.setActivated(true);
         if (userMetaChange.getContactType().equals(ContactType.EMAIL)) {

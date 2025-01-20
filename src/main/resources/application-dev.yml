@@ -1,13 +1,9 @@
 server:
   port: 8080
 
-
 auth:
   server:
     issuer-url: http://192.168.1.2:8080
-    protocol: http://
-    ip: 192.168.1.2
-    port: 8080
 
 logging:
   level:
@@ -33,7 +29,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: http://${auth.server.ip}:${auth.server.port}/oauth2/jwks
+          jwk-set-uri: ${auth.server.issuer-url}/oauth2/jwks
   mail:
     host: 192.168.1.114
     port: 1025
@@ -51,6 +47,8 @@ management:
         include: health, info, env
 
 kurtuba:
+  server:
+    url: http://192.168.1.2:8080
   jwk:
     file: "jwk.json"
     keys: '{"32abb5cf-a1fb-4cdd-9af7-fe517a0bda47": "pkBJlIfLcEW0tvIutbZjsjwBYOZ2DkRw2Hiy5S+m+uI=", "f5a7e70c-fb73-42ab-b217-841ea4e5d5b1": "A5kZEy3jC4ChSTtbq92AsARDrqslb+J7WmWwkMevhds=", "12e87ac2-9ee3-4bab-85ca-758cbd998b26":"2lWwOTIvMxfwO1n9TwOvtuuOaTva95vmW8kyGYaoe6w="}'

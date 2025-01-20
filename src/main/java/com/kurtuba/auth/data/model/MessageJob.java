@@ -50,6 +50,8 @@ public class MessageJob {
     @NotNull
     LocalDateTime sendAfterDate;
 
+    String userMetaChangeId;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     MessageServiceProviderType serviceProvider;
