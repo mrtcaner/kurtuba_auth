@@ -187,7 +187,7 @@ public class RegistrationServiceTest {
             doNothing().when(messageJobService).sendAccountActivationCodeMail(anyString(), anyString(), anyString(),
                     anyString());
             //default registrationDto is set to account activation by email using code
-            String metaChangeId = registrationService.register(registrationDto);
+            String metaChangeId = registrationService.register(registrationDto).getId();
             assertEquals(metaChangeId, emailActivationCodeUserMetaChange.getId());
         }
 
@@ -197,7 +197,7 @@ public class RegistrationServiceTest {
                     anyString());
             //default registrationDto is set to account activation by email using code
             registrationDto.setVerificationByCode(false);
-            String metaChangeId = registrationService.register(registrationDto);
+            String metaChangeId = registrationService.register(registrationDto).getId();
             assertEquals(metaChangeId, emailActivationLinkUserMetaChange.getId());
         }
     }

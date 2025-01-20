@@ -47,10 +47,6 @@ public class UserService {
     private int metaChangeEmailMaxTryCount;
     @Value("${kurtuba.meta-change.sms-max-try-count}")
     private int metaChangeSmsMaxTryCount;
-    @Value("${kurtuba.meta-change.validity.email.activation-code.minutes}")
-    private int activationEmailCodeValidityMinutes;
-    @Value("${kurtuba.meta-change.validity.sms.activation-code.minutes}")
-    private int activationSmsCodeValidityMinutes;
     @Value("${kurtuba.meta-change.validity.email.change-code.minutes}")
     private int emailChangeCodeValidityMinutes;
 
@@ -230,7 +226,6 @@ public class UserService {
             }
         }
 
-
         String linkParam = null;
         String code = null;
         Integer maxTryCount = null;
@@ -256,7 +251,7 @@ public class UserService {
                 .executed(false)
                 .expirationDate(LocalDateTime.now().plusMinutes(passwordResetCodeValidityMinutes))
                 .maxTryCount(maxTryCount)
-                .tryCount(byCode ? 0 : null)
+                .tryCount(maxTryCount == null ? null : 0)
                 .code(code)
                 .linkParam(linkParam)
                 .createdDate(LocalDateTime.now())
@@ -371,96 +366,6 @@ public class UserService {
        return userRepository.save(user);
     }
 
-    @Transactional
-    public String sendAccountActivationMessage(@NotBlank String emailMobile, boolean byCode) {
-        if (emailMobile.contains("@")) {
-            //email
-            return sendAccountActivationMail(emailMobile, byCode);
-        } else {
-            return sendAccountActivationSMS(emailMobile);
-        }
-
-    }
-
-    /**
-     * Send activation MAIL to the user's email address
-     * May contain code or link
-     *
-     * @return
-     */
-    @Transactional
-    public String sendAccountActivationMail(@NotBlank String email, boolean byCode) {
-
-        User user = userRepository.getUserByEmail(email).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        if (user.isActivated()) {
-            // already activated
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
-        }
-
-        UserMetaChange metaChange = UserMetaChange.builder()
-                .userId(user.getId())
-                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
-                .contactType(ContactType.EMAIL)
-                .meta(user.getEmail())
-                .executed(false)
-                .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(activationEmailCodeValidityMinutes))
-                .maxTryCount(byCode ? metaChangeEmailMaxTryCount : null)
-                .tryCount(byCode ? 0 : null)
-                .code(byCode ? generateVerificationCode() : null)
-                .linkParam(!byCode ?
-                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
-                .build();
-        userMetaChangeService.create(metaChange);
-        if (byCode) {
-            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(),
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
-        } else {
-            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(),
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
-        }
-
-        return metaChange.getId();
-
-
-    }
-
-    /**
-     * Send activation SMS to the user's mobile number
-     * May contain code
-     *
-     * @return
-     */
-    @Transactional
-    public String sendAccountActivationSMS(@MobileNumber String mobile) {
-        User user = userRepository.getUserByEmailOrMobile(mobile).orElseThrow(() ->
-                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
-
-        if (user.isActivated()) {
-            // already activated
-            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
-        }
-
-        UserMetaChange metaChange = UserMetaChange.builder()
-                .userId(user.getId())
-                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
-                .contactType(ContactType.MOBILE)
-                .meta(user.getMobile())
-                .executed(false)
-                .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(activationSmsCodeValidityMinutes))
-                .maxTryCount(metaChangeSmsMaxTryCount)
-                .tryCount(0)
-                .code(null)
-                .linkParam(null)
-                .build();
-
-        userMetaChangeService.create(metaChange);
-        messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile(), metaChange.getId());
-        return metaChange.getId();
-    }
 
     /**
      * Verify email by rest request. User must enter the code mailed to them

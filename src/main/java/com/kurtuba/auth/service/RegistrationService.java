@@ -16,8 +16,10 @@ import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.ServiceUtils;
 import com.kurtuba.auth.utils.TokenUtils;
+import com.kurtuba.auth.utils.annotation.MobileNumber;
 import com.nimbusds.jose.shaded.gson.JsonObject;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -79,14 +81,14 @@ public class RegistrationService {
     }
 
     @Transactional
-    public String register(@Valid RegistrationDto newUser) {
+    public UserMetaChange register(@Valid RegistrationDto registrationDto) {
 
-        validateRegistrationRequirements(newUser);
+        validateRegistrationRequirements(registrationDto);
 
-        String pass = newUser.getPassword();
-        newUser.setPassword(new BCryptPasswordEncoder().encode(pass));
+        String pass = registrationDto.getPassword();
+        registrationDto.setPassword(new BCryptPasswordEncoder().encode(pass));
 
-        User user = newUser.toUser();
+        User user = registrationDto.toUser();
         if (StringUtils.hasLength(user.getUsername())) {
             user.getUserSetting().setCanChangeUsername(false);
         } else {
@@ -112,7 +114,11 @@ public class RegistrationService {
                         .build())
         ));
 
-        return createMetaChangeAndSendActivationMessage(savedUser, newUser).getId();
+        if (registrationDto.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
+            return sendAccountActivationMail(savedUser.getEmail(), registrationDto.isVerificationByCode());
+        } else {
+            return sendAccountActivationSMS(savedUser.getMobile());
+        }
     }
 
     private void validateRegistrationRequirements(RegistrationDto newUser) {
@@ -141,66 +147,6 @@ public class RegistrationService {
         }
     }
 
-    // check 10 min before sending new after max try count reached
-    // add sid column to message job
-    // if verification successful then add sid also to user meta change? yes
-    private UserMetaChange createMetaChangeAndSendActivationMessage(User savedUser, RegistrationDto newUser) {
-        String meta = newUser.getPreferredVerificationContact().equals(ContactType.EMAIL) ? savedUser.getEmail()
-                : savedUser.getMobile();
-
-        // default validity duration of link/code is email code validity minutes
-        int validityDurationMinutes = activationEmailCodeValidityMinutes;
-        String linkParam = null;
-        String code = null;
-        Integer maxTryCount = null;
-        if(newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)){
-            if(newUser.isVerificationByCode()) {
-                maxTryCount = metaChangeEmailMaxTryCount;
-                code = generateVerificationCode();
-            }else{
-                // linkParam is only available for email
-                linkParam = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
-            }
-        }else{
-            // twilio's default max try count
-            // if ContactType.MOBILE then twilio will create the code and only user and twilio will know it. In that case
-            // during code verification, auth server will dispatch the code verification to twilio and get the result
-            maxTryCount = metaChangeSMSMaxTryCount;
-            //in case of mobile, use twilio's default validity duration(10 minutes)
-            validityDurationMinutes = activationSmsCodeValidityMinutes;
-        }
-
-        UserMetaChange metaChange = UserMetaChange.builder()
-                .userId(savedUser.getId())
-                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
-                .contactType(newUser.getPreferredVerificationContact())
-                .meta(meta)
-                .executed(false)
-                .createdDate(LocalDateTime.now())
-                .expirationDate(LocalDateTime.now().plusMinutes(validityDurationMinutes))
-                .maxTryCount(maxTryCount)
-                .tryCount(maxTryCount == null ? null : 0)
-                .code(code)
-                .linkParam(linkParam)
-                .build();
-
-        UserMetaChange savedMetaChange = userMetaChangeService.create(metaChange);
-
-        // in case there are both email and mobile contacts, only one can be used to activate account.
-        if (newUser.getPreferredVerificationContact().equals(ContactType.EMAIL)) {
-            if (newUser.isVerificationByCode()) {
-                messageJobService.sendAccountActivationCodeMail(savedUser.getEmail(), savedMetaChange.getCode(),
-                        savedUser.getUserSetting().getLocale().getLanguageCode(), savedMetaChange.getId());
-            } else {
-                messageJobService.sendAccountActivationLinkMail(savedUser.getEmail(), savedMetaChange.getLinkParam(),
-                        savedUser.getUserSetting().getLocale().getLanguageCode(), savedMetaChange.getId());
-            }
-        } else {
-            messageJobService.sendVerificationCodeSMSViaTwilio(savedUser.getMobile(), savedMetaChange.getId());
-        }
-
-        return savedMetaChange;
-    }
 
     @Transactional
     public RegistrationDto registerByAnotherProvider(@Valid RegistrationOtherProviderDto newUserByOtherProvider) {
@@ -347,6 +293,97 @@ public class RegistrationService {
 
         return userTokenService.validateRegisteredClientAndGetTokens(user, clientId, clientSecret);
 
+    }
+
+    @Transactional
+    public UserMetaChange sendAccountActivationMessage(@NotBlank String emailMobile, boolean byCode) {
+        if (emailMobile.contains("@")) {
+            //email
+            return sendAccountActivationMail(emailMobile, byCode);
+        } else {
+            return sendAccountActivationSMS(emailMobile);
+        }
+
+    }
+
+    /**
+     * Send activation MAIL to the user's email address
+     * May contain code or link
+     *
+     * @return
+     */
+    @Transactional
+    public UserMetaChange sendAccountActivationMail(@NotBlank String email, boolean byCode) {
+
+        User user = userService.getUserByEmail(email).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isActivated()) {
+            // already activated
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        UserMetaChange metaChange = UserMetaChange.builder()
+                .userId(user.getId())
+                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
+                .contactType(ContactType.EMAIL)
+                .meta(user.getEmail())
+                .executed(false)
+                .createdDate(LocalDateTime.now())
+                .expirationDate(LocalDateTime.now().plusMinutes(activationEmailCodeValidityMinutes))
+                .maxTryCount(byCode ? metaChangeEmailMaxTryCount : null)
+                .tryCount(byCode ? 0 : null)
+                .code(byCode ? generateVerificationCode() : null)
+                .linkParam(!byCode ?
+                        Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes()) : null)
+                .build();
+        userMetaChangeService.create(metaChange);
+        if (byCode) {
+            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(),
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+        } else {
+            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(),
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+        }
+
+        return metaChange;
+
+
+    }
+
+    /**
+     * Send activation SMS to the user's mobile number
+     * May contain code
+     *
+     * @return
+     */
+    @Transactional
+    public UserMetaChange sendAccountActivationSMS(@MobileNumber String mobile) {
+        User user = userService.getUserByEmailOrMobile(mobile).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isActivated()) {
+            // already activated
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        UserMetaChange metaChange = UserMetaChange.builder()
+                .userId(user.getId())
+                .metaOperationType(MetaOperationType.ACCOUNT_ACTIVATION)
+                .contactType(ContactType.MOBILE)
+                .meta(user.getMobile())
+                .executed(false)
+                .createdDate(LocalDateTime.now())
+                .expirationDate(LocalDateTime.now().plusMinutes(activationSmsCodeValidityMinutes))
+                .maxTryCount(metaChangeSMSMaxTryCount)
+                .tryCount(0)
+                .code(null)
+                .linkParam(null)
+                .build();
+
+        userMetaChangeService.create(metaChange);
+        messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile(), metaChange.getId());
+        return metaChange;
     }
 
 }

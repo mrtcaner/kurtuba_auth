@@ -49,7 +49,7 @@ public class RegistrationController {
     public ResponseEntity register(@Valid @RequestBody RegistrationDto newUser) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
                 RegistrationResponseDto.builder()
-                        .userMetaChangeId(registrationService.register(newUser))
+                        .userMetaChangeId(registrationService.register(newUser).getId())
                         .user(UserDto.fromUser(userService.getUserByEmail(newUser.getEmail()).orElseThrow(() ->
                                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST))))
                         .build());
@@ -102,8 +102,8 @@ public class RegistrationController {
     @PostMapping("/activation")
     public ResponseEntity<UserMetaChangeDto> resendAccountActivationMessage(@Valid @RequestBody AccountActivationRequestDto accountActivationRequestDto) {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
-                UserMetaChangeDto.builder().userMetaChangeId(userService.sendAccountActivationMessage(accountActivationRequestDto.getEmailMobile(),
-                        accountActivationRequestDto.isByCode())).build()
+                UserMetaChangeDto.builder().userMetaChangeId(registrationService.sendAccountActivationMessage(accountActivationRequestDto.getEmailMobile(),
+                        accountActivationRequestDto.isByCode()).getId()).build()
         );
     }
 
