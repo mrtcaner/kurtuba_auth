@@ -94,5 +94,14 @@ public class TwilioSMSService implements ISMSService{
         }
     }
 
+    @Override
+    public Object deleteVerification(String sid) {
+        try {
+            return Verification.updater(VERIFY_SERVICE_SID, sid,Verification.Status.CANCELED).update();
+        } catch (Exception e) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_UNEXPECTED_ERROR);
+        }
+    }
+
 
 }

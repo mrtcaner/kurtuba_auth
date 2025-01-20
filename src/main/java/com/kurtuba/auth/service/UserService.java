@@ -84,15 +84,21 @@ public class UserService {
 
         user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
         userRepository.save(user);
-        userMetaChangeService.create(UserMetaChange.builder()
+        UserMetaChange metaChange = userMetaChangeService.create(UserMetaChange.builder()
                 .metaOperationType(MetaOperationType.PASSWORD_CHANGE)
+                .contactType(ContactType.EMAIL)
                 .userId(user.getId())
                 .createdDate(LocalDateTime.now())
                 .updatedDate(LocalDateTime.now())
                 .executed(true)
                 .expirationDate(LocalDateTime.now())
                 .build());
-        messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE, user.getUserSetting().getLocale().getLanguageCode());
+
+        //todo: send sms if no email? currently no regular sms sending capability
+        if(StringUtils.hasLength(user.getEmail())){
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE,
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+        }
     }
 
 
@@ -191,9 +197,11 @@ public class UserService {
         userMetaChangeService.create(metaChange);
 
         if (byCode) {
-            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
+            messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode(),
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
         } else {
-            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
+            messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam(),
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
         }
 
         return metaChange;
@@ -261,13 +269,15 @@ public class UserService {
         if (emailMobile.contains("@")) {
             //email
             if (byCode == true) {
-                messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
+                messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(),
+                        user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
             } else {
-                messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
+                messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam(),
+                        user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
             }
         } else {
             //mobile
-            messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile());
+            messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile(), metaChange.getId());
         }
         userMetaChangeService.create(metaChange);
 
@@ -348,7 +358,8 @@ public class UserService {
         userMetaChangeService.create(userMetaChange);
 
         if (StringUtils.hasLength(user.getEmail())) {
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET, user.getUserSetting().getLocale().getLanguageCode());
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET,
+                    user.getUserSetting().getLocale().getLanguageCode(), userMetaChange.getId());
         }
 
         //todo uncomment after SMS integration
@@ -407,9 +418,11 @@ public class UserService {
                 .build();
         userMetaChangeService.create(metaChange);
         if (byCode) {
-            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(), user.getUserSetting().getLocale().getLanguageCode());
+            messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(),
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
         } else {
-            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(), user.getUserSetting().getLocale().getLanguageCode());
+            messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(),
+                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
         }
 
         return metaChange.getId();
@@ -446,8 +459,9 @@ public class UserService {
                 .code(null)
                 .linkParam(null)
                 .build();
+
         userMetaChangeService.create(metaChange);
-        messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile());
+        messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile(), metaChange.getId());
         return metaChange.getId();
     }
 
@@ -496,7 +510,8 @@ public class UserService {
 
         if (StringUtils.hasLength(user.getEmail())) {
             //send change notification mail to old e-mail
-            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE, user.getUserSetting().getLocale().getLanguageCode());
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE,
+                    user.getUserSetting().getLocale().getLanguageCode(), userMetaChange.getId());
         }
 
         user.setEmail(userMetaChange.getMeta());

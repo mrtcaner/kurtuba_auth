@@ -2,6 +2,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.SMSRequestDto;
 import com.kurtuba.auth.data.dto.SMSVerificationCheckDto;
+import com.kurtuba.auth.data.dto.SMSVerificationDeleteDto;
 import com.kurtuba.auth.data.dto.SMSVerificationRequestDto;
 import com.kurtuba.auth.service.ISMSService;
 import jakarta.validation.Valid;
@@ -36,6 +37,11 @@ public class SmsController {
     @PutMapping("/verification")
     public ResponseEntity checkVerification(@Valid @RequestBody SMSVerificationCheckDto smsRequestDto) {
         return ResponseEntity.ok(smsService.checkVerification(smsRequestDto.getRecipient(), smsRequestDto.getCode()));
+    }
+
+    @DeleteMapping("/verification")
+    public ResponseEntity deleteVerification(@Valid @RequestBody SMSVerificationDeleteDto smsRequestDto) {
+        return ResponseEntity.ok(smsService.deleteVerification(smsRequestDto.getSid()));
     }
 
 

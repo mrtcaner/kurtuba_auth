@@ -12,4 +12,6 @@ public interface ISMSService {
 
     Boolean checkVerification(String userMobile, String code);
 
+    Object deleteVerification(String sid);
+
 }
