@@ -356,12 +356,14 @@ public class MessageJobService {
     }
 
     @Transactional
-    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType, String lang
-            , String userMetaChangeId) {
+    public void sendUserMetaChangeNotificationMail(String recipient, MetaOperationType metaOperationType, String lang,
+                                                   String userMetaChangeId) {
 
         String metaName =
-                metaOperationType == MetaOperationType.PASSWORD_CHANGE || metaOperationType == MetaOperationType.PASSWORD_RESET ? "password" :
-                "email";
+                metaOperationType == MetaOperationType.PASSWORD_CHANGE ||
+                        metaOperationType == MetaOperationType.PASSWORD_RESET ? "password"
+                        : metaOperationType == MetaOperationType.MOBILE_CHANGE ? "mobile number"
+                        : "email address";
         try {
             File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
             String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));

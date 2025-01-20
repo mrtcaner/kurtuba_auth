@@ -230,7 +230,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/email/verification")
-    public ResponseEntity sendEmailVerification(@Valid @RequestBody EmailVerificationRequestDto emailVerificationRequestDto,
+    public ResponseEntity requestChangeEmail(@Valid @RequestBody EmailVerificationRequestDto emailVerificationRequestDto,
                                                 Principal principal) {
         return ResponseEntity.status(HttpStatus.OK_200)
                 .body(UserMetaChangeDto.builder()
@@ -247,8 +247,8 @@ public class UserController {
      * @return
      */
     @PutMapping("/email/verification/code")
-    public ResponseEntity verifyEmailByCode(@Valid @RequestBody EmailVerificationDto verificationDto) {
-        userService.verifyEmailByCode(verificationDto.getEmailMobile(), verificationDto.getCode());
+    public ResponseEntity verifyEmailByCode(@Valid @RequestBody EmailVerificationDto verificationDto, Principal principal) {
+        userService.verifyEmailByCode(principal.getName(), verificationDto.getCode());
         return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200))
                 .body("");
     }
@@ -280,6 +280,34 @@ public class UserController {
                     .build().toMap());
         }
         return modelAndView;
+    }
+
+    /**
+     * Sends a verification code to given mobile address for logged-in user
+     *
+     * @param mobileVerificationRequestDto
+     * @param principal
+     * @return
+     */
+    @PostMapping("/mobile/verification")
+    public ResponseEntity requestChangeMobile(@Valid @RequestBody MobileVerificationRequestDto mobileVerificationRequestDto,
+                                                    Principal principal) {
+        return ResponseEntity.status(HttpStatus.OK_200)
+                .body(UserMetaChangeDto.builder().userMetaChangeId(userService.requestChangeMobile(principal.getName(),
+                                mobileVerificationRequestDto.getMobile()).getId()).build());
+
+    }
+
+    /**
+     * Verifies mobile using code
+     *
+     * @param verificationDto
+     * @return
+     */
+    @PutMapping("/mobile/verification/code")
+    public ResponseEntity verifyMobileByCode(@Valid @RequestBody MobileVerificationDto verificationDto, Principal principal) {
+        userService.verifyMobileByCode(principal.getName(), verificationDto.getCode());
+        return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200)).build();
     }
 
 }

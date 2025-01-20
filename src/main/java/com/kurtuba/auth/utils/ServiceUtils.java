@@ -42,6 +42,14 @@ public class ServiceUtils {
             throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
         }
 
+        if (userMetaChange.isExecuted()) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+
+        if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+        }
+
         // for mobile, verification happens in twilio
         if (userMetaChange.getContactType().equals(ContactType.EMAIL) &&
                 StringUtils.hasLength(userMetaChange.getCode()) && !userMetaChange.getCode().equals(code)) {
@@ -84,13 +92,6 @@ public class ServiceUtils {
             }
         }
 
-        if (userMetaChange.isExecuted()) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
-
-        if (userMetaChange.getExpirationDate().isBefore(LocalDateTime.now())) {
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
-        }
     }
 
     @Transactional

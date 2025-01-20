@@ -370,13 +370,13 @@ public class UserService {
     /**
      * Verify email by rest request. User must enter the code mailed to them
      *
-     * @param emailMobile
+     * @param userId
      * @param code
      * @return
      */
     @Transactional
-    public UserDto verifyEmailByCode(@NotBlank String emailMobile, @NotBlank String code) {
-        User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
+    public UserDto verifyEmailByCode(@NotBlank String userId, @NotBlank String code) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         UserMetaChange userMetaChange = userMetaChangeService
@@ -425,4 +425,92 @@ public class UserService {
 
         return UserDto.fromUser(user);
     }
+
+    /**
+     * User registered and there is already a verified email(email change operation)
+     *
+     * @param userId
+     * @param mobile
+     * @return
+     */
+    @Transactional
+    public UserMetaChange requestChangeMobile(String userId, String mobile) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        if (userRepository.getUserByMobile(mobile).isPresent()) {
+            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
+        }
+
+        UserMetaChange metaChange = UserMetaChange.builder()
+                .userId(user.getId())
+                .metaOperationType(MetaOperationType.MOBILE_CHANGE)
+                .contactType(ContactType.MOBILE)
+                .meta(mobile)
+                .executed(false)
+                .createdDate(LocalDateTime.now())
+                .expirationDate(LocalDateTime.now().plusMinutes(emailChangeCodeValidityMinutes))
+                .maxTryCount(metaChangeSmsMaxTryCount)
+                .tryCount(0)
+                .code(null)
+                .linkParam(null)
+                .build();
+
+        userMetaChangeService.create(metaChange);
+        messageJobService.sendVerificationCodeSMSViaTwilio(mobile, metaChange.getId());
+
+        return metaChange;
+    }
+
+    /**
+     * Verify mobile by rest request. User must enter the code sent to them
+     *
+     * @param userId
+     * @param code
+     * @return
+     */
+    @Transactional
+    public UserDto verifyMobileByCode(@NotBlank String userId, @NotBlank String code) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        UserMetaChange userMetaChange = userMetaChangeService
+                .findActiveMetaChangeOperationForUser(user.getId(), MetaOperationType.MOBILE_CHANGE).orElseThrow(() ->
+                        new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION));
+
+        validateMobileChangeUserMetaChange(userMetaChange, code);
+
+        return saveNewMobile(userMetaChange, user);
+    }
+
+    private void validateMobileChangeUserMetaChange(UserMetaChange userMetaChange, String code) {
+
+        if (!userMetaChange.getMetaOperationType().equals(MetaOperationType.MOBILE_CHANGE)) {
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_INVALID_OPERATION);
+        }
+
+        serviceUtils.validateUserMetaChange(userMetaChange, code);
+    }
+    private UserDto saveNewMobile(UserMetaChange userMetaChange, User user) {
+
+        if (StringUtils.hasLength(user.getMobile())) {
+            //send change notification mail to user
+            messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.MOBILE_CHANGE,
+                    user.getUserSetting().getLocale().getLanguageCode(), userMetaChange.getId());
+        }
+
+        user.setMobile(userMetaChange.getMeta());
+        user.setMobileVerified(true);
+        userRepository.save(user);
+        userMetaChange.setExecuted(true);
+        userMetaChange.setUpdatedDate(LocalDateTime.now());
+        userMetaChangeService.update(userMetaChange);
+
+        return UserDto.fromUser(user);
+    }
+
 }
