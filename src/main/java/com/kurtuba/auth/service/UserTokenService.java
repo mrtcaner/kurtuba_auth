@@ -257,6 +257,11 @@ public class UserTokenService {
             throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
         }
 
+        // client does not support refresh
+        if(!result.registeredClient.isRefreshTokenEnabled()){
+            throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
+        }
+
         return getTokens(result);
 
     }
