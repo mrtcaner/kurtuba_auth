@@ -257,6 +257,7 @@ public class UserService {
                 .createdDate(LocalDateTime.now())
                 .userId(user.getId())
                 .build();
+        userMetaChangeService.create(metaChange);
 
         if (emailMobile.contains("@")) {
             //email
@@ -271,15 +272,13 @@ public class UserService {
             //mobile
             messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile(), metaChange.getId());
         }
-        userMetaChangeService.create(metaChange);
 
         return metaChange;
 
     }
 
     /**
-     * If password reset request is responded with a code rather than a link, generated code is random-not unique.
-     * Hence, userMetaChangeId is required
+     * If clientId is provided, tokens will be returned
      *
      * @param passwordResetByCodeDto
      */

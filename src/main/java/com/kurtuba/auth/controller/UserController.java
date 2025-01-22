@@ -85,24 +85,28 @@ public class UserController {
      */
     @PostMapping("/password/reset")
     public ResponseEntity requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto passwordResetRequestDto) {
-        return ResponseEntity.status(HttpStatus.OK_200).body(UserMetaChangeDto.builder()
+        return ResponseEntity.status(HttpStatus.CREATED_201).body(UserMetaChangeDto.builder()
                 .userMetaChangeId(userService.requestResetPassword(passwordResetRequestDto.getEmailMobile(),
                         passwordResetRequestDto.isByCode()).getId())
                 .build());
     }
 
     /**
-     * Receives valid reset code, userMetaChangeId, new password and client credentials
+     * Receives valid reset code, new password and client credentials
      * <p>
      * if client credentials are provided then return token(s)
-     * else empty string
+     * else no content(204)
      *
      * @param passwordResetByCodeDto
      * @return
      */
     @PutMapping("/password/reset/code")
     public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
-        return ResponseEntity.status(HttpStatus.OK_200).body(userService.resetPasswordByCode(passwordResetByCodeDto));
+        TokensResponseDto tokens = userService.resetPasswordByCode(passwordResetByCodeDto);
+        if(tokens != null){
+            return ResponseEntity.status(HttpStatus.CREATED_201).body(userService.resetPasswordByCode(passwordResetByCodeDto));
+        }
+        return ResponseEntity.status(HttpStatus.NO_CONTENT_204).build();
     }
 
     /**
@@ -191,7 +195,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/password/reset/forgot-password")
-    public ModelAndView handleForgotPasswordPage(@ModelAttribute("forgotPasswordForm") @Valid PasswordResetRequestDto passwordResetRequestDto,
+    public ModelAndView handleForgotPasswordPageRequestPasswordReset(@ModelAttribute("forgotPasswordForm") @Valid PasswordResetRequestDto passwordResetRequestDto,
                                                  BindingResult result) {
         ModelAndView modelAndView = new ModelAndView();
         if (result.hasErrors()) {
