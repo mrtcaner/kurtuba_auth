@@ -133,10 +133,6 @@ public class UserTokenService {
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
         // check user state
-        if (!user.isEmailVerified()) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_NOT_VERIFIED);
-        }
-
         if (!user.isActivated() || user.isLocked() || user.isShowCaptcha()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
