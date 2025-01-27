@@ -1,6 +1,7 @@
 package com.kurtuba.auth.data.model;
 
 import com.kurtuba.auth.data.enums.AuthProviderType;
+import com.kurtuba.auth.data.enums.GenderType;
 import com.kurtuba.auth.utils.annotation.EmailAddress;
 import com.kurtuba.auth.utils.annotation.MobileNumber;
 import com.kurtuba.auth.utils.annotation.UserName;
@@ -65,6 +66,9 @@ public class User implements Serializable {
     @NotNull
     @Enumerated(EnumType.STRING)
     private AuthProviderType authProvider;
+
+    @Enumerated(EnumType.STRING)
+    private GenderType gender;
 
     private boolean locked;
 
