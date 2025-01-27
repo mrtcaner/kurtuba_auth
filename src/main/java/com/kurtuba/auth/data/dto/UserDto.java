@@ -2,6 +2,7 @@ package com.kurtuba.auth.data.dto;
 
 
 import com.kurtuba.auth.data.enums.AuthProviderType;
+import com.kurtuba.auth.data.enums.GenderType;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserRole;
 import com.kurtuba.auth.data.model.UserSetting;
@@ -27,6 +28,7 @@ public class UserDto {
     private List<UserRole> userRoles;
     private UserSetting userSetting;
     private LocalDateTime birthdate;
+    private GenderType gender;
     private AuthProviderType authProvider;
     private boolean activated;
     private boolean locked;
@@ -47,6 +49,7 @@ public class UserDto {
                 .userRoles(userRoles)
                 .userSetting(userSetting)
                 .birthdate(birthdate)
+                .gender(gender)
                 .authProvider(authProvider)
                 .mobile(mobile)
                 .activated(activated)
@@ -70,6 +73,7 @@ public class UserDto {
                 .userRoles(user.getUserRoles())
                 .userSetting(user.getUserSetting())
                 .birthdate(user.getBirthdate())
+                .gender(user.getGender())
                 .authProvider(user.getAuthProvider())
                 .mobile(user.getMobile())
                 .activated(user.isActivated())
