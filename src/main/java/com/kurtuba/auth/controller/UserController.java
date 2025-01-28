@@ -314,4 +314,19 @@ public class UserController {
         return ResponseEntity.status(HttpStatusCode.valueOf(org.eclipse.jetty.http.HttpStatus.OK_200)).build();
     }
 
+    /**
+     * Updates users personal info
+     *
+     * @param userPersonalInfoDto
+     * @param principal
+     * @return
+     */
+    @PutMapping("/personal-info")
+    public ResponseEntity updatePersonalInfo(@Valid @RequestBody UserPersonalInfoDto userPersonalInfoDto,
+                                              Principal principal) {
+        userService.updateUserPersonalInfo(principal.getName(), userPersonalInfoDto);
+        return ResponseEntity.status(HttpStatus.OK_200).build();
+
+    }
+
 }
