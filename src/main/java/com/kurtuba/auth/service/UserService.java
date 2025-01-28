@@ -11,7 +11,6 @@ import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.ServiceUtils;
-import com.kurtuba.auth.utils.annotation.MobileNumber;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -22,8 +21,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -311,6 +313,21 @@ public class UserService {
     public void resetPasswordByLink(@Valid PasswordResetByLinkDto passwordResetByLinkDto) {
         UserMetaChange userMetaChange = validatePasswordResetLinkParam(passwordResetByLinkDto.getLinkParam());
         saveNewPassword(userMetaChange, passwordResetByLinkDto.getNewPassword(), passwordResetByLinkDto.getRepeatNewPassword());
+    }
+
+    @Transactional
+    public void updateUserPersonalInfo(String userId, @Valid  UserPersonalInfoDto userPersonalInfoDto) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                        new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        user.setName(userPersonalInfoDto.getName());
+        user.setSurname(userPersonalInfoDto.getSurname());
+        user.setBirthdate(userPersonalInfoDto.getBirthdate() != null ?
+                LocalDate.parse(userPersonalInfoDto.getBirthdate(),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy",
+                Locale.ENGLISH)).atStartOfDay() : null);
+        user.setGender(userPersonalInfoDto.getGender());
+        userRepository.save(user);
     }
 
     @Transactional
