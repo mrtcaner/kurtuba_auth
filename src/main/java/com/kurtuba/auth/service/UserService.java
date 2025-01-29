@@ -459,7 +459,7 @@ public class UserService {
         }
 
         if (userRepository.getUserByMobile(mobile).isPresent()) {
-            throw new BusinessLogicException(ErrorEnum.USER_EMAIL_ALREADY_EXISTS);
+            throw new BusinessLogicException(ErrorEnum.USER_MOBILE_ALREADY_EXISTS);
         }
 
         UserMetaChange metaChange = UserMetaChange.builder()

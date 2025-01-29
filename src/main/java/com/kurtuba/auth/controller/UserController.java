@@ -296,7 +296,7 @@ public class UserController {
     @PostMapping("/mobile/verification")
     public ResponseEntity requestChangeMobile(@Valid @RequestBody MobileVerificationRequestDto mobileVerificationRequestDto,
                                                     Principal principal) {
-        return ResponseEntity.status(HttpStatus.OK_200)
+        return ResponseEntity.status(HttpStatus.CREATED_201)
                 .body(UserMetaChangeDto.builder().userMetaChangeId(userService.requestChangeMobile(principal.getName(),
                                 mobileVerificationRequestDto.getMobile()).getId()).build());
 
