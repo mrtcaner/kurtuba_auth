@@ -74,7 +74,7 @@ public class UserController {
     @PutMapping("/password")
     public ResponseEntity changePassword(@Valid @RequestBody PasswordChangeDto passwordChangeDto, Principal principal) {
         userService.changePassword(passwordChangeDto, principal.getName());
-        return ResponseEntity.status(HttpStatus.OK_200).body("");
+        return ResponseEntity.status(HttpStatus.NO_CONTENT_204).build();
     }
 
     /**

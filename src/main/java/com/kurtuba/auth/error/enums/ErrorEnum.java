@@ -19,7 +19,7 @@ public enum ErrorEnum {
     USER_OTHER_PROVIDER_INVALID_TOKEN("Invalid provider token",1305),
     USER_EMAIL_NOT_VERIFIED("User email is not verified",1306),
     USER_EMAIL_VERIFICATION_STATUS_INVALID("Email already verified or user doesn't exist",1307),
-    USER_PASSWORD_CHANGE_WRONG_PASSWORD("Old password wrong",1310),
+    USER_PASSWORD_CHANGE_WRONG_OLD_PASSWORD("Old password wrong",1310),
     USER_MOBILE_ALREADY_EXISTS("A user with mobile number already exists",1311),
     USER_PASSWORD_CHANGE_NEW_PASSWORD_MISMATCH("New passwords don't match",1312),
     USER_META_CHANGE_INVALID_OPERATION("Operation carried out or doesn't exist",1315),

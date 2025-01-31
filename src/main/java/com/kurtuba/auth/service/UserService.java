@@ -73,7 +73,7 @@ public class UserService {
         }
 
         if (!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_PASSWORD);
+            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_OLD_PASSWORD);
         }
 
         if (!passwordChangeDto.getNewPassword().equals(passwordChangeDto.getRepeatNewPassword())) {
