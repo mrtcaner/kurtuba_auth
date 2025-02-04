@@ -1,6 +1,7 @@
 package com.kurtuba.auth.error.handlers;
 
 import com.kurtuba.auth.error.enums.ErrorEnum;
+import com.kurtuba.auth.error.exception.BusinessLogicError;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.error.exception.ResourceNotFoundException;
 import com.kurtuba.auth.data.dto.ResponseErrorDto;
@@ -93,5 +94,20 @@ public class GlobalExceptionHandler {
                 .build();
 
         return new ResponseEntity<>(errorDetails, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(BusinessLogicError.class)
+    public ResponseEntity<?> businessLogicError(BusinessLogicError ex, WebRequest request) {
+        ex.printStackTrace();
+        ResponseErrorDto errorDetails = ResponseErrorDto
+                .builder()
+                .code(ex.getErrorCode())
+                .message(ex.getMessage())
+                .error(ex.getMessage())
+                .detail(request.getDescription(false))
+                .timestamp(LocalDateTime.now())
+                .build();
+
+        return new ResponseEntity<>(errorDetails, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

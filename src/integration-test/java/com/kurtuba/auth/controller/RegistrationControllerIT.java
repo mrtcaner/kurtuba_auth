@@ -2,7 +2,7 @@ package com.kurtuba.auth.controller;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kurtuba.auth.AuthApplication;
+import com.kurtuba.KurtubaApplication;
 import com.kurtuba.auth.data.dto.RegistrationDto;
 import com.kurtuba.auth.data.dto.RegistrationResponseDto;
 import com.kurtuba.auth.data.dto.UserDto;
@@ -22,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-@SpringBootTest(classes = AuthApplication.class)
+@SpringBootTest(classes = KurtubaApplication.class)
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
 @Transactional

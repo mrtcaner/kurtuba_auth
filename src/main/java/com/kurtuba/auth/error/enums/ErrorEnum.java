@@ -37,8 +37,25 @@ public enum ErrorEnum {
     LOCALIZATION_ALREADY_EXISTS("Localization already exits",1501),
     LOCALIZATION_INVALID_RESOURCE_PARAMETER("Invalid resource parameter (languageCode-key)",1502),
     LOCALIZATION_UNSUPPORTED_REGION("Unsupported region",1503),
-    ROLE_INVALID("Invalid role",1600);
-
+    ROLE_INVALID("Invalid role",1600),
+    CONTENT_POST_CONTENT_CANNOT_BE_EMPTY("", 1700),
+    CONTENT_POST_CAN_REPOST_ONCE("", 1701),
+    CONTENT_POST_POSTTYPE_MUST_BE_WATCHLIST("",1702),
+    CONTENT_GCP_FILE_STORE_ERROR("An error occurred while storing data to GCS",1703),
+    CONTENT_GCP_FILE_COPY_ERROR("An error occurred while copying data to GCS. Temp file not found!",1704),
+    CONTENT_GCP_ORIGINAL_FILE_NAME_NULL("Original file name is null",1705),
+    CONTENT_GCP_FILE_CONVERSION_ERROR("An error has occurred while converting the file",1706),
+    CONTENT_GCP_NOT_PERMITTED_FILE_TYPE("Not a permitted file type",1707),
+    CONTENT_GCP_FILE_UPLOAD_ERROR("Error occurred while uploading",1708),
+    CONTENT_STORAGE_CANNOT_INITIALIZE("Could not initialize storage",1709),
+    CONTENT_STORAGE_FILE_EMPTY("Failed to store empty file",1710),
+    CONTENT_STORAGE_WRONG_DIRECTORY("Cannot store file outside current directory",1712),
+    CONTENT_STORAGE_CANNOT_STORE_FILE("Cannot store file",1713),
+    CONTENT_STORAGE_CANNOT_READ_FILE("Cannot read file",1714),
+    CONTENT_STORAGE_CANNOT_READ_STORED_FILE("Cannot read stored file",1715),
+    CONTENT_STORAGE_FILE_NOT_FOUND("Cannot find file",1716),
+    SOCIAL_USER_FOLLOW_CANNOT_FOLLOW_THEMSELVES("Users cannot follow themselves", 1800),
+    SOCIAL_USER_FOLLOW_ALREADY_FOLLOWING("User already following intended user",1801);
 
 
     private String message;
