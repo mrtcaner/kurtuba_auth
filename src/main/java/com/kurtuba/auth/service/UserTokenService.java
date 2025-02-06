@@ -203,8 +203,13 @@ public class UserTokenService {
     private AccessTokenValidationResult validateAccessToken(String accessToken, String clientId, String clientSecret) {
         // token validation
         JsonObject decodedToken = TokenUtils.decodeTokenPayload(accessToken);
-        UserToken userToken = checkRefreshTokenStateAndGet(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString())
+        UserToken userToken = getUserTokenWithNotExpiredRefreshToken(decodedToken.get(JWTClaimType.JTI.getDisplayName()).getAsString())
                 .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_INVALID_TOKEN));
+
+        if(userToken.isBlocked()){
+            new BusinessLogicException(ErrorEnum.AUTH_TOKEN_BLOCKED);
+        }
+
         // token will be verified with the client used for its creation
         RegisteredClient tokenClient = registeredClientRepository.findByClientId(userToken.getClientId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
@@ -238,10 +243,16 @@ public class UserTokenService {
         return claims;
     }
 
-    private Optional<UserToken> checkRefreshTokenStateAndGet(String jti) {
+    private Optional<UserToken> getNotBlockedUserToken(String jti) {
         return userTokenRepository.findByJtiAndBlockedAndRefreshTokenExpAfter(
                 jti, false, LocalDateTime.now());
     }
+
+    private Optional<UserToken> getUserTokenWithNotExpiredRefreshToken(String jti) {
+        return userTokenRepository.findByJtiAndRefreshTokenExpAfter(
+                jti, LocalDateTime.now());
+    }
+
 
     @Transactional
     public TokensResponseDto refreshWebClientWithCookieTokens(String accessToken, String clientId, String clientSecret) {

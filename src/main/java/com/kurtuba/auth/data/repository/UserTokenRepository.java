@@ -11,6 +11,8 @@ public interface UserTokenRepository extends CrudRepository<UserToken, String> {
 
     Optional<UserToken> findByJtiAndBlockedAndRefreshTokenExpAfter(String jti, boolean blocked, LocalDateTime exp);
 
+    Optional<UserToken> findByJtiAndRefreshTokenExpAfter(String jti, LocalDateTime exp);
+
     List<UserToken> findAllByUserId(String userId);
 
     List<UserToken> findAllByUserIdAndBlocked(String userId, boolean blocked);

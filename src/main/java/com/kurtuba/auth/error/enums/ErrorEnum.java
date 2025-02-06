@@ -9,6 +9,7 @@ public enum ErrorEnum {
     AUTH_REFRESH_TOKEN_INVALID("Invalid refresh token",1101),
     AUTH_CLIENT_INVALID("Invalid client",1102),
     AUTH_CLIENT_INVALID_CREDENTIALS("Invalid client credentials",1103),
+    AUTH_TOKEN_BLOCKED("Token blocked",1104),
     LOGIN_INVALID_CREDENTIALS("Invalid credentials",1200),
     LOGIN_USER_LOCKED("Account locked",1201),
     USER_DOESNT_EXIST("User doesn't exist", 1300),
