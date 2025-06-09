@@ -24,10 +24,7 @@ import org.springframework.validation.annotation.Validated;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Base64;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 
 import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
@@ -110,6 +107,10 @@ public class UserService {
 
     public Optional<User> getUserById(String id) {
         return userRepository.getUserById(id);
+    }
+
+    public Iterable<User> getUsersByIds(Set<String> ids) {
+        return userRepository.findAllById(ids);
     }
 
     public Optional<User> getUserByMobile(String mobile) {
