@@ -59,6 +59,7 @@ public enum ErrorEnum {
     CONTENT_STORAGE_FILE_NOT_FOUND("Cannot find file",1717),
     CONTENT_DUA_TITLE_CANNOT_BE_EMPTY("Content cannot be empty", 1718),
     CONTENT_DUA_CONTENT_CANNOT_BE_EMPTY("Content cannot be empty", 1719),
+    CONTENT_DUA_DOESNT_EXIST("Dua doesn't exist", 1720),
     SOCIAL_USER_FOLLOW_CANNOT_FOLLOW_THEMSELVES("Users cannot follow themselves", 1800),
     SOCIAL_USER_FOLLOW_ALREADY_FOLLOWING("User already following intended user",1801);
 
