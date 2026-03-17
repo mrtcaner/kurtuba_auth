@@ -2,7 +2,7 @@ package com.kurtuba.auth.controller;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kurtuba.auth.AuthApplication;
+import com.kurtuba.AuthApplication;
 import com.kurtuba.auth.data.dto.RegistrationDto;
 import com.kurtuba.auth.data.dto.RegistrationResponseDto;
 import com.kurtuba.auth.data.dto.UserDto;

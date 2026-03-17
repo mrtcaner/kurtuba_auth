@@ -1,4 +1,4 @@
-package com.kurtuba.auth;
+package com.kurtuba;
 
 import com.kurtuba.auth.data.dto.LocalizationMessageDto;
 import com.kurtuba.auth.data.enums.AuthProviderType;
