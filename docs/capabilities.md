@@ -2,7 +2,7 @@
 
 ## Capability Overview
 
-`kurtuba_auth` provides authentication, token management, account lifecycle management, and supporting operational features for Kurtuba applications.
+`kurtuba-auth` provides authentication, token management, account lifecycle management, and supporting operational features for Kurtuba applications.
 
 The service is not limited to simple username/password login. It also manages account activation, client-aware token behavior, refresh-token rotation, password reset, token blocking, localization-aware messaging, and selected administrative operations.
 

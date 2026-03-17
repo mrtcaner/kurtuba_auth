@@ -2,7 +2,7 @@
 
 ## Overview
 
-`kurtuba_auth` exposes endpoints for user registration, activation, authentication, token refresh, account recovery, user account operations, public key discovery, SMS-related flows, and administrative operations.
+`kurtuba-auth` exposes endpoints for user registration, activation, authentication, token refresh, account recovery, user account operations, public key discovery, SMS-related flows, and administrative operations.
 
 This document is organized by endpoint group rather than by controller class so it is easier for API consumers to follow.
 

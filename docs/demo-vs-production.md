@@ -2,7 +2,7 @@
 
 ## Overview
 
-`kurtuba_auth` includes a meaningful set of authentication and account-management capabilities, but its current default configuration is oriented toward local development and demo usage rather than hardened production deployment.
+`kurtuba-auth` includes a meaningful set of authentication and account-management capabilities, but its current default configuration is oriented toward local development and demo usage rather than hardened production deployment.
 
 This document explains the difference between:
 

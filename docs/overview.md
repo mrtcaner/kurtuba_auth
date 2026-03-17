@@ -2,7 +2,7 @@
 
 ## What This Service Is
 
-`kurtuba_auth` is the authentication and identity service for Kurtuba applications. It is responsible for user registration, account activation, credential-based login, token issuance, token refresh, logout, password reset, and related account-security operations.
+`kurtuba-auth` is the authentication and identity service for Kurtuba applications. It is responsible for user registration, account activation, credential-based login, token issuance, token refresh, logout, password reset, and related account-security operations.
 
 The service acts as the central authority for both user authentication and client authentication. It supports direct end-user flows as well as service-to-service authentication flows.
 

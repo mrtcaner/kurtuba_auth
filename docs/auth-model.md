@@ -2,7 +2,7 @@
 
 ## Overview
 
-`kurtuba_auth` uses a client-aware authentication model built around JWT access tokens, persisted token records, refresh-token rotation, and server-side token blocking.
+`kurtuba-auth` uses a client-aware authentication model built around JWT access tokens, persisted token records, refresh-token rotation, and server-side token blocking.
 
 The service does not treat authentication as a single generic login operation. Instead, authentication behavior depends on both:
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-`kurtuba_auth` is highly configuration-driven. Runtime behavior depends on Spring Boot settings, client definitions, token key material, message-delivery configuration, database settings, and feature toggles.
+`kurtuba-auth` is highly configuration-driven. Runtime behavior depends on Spring Boot settings, client definitions, token key material, message-delivery configuration, database settings, and feature toggles.
 
 This document describes the main configuration groups, what they control, which defaults are suitable only for demo or local development, and what should be reviewed before production deployment.
 

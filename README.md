@@ -1,6 +1,6 @@
-# kurtuba_auth
+# kurtuba-auth
 
-`kurtuba_auth` is a Java 21 Spring Boot authentication server. It provides user registration, account activation, login, JWT access-token issuance, refresh-token rotation, logout/token blocking, password reset, JWKS publishing, service-client authentication, and supporting account-security flows.
+`kurtuba-auth` is a Java 21 Spring Boot authentication server. It provides user registration, account activation, login, JWT access-token issuance, refresh-token rotation, logout/token blocking, password reset, JWKS publishing, service-client authentication, and supporting account-security flows.
 
 Technically, the service is built around Spring Security, Spring Data JPA, JWT/JWKS, persisted token state, JDBC-backed session support, relational persistence, and optional integrations for mail, SMS, Redis, and scheduled message handling.
 

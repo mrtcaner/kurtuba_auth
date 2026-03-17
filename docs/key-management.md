@@ -2,7 +2,7 @@
 
 ## Overview
 
-`kurtuba_auth` signs JWT access tokens with private keys loaded from JWK material at startup and publishes the corresponding public keys through `/oauth2/jwks`.
+`kurtuba-auth` signs JWT access tokens with private keys loaded from JWK material at startup and publishes the corresponding public keys through `/oauth2/jwks`.
 
 This document explains:
 
