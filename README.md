@@ -18,6 +18,7 @@ This repository is relevant if you are looking for:
 ## Documentation
 
 - [Overview](docs/overview.md)
+- [Backend Quickstart](docs/backend-quickstart.md)
 - [Capabilities](docs/capabilities.md)
 - [Authentication Model](docs/auth-model.md)
 - [Key Management](docs/key-management.md)
@@ -45,4 +46,4 @@ This repository is licensed under the Apache License 2.0. See [LICENSE](LICENSE)
 
 The current repository contains documentation for both implemented capabilities and operational caveats. Some defaults are suitable for demo or local development only, especially around datasource choice, provider credentials, jobs, rate limiting, cookie security, and signing-key handling.
 
-Start with [Overview](docs/overview.md), then read [Configuration Reference](docs/configuration.md), [PostgreSQL Setup](docs/postgresql.md), [Demo Defaults vs Production Requirements](docs/demo-vs-production.md), and [Key Management](docs/key-management.md) before using the service in a real deployment.
+Start with [Backend Quickstart](docs/backend-quickstart.md) if you are evaluating the repo as an auth server for your backend. Then read [Overview](docs/overview.md), [Configuration Reference](docs/configuration.md), [PostgreSQL Setup](docs/postgresql.md), [Demo Defaults vs Production Requirements](docs/demo-vs-production.md), and [Key Management](docs/key-management.md) before using the service in a real deployment.
