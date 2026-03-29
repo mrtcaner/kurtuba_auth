@@ -272,8 +272,9 @@ ALTER TABLE public.users OWNER TO kurtuba_auth_migrator;
 
 COPY public.localization_available_locale (id, country_code, created_date, language_code, updated_date) FROM stdin;
 8c649e91-2402-4451-a921-cda38c90e0c7	tr	2025-01-08 19:39:54.237323	tr	\N
+4a145e91-2656-4911-r522-cda48c90e0c7	tr	2025-01-08 19:39:54.237323	en	\N
 126c1461-7518-4287-b411-ddcb97f04218	us	2025-01-08 19:39:54.2543	en	\N
-2b6a78f6-0a18-4f07-8f3a-29117e281a02	uk	2025-01-08 19:39:54.266335	en	\N
+2b6a78f6-0a18-4f07-8f3a-29117e281a02	us	2025-01-08 19:39:54.266335	tr	\N
 \.
 
 

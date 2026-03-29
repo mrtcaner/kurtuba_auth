@@ -9,6 +9,7 @@ import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
+import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
 import com.kurtuba.auth.data.model.Role;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserMetaChange;
@@ -233,6 +234,10 @@ public class RegistrationService {
         // same email is treated as the same account across manual and social providers
         return existingUser;
 
+    }
+
+    public List<LocalizationAvailableLocale> getAvailableLocales() {
+        return localizationAvailableLocaleRepository.findAllByOrderByLanguageCodeAscCountryCodeAsc();
     }
 
     RegistrationDto decodeGoogleRegistration(RegistrationOtherProviderDto request) {

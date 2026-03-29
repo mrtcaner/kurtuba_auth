@@ -178,6 +178,10 @@ class EndpointSecurityMvcTest {
                         .build()));
         when(registrationService.register(any()))
                 .thenReturn(UserMetaChange.builder().id("umc-register").build());
+        when(registrationService.getAvailableLocales()).thenReturn(List.of(
+                LocalizationAvailableLocale.builder().languageCode("en").countryCode("us").build(),
+                LocalizationAvailableLocale.builder().languageCode("tr").countryCode("tr").build()
+        ));
         when(registrationService.registerByAnotherProvider(any())).thenReturn(user());
         when(registrationService.sendAccountActivationMessage(anyString(), anyBoolean()))
                 .thenReturn(UserMetaChange.builder().id("umc-activation").build());
@@ -246,6 +250,9 @@ class EndpointSecurityMvcTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registrationDto())))
                 .andExpect(status().isCreated());
+
+        mockMvc.perform(get(REGISTRATION_BASE + "/locales"))
+                .andExpect(status().isOk());
 
         mockMvc.perform(post(USER_BASE + "/password/reset")
                         .contentType(MediaType.APPLICATION_JSON)

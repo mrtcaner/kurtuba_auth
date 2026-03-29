@@ -59,6 +59,14 @@ public class RegistrationController {
                         .build());
     }
 
+    @GetMapping("/locales")
+    public ResponseEntity<List<AvailableLocaleDto>> getAvailableLocales() {
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
+                .body(registrationService.getAvailableLocales().stream()
+                        .map(AvailableLocaleDto::fromEntity)
+                        .toList());
+    }
+
     @ApiResponse(responseCode = "201", description = "User created successfully",
             content = {@Content(mediaType = "application/json",
                     schema = @Schema(implementation = TokensResponseDto.class))})

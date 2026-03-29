@@ -11,6 +11,8 @@ public interface LocalizationAvailableLocaleRepository extends CrudRepository<Lo
 
     Optional<LocalizationAvailableLocale> findByLanguageCodeAndCountryCode(String language, String countryCode);
 
+    List<LocalizationAvailableLocale> findAllByOrderByLanguageCodeAscCountryCodeAsc();
+
     List<LocalizationAvailableLocale> findByLanguageCode(String languageCode);
 
     List<LocalizationAvailableLocale> findByCountryCode(String languageCode);
