@@ -6,6 +6,7 @@ public enum ErrorEnum {
     INVALID_PARAMETER("Validation failure",1001),
     RESOURCE_NOT_FOUND("Resource not found",1002),
     TOO_MANY_REQUESTS("Too Many Requests",1003),
+    INVALID_MOBILE_NUMBER_FORMAT("Invalid mobile number format",1004),
     AUTH_ACCESS_TOKEN_INVALID("Invalid access token", 1100),//doesn't exist in db or wrong signature
     AUTH_REFRESH_TOKEN_INVALID("Invalid refresh token",1101),//doesn't exist in db
     AUTH_CLIENT_INVALID("Invalid client",1102),
@@ -37,6 +38,7 @@ public enum ErrorEnum {
     USER_META_CHANGE_CODE_SMS_TWILIO_TOO_MANY_RESEND("Too many SMS resend calls",1322),
     USER_META_CHANGE_CODE_SMS_TWILIO_NOT_FOUND("No pending verification found for number",1323),
     USER_META_CHANGE_CODE_SMS_TWILIO_AUTHENTICATION_ERROR("TWILIO authentication failed",1324),
+    USER_BLOCKED("User blocked",1325),
     USER_META_CHANGE_CODE_SMS_UNEXPECTED_ERROR("Unable to handle SMS provider response",1399),
     MAIL_UNABLE_TO_SEND("Unable to send mail",1400),
     LOCALIZATION_INVALID_RESOURCE_ID("Invalid resource id",1500),

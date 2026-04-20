@@ -27,6 +27,8 @@ public class KurtubaUserDetailsDto implements UserDetails {
 
     private boolean locked;
 
+    private boolean blocked;
+
     private boolean activated;
 
     @Override
@@ -53,7 +55,7 @@ public class KurtubaUserDetailsDto implements UserDetails {
     @JsonIgnore
     @Override
     public boolean isAccountNonLocked() {
-        return !locked;
+        return !locked && !blocked;
     }
 
     @JsonIgnore

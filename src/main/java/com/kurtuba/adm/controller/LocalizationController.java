@@ -8,11 +8,9 @@ import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.LocalizationMessageService;
 import jakarta.validation.Valid;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,29 +30,10 @@ public class LocalizationController {
     @GetMapping("/localization")
     @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
     public ResponseEntity<List<LocalizationMessageResponseDto>> getLocalizations(@RequestParam(name = "lang", required = false) String lang,
-                                                                                 @RequestParam(name = "key", required = false) String key){
-        if(!StringUtils.hasLength(lang) && !StringUtils.hasLength(key)){
-            return ResponseEntity.ok().body(localizationMessageService.findAll().stream()
-                    .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
-        }
-
-        if (StringUtils.hasLength(lang) && StringUtils.hasLength(lang)){
-            LocalizationMessage localizationMessage = localizationMessageService.findByLanguageCodeAndMessageKey(lang, key);
-            if(localizationMessage == null){
-                return ResponseEntity.ok().body(List.of());
-            }
-
-            return ResponseEntity.ok().body(List.of(LocalizationMessageResponseDto.fromLocalization(localizationMessage)));
-        }
-
-        if (StringUtils.hasLength(lang)){
-            return ResponseEntity.ok().body(localizationMessageService.findByLanguageCode(lang).stream()
-                    .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
-        }
-
-        return ResponseEntity.ok().body(localizationMessageService.findByKey(key).stream()
+                                                                                 @RequestParam(name = "key", required = false) String key,
+                                                                                 @RequestParam(name = "message", required = false) String message){
+        return ResponseEntity.ok().body(localizationMessageService.search(lang, key, message).stream()
                 .map(localization -> LocalizationMessageResponseDto.fromLocalization(localization)).toList());
-
     }
 
     @PostMapping("/localization")
@@ -67,8 +46,6 @@ public class LocalizationController {
     @PutMapping("/localization")
     @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
     public ResponseEntity updateLocalization(@Valid @RequestBody LocalizationMessageUpdateDto localizationMessageUpdateDto){
-        // for the sake of proper cache management, changing lang and key is not allowed. So this swap needs to
-        //take place
         LocalizationMessage localizationMessage = localizationMessageService.finById(localizationMessageUpdateDto.getId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.LOCALIZATION_INVALID_RESOURCE_ID));
         localizationMessage.setMessage(localizationMessageUpdateDto.getMessage());
@@ -77,11 +54,10 @@ public class LocalizationController {
                         .fromLocalization(localizationMessage))));
     }
 
-    @CacheEvict(value = "localization", allEntries = true)
-    @DeleteMapping("/localization/cache")
+    @DeleteMapping("/localization/{id}")
     @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
-    public ResponseEntity deleteLocalizationCache(){
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> deleteLocalization(@PathVariable String id){
+        localizationMessageService.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
-
 }

@@ -1,6 +1,7 @@
 package com.kurtuba.auth.config;
 
-import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -13,13 +14,18 @@ public class RequiredLocalizationConfigValidator implements ApplicationRunner {
     static final String FALLBACK_LANGUAGE_CODE = "en";
     static final String FALLBACK_COUNTRY_CODE = "us";
 
-    private final LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
+    private final LocalizationSupportedLangRepository localizationSupportedLangRepository;
+    private final LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
 
     @Override
     public void run(ApplicationArguments args) {
-        localizationAvailableLocaleRepository
-                .findByLanguageCodeAndCountryCode(FALLBACK_LANGUAGE_CODE, FALLBACK_COUNTRY_CODE)
+        localizationSupportedLangRepository
+                .findByLanguageCode(FALLBACK_LANGUAGE_CODE)
                 .orElseThrow(() -> new IllegalStateException(
-                        "Required localization config is missing: fallback locale en/us must exist."));
+                        "Required localization config is missing: fallback language en must exist."));
+        localizationSupportedCountryRepository
+                .findByCountryCode(FALLBACK_COUNTRY_CODE)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Required localization config is missing: fallback country us must exist."));
     }
 }

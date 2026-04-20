@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{adm/fragments :: shell(pageTitle='User Detail', activeSection='users', content=~{::content})}">
+<th:block th:fragment="content">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <a class="btn btn-outline-secondary btn-sm mb-3" th:href="@{/auth/adm/pages/users}">Back to Users</a>
+            <h2 class="mb-2">User Detail</h2>
+            <p class="text-muted mb-1"
+               th:text="${user.name + (user.surname != null ? ' ' + user.surname : '')}">Alice Test</p>
+            <code th:text="${user.id}">user-1</code>
+        </div>
+        <div class="text-right">
+            <span class="badge mr-1" th:classappend="${user.activated} ? ' badge-success' : ' badge-secondary'"
+                  th:text="${user.activated} ? 'Activated' : 'Inactive'">Activated</span>
+            <span class="badge mr-1" th:classappend="${user.blocked} ? ' badge-dark' : ' badge-light'"
+                  th:text="${user.blocked} ? 'Blocked' : 'Not Blocked'">Not Blocked</span>
+            <span class="badge" th:classappend="${user.locked} ? ' badge-danger' : ' badge-light'"
+                  th:text="${user.locked} ? 'Locked' : 'Unlocked'">Unlocked</span>
+        </div>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Identity</h5>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                        <tr>
+                            <th class="w-40">Name</th>
+                            <td th:text="${user.name}">Alice</td>
+                        </tr>
+                        <tr>
+                            <th>Surname</th>
+                            <td th:text="${#strings.isEmpty(user.surname) ? '-' : user.surname}">Test</td>
+                        </tr>
+                        <tr>
+                            <th>Username</th>
+                            <td th:text="${#strings.isEmpty(user.username) ? '-' : user.username}">alice</td>
+                        </tr>
+                        <tr>
+                            <th>Auth Provider</th>
+                            <td th:text="${user.authProvider}">KURTUBA</td>
+                        </tr>
+                        <tr>
+                            <th>Gender</th>
+                            <td th:text="${user.gender != null ? user.gender : '-'}">-</td>
+                        </tr>
+                        <tr>
+                            <th>Birthdate</th>
+                            <td th:attr="data-localized-instant=${user.birthdate != null ? user.birthdate : null}"
+                                th:text="${user.birthdate != null ? user.birthdate : '-'}">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Contact</h5>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                        <tr>
+                            <th class="w-40">Email</th>
+                            <td th:text="${#strings.isEmpty(user.email) ? '-' : user.email}">user@example.com</td>
+                        </tr>
+                        <tr>
+                            <th>Email Status</th>
+                            <td>
+                                <span th:if="${#strings.isEmpty(user.email)}" class="badge badge-light">N/A</span>
+                                <span th:if="${!#strings.isEmpty(user.email) && user.emailVerified}" class="badge badge-success">Verified</span>
+                                <span th:if="${!#strings.isEmpty(user.email) && !user.emailVerified}" class="badge badge-warning">Pending</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Mobile</th>
+                            <td th:text="${#strings.isEmpty(user.mobile) ? '-' : user.mobile}">+905...</td>
+                        </tr>
+                        <tr>
+                            <th>Mobile Status</th>
+                            <td>
+                                <span th:if="${#strings.isEmpty(user.mobile)}" class="badge badge-light">N/A</span>
+                                <span th:if="${!#strings.isEmpty(user.mobile) && user.mobileVerified}" class="badge badge-success">Verified</span>
+                                <span th:if="${!#strings.isEmpty(user.mobile) && !user.mobileVerified}" class="badge badge-warning">Pending</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Roles And Locale</h5>
+                    <table class="table table-sm mb-3">
+                        <tbody>
+                        <tr>
+                            <th class="w-40">Locale</th>
+                            <td th:text="${user.userSetting != null && user.userSetting.languageCode != null && user.userSetting.countryCode != null ? user.userSetting.languageCode + '-' + user.userSetting.countryCode : '-'}">en-TR</td>
+                        </tr>
+                        <tr>
+                            <th>Can Change Username</th>
+                            <td th:text="${user.userSetting != null && user.userSetting.canChangeUsername ? 'Yes' : 'No'}">No</td>
+                        </tr>
+                        <tr>
+                            <th>User Setting Created</th>
+                            <td th:attr="data-localized-instant=${user.userSetting != null && user.userSetting.createdDate != null ? user.userSetting.createdDate : null}"
+                                th:text="${user.userSetting != null && user.userSetting.createdDate != null ? user.userSetting.createdDate : '-'}">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">Roles</h6>
+                        <form th:action="@{/auth/adm/pages/users/{id}/roles(id=${user.id})}" method="post" class="form-inline">
+                            <select name="roleName" class="form-control form-control-sm mr-2">
+                                <option th:each="roleOption : ${availableRoles}"
+                                        th:value="${roleOption.name()}"
+                                        th:text="${roleOption.name()}">USER</option>
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">Add Role</button>
+                        </form>
+                    </div>
+                    <div th:if="${user.userRoles == null || #lists.isEmpty(user.userRoles)}" class="text-muted">No roles found.</div>
+                    <div th:each="userRole : ${user.userRoles}" class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <span class="badge badge-light mr-2" th:text="${userRole.role != null ? userRole.role.name : '-'}">USER</span>
+                            <small class="text-muted"
+                                   th:attr="data-localized-instant=${userRole.createdDate != null ? userRole.createdDate : null}"
+                                   th:text="${userRole.createdDate != null ? userRole.createdDate : '-'}">2026-01-01T00:00:00Z</small>
+                        </div>
+                        <form th:if="${userRole.role != null}" th:action="@{/auth/adm/pages/users/{id}/roles/remove(id=${user.id})}" method="post"
+                              onsubmit="return confirm('Remove this role?');" class="mb-0">
+                            <input type="hidden" name="roleName" th:value="${userRole.role.name}" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Security And Activity</h5>
+                    <form th:action="@{/auth/adm/pages/users/{id}/security(id=${user.id})}" method="post">
+                    <table class="table table-sm mb-3">
+                        <tbody>
+                        <tr>
+                            <th class="w-40">Activated</th>
+                            <td>
+                                <select name="activated" class="form-control form-control-sm">
+                                    <option value="true" th:selected="${user.activated}">Yes</option>
+                                    <option value="false" th:selected="${!user.activated}">No</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Locked</th>
+                            <td>
+                                <select name="locked" class="form-control form-control-sm">
+                                    <option value="true" th:selected="${user.locked}">Yes</option>
+                                    <option value="false" th:selected="${!user.locked}">No</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Blocked</th>
+                            <td>
+                                <select name="blocked" class="form-control form-control-sm">
+                                    <option value="true" th:selected="${user.blocked}">Yes</option>
+                                    <option value="false" th:selected="${!user.blocked}">No</option>
+                                </select>
+                                <small class="form-text text-muted">Blocked users cannot log in, activate accounts, refresh or mint tokens, or do password operations.</small>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Show Captcha</th>
+                            <td>
+                                <select name="showCaptcha" class="form-control form-control-sm">
+                                    <option value="true" th:selected="${user.showCaptcha}">Yes</option>
+                                    <option value="false" th:selected="${!user.showCaptcha}">No</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Failed Login Count</th>
+                            <td>
+                                <input type="number" name="failedLoginCount" min="0" class="form-control form-control-sm"
+                                       th:value="${user.failedLoginCount}" value="0" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Last Login Attempt</th>
+                            <td th:attr="data-localized-instant=${user.lastLoginAttempt != null ? user.lastLoginAttempt : null}"
+                                th:text="${user.lastLoginAttempt != null ? user.lastLoginAttempt : '-'}">-</td>
+                        </tr>
+                        <tr>
+                            <th>User Created</th>
+                            <td th:attr="data-localized-instant=${user.createdDate != null ? user.createdDate : null}"
+                                th:text="${user.createdDate != null ? user.createdDate : '-'}">2026-01-01T00:00:00Z</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="text-right">
+                        <button type="submit" class="btn btn-primary btn-sm">Save Security Settings</button>
+                    </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

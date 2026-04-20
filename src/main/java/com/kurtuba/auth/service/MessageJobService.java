@@ -14,14 +14,13 @@ import com.kurtuba.auth.utils.annotation.MobileNumber;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.NotImplementedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.ResourceUtils;
 import org.springframework.validation.annotation.Validated;
 
-import java.io.File;
-import java.nio.file.Files;
 import java.time.Instant;
 import java.util.List;
 
@@ -29,6 +28,8 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 public class MessageJobService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageJobService.class);
 
     @Value("${kurtuba.server.url}")
     private String kurtubaServerUrl;
@@ -121,7 +122,7 @@ public class MessageJobService {
                     .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+            throw logAndWrapMailFailure("create account activation mail job", recipient, lang, userMetaChangeId, e);
         }
     }
 
@@ -179,8 +180,7 @@ public class MessageJobService {
                                           String userMetaChangeId) {
 
         try {
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            String htmlFileContent = EmailUtils.loadTemplate("templates/mailPasswordReset.html");
             htmlFileContent = htmlFileContent.replace("${resetCode}", resetCode);
             htmlFileContent = htmlFileContent.replace("${displayCode}", "block");
             htmlFileContent = htmlFileContent.replace("${displayLink}", "none");
@@ -211,7 +211,7 @@ public class MessageJobService {
                     .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+            throw logAndWrapMailFailure("create password reset mail job", recipient, lang, userMetaChangeId, e);
         }
 
     }
@@ -221,8 +221,7 @@ public class MessageJobService {
 
         String resetLink = kurtubaServerUrl + "/auth/user/password/reset/password-reset/" + resetCode;
         try {
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailPasswordReset.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            String htmlFileContent = EmailUtils.loadTemplate("templates/mailPasswordReset.html");
             htmlFileContent = htmlFileContent.replace("${resetLink}", resetLink);
             htmlFileContent = htmlFileContent.replace("${displayLink}", "block");
             htmlFileContent = htmlFileContent.replace("${displayCode}", "none");
@@ -253,7 +252,7 @@ public class MessageJobService {
                     .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+            throw logAndWrapMailFailure("create password reset link mail job", recipient, lang, userMetaChangeId, e);
         }
     }
 
@@ -307,7 +306,7 @@ public class MessageJobService {
                     .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+            throw logAndWrapMailFailure("create email change verification mail job", recipient, lang, userMetaChangeId, e);
         }
     }
 
@@ -349,12 +348,16 @@ public class MessageJobService {
 
         String metaName =
                 metaOperationType == MetaOperationType.PASSWORD_CHANGE ||
-                        metaOperationType == MetaOperationType.PASSWORD_RESET ? "password"
-                        : metaOperationType == MetaOperationType.MOBILE_CHANGE ? "mobile number"
-                        : "email address";
+                        metaOperationType == MetaOperationType.PASSWORD_RESET ? localizationMessageService
+                        .findByLanguageCodeAndMessageKey(lang, "mail.account.modification.content.metaname.password").getMessage()
+                        : metaOperationType == MetaOperationType.MOBILE_CHANGE ? localizationMessageService
+                                .findByLanguageCodeAndMessageKey(lang, "mail.account.modification.content.metaname" +
+                                                                       ".phonenumber").getMessage()
+                        : localizationMessageService
+                                  .findByLanguageCodeAndMessageKey(lang, "mail.account.modification.content.metaname" +
+                                                                         ".emailaddress").getMessage();
         try {
-            File htmlFile = ResourceUtils.getFile("classpath:templates/mailUserMetaChangeNotification.html");
-            String htmlFileContent = new String(Files.readAllBytes(htmlFile.toPath()));
+            String htmlFileContent = EmailUtils.loadTemplate("templates/mailUserMetaChangeNotification.html");
             htmlFileContent = htmlFileContent.replace("${greet}", localizationMessageService
                     .findByLanguageCodeAndMessageKey(lang, "mail.account.modification.content.greet").getMessage());
             htmlFileContent = htmlFileContent.replace("${prologue}", localizationMessageService
@@ -388,7 +391,8 @@ public class MessageJobService {
                     .userMetaChangeId(userMetaChangeId)
                     .build());
         } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+            throw logAndWrapMailFailure("create account modification notification mail job", recipient, lang,
+                    userMetaChangeId, e);
         }
     }
 
@@ -404,5 +408,14 @@ public class MessageJobService {
                 messageJobRepository.findByUserMetaChangeIdAndUserId(userMetaChangeId, userId)
                                     .orElseThrow(() -> new BusinessLogicException(ErrorEnum.RESOURCE_NOT_FOUND));
         return job.getState();
+    }
+
+    private BusinessLogicException logAndWrapMailFailure(String operation, String recipient, String lang,
+                                                         String userMetaChangeId, Exception cause) {
+        String causeMessage = cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
+        LOGGER.error("Failed to {}. recipient={}, lang={}, userMetaChangeId={}, cause={}",
+                operation, recipient, lang, userMetaChangeId, causeMessage, cause);
+        return new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),
+                ErrorEnum.MAIL_UNABLE_TO_SEND.getMessage() + ": " + causeMessage, cause);
     }
 }

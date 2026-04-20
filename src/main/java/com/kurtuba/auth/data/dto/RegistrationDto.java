@@ -1,9 +1,6 @@
 package com.kurtuba.auth.data.dto;
-
-
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.ContactType;
-import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserSetting;
 import com.kurtuba.auth.utils.Utils;
@@ -20,6 +17,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 
@@ -65,32 +63,5 @@ public class RegistrationDto {
     private ContactType preferredVerificationContact;
 
     boolean verificationByCode;
-
-    public User toUser() {
-        return User.builder()
-                .name(name)
-                .surname(surname)
-                .username(username)
-                .email(email)
-                .password(password)
-                .authProvider(authProvider)
-                .mobile(mobile)
-                .userSetting(UserSetting.builder()
-                        .canChangeUsername(false)
-                        .locale(LocalizationAvailableLocale.builder()
-                                .languageCode(languageCode)
-                                .countryCode(countryCode)
-                                .build())
-                        .build())
-                .activated(false)
-                .locked(false)
-                .failedLoginCount(0)
-                .showCaptcha(false)
-                .emailVerified(false)
-                .mobileVerified(false)
-                .createdDate(Instant.now())
-                .build();
-    }
-
 
 }

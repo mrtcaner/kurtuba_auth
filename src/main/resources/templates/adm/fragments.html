@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
+<body>
+<th:block th:fragment="shell(pageTitle, activeSection, content)">
+    <head th:replace="~{fragments :: html_head(pageTitle=${pageTitle})}" />
+    <div class="container-fluid">
+        <div class="row min-vh-100">
+            <aside class="col-lg-3 col-xl-2 bg-light border-right px-0">
+                <div class="p-4 border-bottom">
+                    <a th:href="@{/auth/adm}" class="text-dark text-decoration-none">
+                        <h4 class="mb-1">Admin</h4>
+                    </a>
+                    <small class="text-muted">Server management console</small>
+                </div>
+                <nav class="nav flex-column p-3">
+                    <a class="nav-link rounded mb-2"
+                       th:classappend="${activeSection == 'dashboard'} ? ' active bg-primary text-white' : ' text-dark'"
+                       th:href="@{/auth/adm}">Dashboard</a>
+                    <a class="nav-link rounded mb-2"
+                       th:classappend="${activeSection == 'oauth-clients'} ? ' active bg-primary text-white' : ' text-dark'"
+                       th:href="@{/auth/adm/oauth-clients}">OAuth Clients</a>
+                    <a class="nav-link rounded mb-2"
+                       th:classappend="${activeSection == 'localization'} ? ' active bg-primary text-white' : ' text-dark'"
+                       th:href="@{/auth/adm/pages/localization}">Localization</a>
+                    <a class="nav-link rounded mb-2"
+                       th:classappend="${activeSection == 'users'} ? ' active bg-primary text-white' : ' text-dark'"
+                       th:href="@{/auth/adm/pages/users}">Users</a>
+                    <a class="nav-link rounded mb-2"
+                       th:classappend="${activeSection == 'tokens'} ? ' active bg-primary text-white' : ' text-dark'"
+                       th:href="@{/auth/adm/pages/tokens}">Token Management</a>
+                    <a class="nav-link rounded mb-2"
+                       th:classappend="${activeSection == 'push-notifications'} ? ' active bg-primary text-white' : ' text-dark'"
+                       th:href="@{/auth/adm/pages/push-notifications}">Push Notifications</a>
+                </nav>
+            </aside>
+            <main class="col-lg-9 col-xl-10 px-0">
+                <div class="d-flex justify-content-between align-items-center border-bottom px-4 py-3 bg-white">
+                    <div>
+                        <h5 class="mb-0" th:text="${pageTitle}">Admin</h5>
+                    </div>
+                    <form th:action="@{/auth/user/logout}" method="post" class="mb-0">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Logout</button>
+                    </form>
+                </div>
+                <div class="p-4" th:replace="${content}">
+                    Page content
+                </div>
+            </main>
+        </div>
+    </div>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', function () {
+            function pad(value) {
+                return String(value).padStart(2, '0');
+            }
+
+            function formatInstantToLocal(value) {
+                if (!value) {
+                    return '-';
+                }
+
+                var date = new Date(value);
+                if (Number.isNaN(date.getTime())) {
+                    return value;
+                }
+
+                return [
+                    pad(date.getFullYear() % 100),
+                    pad(date.getMonth() + 1),
+                    pad(date.getDate()),
+                    pad(date.getHours()) + ':' + pad(date.getMinutes()) + ':' + pad(date.getSeconds())
+                ].join('/');
+            }
+
+            document.querySelectorAll('[data-localized-instant]').forEach(function (element) {
+                var instantValue = element.getAttribute('data-localized-instant');
+                if (!instantValue) {
+                    return;
+                }
+
+                element.textContent = formatInstantToLocal(instantValue);
+            });
+        });
+    </script>
+</th:block>
+
+<th:block th:fragment="localizationNav(activeLocalizationSection)">
+    <div class="mb-4">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <a class="btn btn-sm"
+               th:classappend="${activeLocalizationSection == 'messages'} ? ' btn-primary' : ' btn-outline-secondary'"
+               th:href="@{/auth/adm/pages/localization/messages}">Messages</a>
+            <a class="btn btn-sm"
+               th:classappend="${activeLocalizationSection == 'languages'} ? ' btn-primary' : ' btn-outline-secondary'"
+               th:href="@{/auth/adm/pages/localization/languages}">Supported Languages</a>
+            <a class="btn btn-sm"
+               th:classappend="${activeLocalizationSection == 'countries'} ? ' btn-primary' : ' btn-outline-secondary'"
+               th:href="@{/auth/adm/pages/localization/countries}">Supported Countries</a>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

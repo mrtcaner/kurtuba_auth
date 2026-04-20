@@ -1,6 +1,7 @@
 package com.kurtuba.auth.config.rateLimit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kurtuba.auth.config.RateLimitProperties;
 import com.kurtuba.auth.data.dto.ResponseErrorDto;
 import com.kurtuba.auth.data.enums.RateLimitPublicApi;
 import com.kurtuba.auth.error.enums.ErrorEnum;
@@ -22,6 +23,8 @@ import org.springframework.web.util.pattern.PathPatternParser;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
@@ -29,8 +32,10 @@ import java.util.Map;
 public class RateLimitInterceptor implements HandlerInterceptor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RateLimitInterceptor.class);
+    private static final Pattern FORWARDED_FOR_PATTERN = Pattern.compile("for=(?:\"?\\[?)([^;,\"]+)");
 
     private final RateLimitingService rateLimitingService;
+    private final RateLimitProperties rateLimitProperties;
     private final PathPatternParser parser = new PathPatternParser();
     private final ObjectMapper objectMapper;
 
@@ -39,7 +44,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         String path = request.getServletPath();
         // 1. Find matching API config
         RateLimitPublicApi matchedApi = Arrays.stream(RateLimitPublicApi.values())
-                                              .filter(api -> parser.parse(api.getPattern()).matches(
+                                              .filter(api -> parser.parse(rateLimitProperties.getPublicApi(api).getPattern()).matches(
                                                       PathContainer.parsePath(path)))
                                               .findFirst()
                                               .orElse(null);
@@ -77,8 +82,48 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
     }
 
-    private String getClientIp(HttpServletRequest request) {
-        String xfHeader = request.getHeader("X-Forwarded-For");
-        return (xfHeader == null || xfHeader.isBlank()) ? request.getRemoteAddr() : xfHeader.split(",")[0].trim();
+    static String getClientIp(HttpServletRequest request) {
+        String forwardedFor = extractForwardedFor(request.getHeader("Forwarded"));
+        if (forwardedFor != null) {
+            return forwardedFor;
+        }
+
+        String xForwardedFor = firstHeaderValue(request.getHeader("X-Forwarded-For"));
+        if (xForwardedFor != null) {
+            return xForwardedFor;
+        }
+
+        String xRealIp = firstHeaderValue(request.getHeader("X-Real-IP"));
+        if (xRealIp != null) {
+            return xRealIp;
+        }
+
+        return request.getRemoteAddr();
+    }
+
+    private static String extractForwardedFor(String forwardedHeader) {
+        if (forwardedHeader == null || forwardedHeader.isBlank()) {
+            return null;
+        }
+
+        Matcher matcher = FORWARDED_FOR_PATTERN.matcher(forwardedHeader);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        String candidate = matcher.group(1).trim();
+        if (candidate.startsWith("[") && candidate.endsWith("]")) {
+            candidate = candidate.substring(1, candidate.length() - 1);
+        }
+        return candidate.isBlank() ? null : candidate;
+    }
+
+    private static String firstHeaderValue(String headerValue) {
+        if (headerValue == null || headerValue.isBlank()) {
+            return null;
+        }
+
+        String candidate = headerValue.split(",")[0].trim();
+        return candidate.isBlank() ? null : candidate;
     }
 }

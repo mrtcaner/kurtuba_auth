@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{adm/fragments :: shell(pageTitle='Admin Dashboard', activeSection='dashboard', content=~{::content})}">
+<th:block th:fragment="content">
+    <div class="mb-4">
+        <h2 class="mb-2">Admin Dashboard</h2>
+        <p class="text-muted mb-0">Choose a management area from the menu or jump in from the quick links below.</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">OAuth Clients</h5>
+                    <p class="card-text text-muted">Manage registered clients, secrets, TTLs, scopes, and cookie behavior.</p>
+                    <a class="btn btn-primary" th:href="@{/auth/adm/oauth-clients}">Open OAuth Clients</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Localization</h5>
+                    <p class="card-text text-muted">Upcoming page for translation messages and cache operations.</p>
+                    <a class="btn btn-outline-secondary" th:href="@{/auth/adm/pages/localization}">Open Localization</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Token Management</h5>
+                    <p class="card-text text-muted">Upcoming page for token inspection, blocking, and user token lookups.</p>
+                    <a class="btn btn-outline-secondary" th:href="@{/auth/adm/pages/tokens}">Open Token Tools</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

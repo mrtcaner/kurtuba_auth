@@ -56,6 +56,10 @@ public class UserToken {
     @NotNull
     private Instant createdDate;
 
+    private Instant updatedDate;
+
+    private Instant usedDate;
+
     @NotNull
     private Instant expirationDate;
 

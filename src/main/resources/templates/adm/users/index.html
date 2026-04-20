@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{adm/fragments :: shell(pageTitle='User Management', activeSection='users', content=~{::content})}">
+<th:block th:fragment="content">
+    <div class="mb-4">
+        <h2 class="mb-2">User Management</h2>
+        <p class="text-muted mb-0">Search and inspect users across identity, verification, locale, and access-related fields.</p>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white p-0">
+            <button class="btn btn-link btn-block text-left text-dark px-3 py-3"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#identityFiltersPanel"
+                    aria-expanded="true"
+                    aria-controls="identityFiltersPanel">
+                <strong>Identity Filters</strong>
+            </button>
+        </div>
+        <div id="identityFiltersPanel" class="collapse show">
+            <div class="card-body">
+                <form th:action="@{/auth/adm/pages/users}" method="get">
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="id">User ID</label>
+                            <input id="id" name="id" type="text" class="form-control" th:value="${id}" placeholder="user id" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="username">Username</label>
+                            <input id="username" name="username" type="text" class="form-control" th:value="${username}" placeholder="username" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="email">Email</label>
+                            <input id="email" name="email" type="text" class="form-control" th:value="${email}" placeholder="user@example.com" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="mobile">Mobile</label>
+                            <input id="mobile" name="mobile" type="text" class="form-control" th:value="${mobile}" placeholder="+905..." />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-3">
+                            <label for="name">Name</label>
+                            <input id="name" name="name" type="text" class="form-control" th:value="${name}" placeholder="name" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="surname">Surname</label>
+                            <input id="surname" name="surname" type="text" class="form-control" th:value="${surname}" placeholder="surname" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="locale">Locale</label>
+                            <input id="locale" name="locale" type="text" class="form-control" th:value="${locale}" placeholder="en or TR" />
+                        </div>
+                        <div class="form-group col-md-3">
+                            <label for="role">Role</label>
+                            <input id="role" name="role" type="text" class="form-control" th:value="${role}" placeholder="ADMIN" />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a class="btn btn-outline-secondary" th:href="@{/auth/adm/pages/users}">Reset</a>
+                        <button type="submit" class="btn btn-primary">Search Users</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white p-0">
+            <button class="btn btn-link btn-block text-left text-dark px-3 py-3"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#stateFiltersPanel"
+                    aria-expanded="true"
+                    aria-controls="stateFiltersPanel">
+                <strong>State Filters</strong>
+            </button>
+        </div>
+        <div id="stateFiltersPanel" class="collapse show">
+            <div class="card-body">
+                <form th:action="@{/auth/adm/pages/users}" method="get">
+                    <input type="hidden" name="id" th:value="${id}" />
+                    <input type="hidden" name="username" th:value="${username}" />
+                    <input type="hidden" name="email" th:value="${email}" />
+                    <input type="hidden" name="mobile" th:value="${mobile}" />
+                    <input type="hidden" name="name" th:value="${name}" />
+                    <input type="hidden" name="surname" th:value="${surname}" />
+                    <input type="hidden" name="locale" th:value="${locale}" />
+                    <input type="hidden" name="role" th:value="${role}" />
+                    <div class="form-row">
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="authProvider">Auth Provider</label>
+                            <select id="authProvider" name="authProvider" class="form-control">
+                                <option value="">All</option>
+                                <option th:each="provider : ${authProviders}"
+                                        th:value="${provider.name()}"
+                                        th:text="${provider.name()}"
+                                        th:selected="${authProvider == provider.name()}">KURTUBA</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="activated">Activated</label>
+                            <select id="activated" name="activated" class="form-control">
+                                <option value="all" th:selected="${activated == 'all'}">All</option>
+                                <option value="yes" th:selected="${activated == 'yes'}">Yes</option>
+                                <option value="no" th:selected="${activated == 'no'}">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="locked">Locked</label>
+                            <select id="locked" name="locked" class="form-control">
+                                <option value="all" th:selected="${locked == 'all'}">All</option>
+                                <option value="yes" th:selected="${locked == 'yes'}">Yes</option>
+                                <option value="no" th:selected="${locked == 'no'}">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="blocked">Blocked</label>
+                            <select id="blocked" name="blocked" class="form-control">
+                                <option value="all" th:selected="${blocked == 'all'}">All</option>
+                                <option value="yes" th:selected="${blocked == 'yes'}">Yes</option>
+                                <option value="no" th:selected="${blocked == 'no'}">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="showCaptcha">Show Captcha</label>
+                            <select id="showCaptcha" name="showCaptcha" class="form-control">
+                                <option value="all" th:selected="${showCaptcha == 'all'}">All</option>
+                                <option value="yes" th:selected="${showCaptcha == 'yes'}">Yes</option>
+                                <option value="no" th:selected="${showCaptcha == 'no'}">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="emailVerified">Email Verified</label>
+                            <select id="emailVerified" name="emailVerified" class="form-control">
+                                <option value="all" th:selected="${emailVerified == 'all'}">All</option>
+                                <option value="yes" th:selected="${emailVerified == 'yes'}">Yes</option>
+                                <option value="no" th:selected="${emailVerified == 'no'}">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group col-md-4 col-lg-2">
+                            <label for="mobileVerified">Mobile Verified</label>
+                            <select id="mobileVerified" name="mobileVerified" class="form-control">
+                                <option value="all" th:selected="${mobileVerified == 'all'}">All</option>
+                                <option value="yes" th:selected="${mobileVerified == 'yes'}">Yes</option>
+                                <option value="no" th:selected="${mobileVerified == 'no'}">No</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Apply State Filters</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm" style="margin-bottom: 100px;">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-1">Users</h5>
+                <p class="text-muted mb-0">Results are currently filtered in memory and ordered by newest created date first.</p>
+            </div>
+            <span class="badge badge-primary" th:text="${#lists.size(users)}">0</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="thead-light">
+                <tr>
+                    <th>User</th>
+                    <th>Contact</th>
+                    <th>Provider</th>
+                    <th>Roles</th>
+                    <th>Status</th>
+                    <th>Locale</th>
+                    <th>Security</th>
+                    <th>Timestamps</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(users)}">
+                    <td colspan="9" class="text-center text-muted py-4">No users matched the current filters.</td>
+                </tr>
+                <tr th:each="user : ${users}">
+                    <td class="align-top">
+                        <div><strong th:text="${user.name}">Alice</strong> <span th:text="${user.surname}">Test</span></div>
+                        <div class="small text-muted" th:text="${user.id}">user-1</div>
+                        <div class="small" th:if="${user.username}">
+                            <code th:text="${user.username}">alice</code>
+                        </div>
+                    </td>
+                    <td class="align-top">
+                        <div th:text="${user.email != null ? user.email : '-'}">user@example.com</div>
+                        <div class="small text-muted" th:text="${user.mobile != null ? user.mobile : '-'}">+905...</div>
+                    </td>
+                    <td class="align-top" th:text="${user.authProvider}">KURTUBA</td>
+                    <td class="align-top">
+                        <span th:if="${user.userRoles == null || #lists.isEmpty(user.userRoles)}" class="text-muted">-</span>
+                        <div th:each="userRole : ${user.userRoles}">
+                            <span class="badge badge-light" th:text="${userRole.role != null ? userRole.role.name : '-'}">ADMIN</span>
+                        </div>
+                    </td>
+                    <td class="align-top">
+                        <div>
+                            <span class="badge mr-1" th:classappend="${user.activated} ? ' badge-success' : ' badge-secondary'"
+                                  th:text="${user.activated} ? 'Activated' : 'Inactive'">Activated</span>
+                            <span class="badge mr-1" th:classappend="${user.blocked} ? ' badge-dark' : ' badge-light'"
+                                  th:text="${user.blocked} ? 'Blocked' : 'Not Blocked'">Not Blocked</span>
+                            <span class="badge mr-1" th:classappend="${user.locked} ? ' badge-danger' : ' badge-light'"
+                                  th:text="${user.locked} ? 'Locked' : 'Unlocked'">Unlocked</span>
+                        </div>
+                        <div class="mt-1">
+                            <span class="badge mr-1"
+                                  th:classappend="${#strings.isEmpty(user.email)} ? ' badge-light' : (${user.emailVerified} ? ' badge-success' : ' badge-warning')"
+                                  th:text="${#strings.isEmpty(user.email)} ? 'Email N/A' : (${user.emailVerified} ? 'Email OK' : 'Email Pending')">Email OK</span>
+                            <span class="badge"
+                                  th:classappend="${#strings.isEmpty(user.mobile)} ? ' badge-light' : (${user.mobileVerified} ? ' badge-success' : ' badge-warning')"
+                                  th:text="${#strings.isEmpty(user.mobile)} ? 'Mobile N/A' : (${user.mobileVerified} ? 'Mobile OK' : 'Mobile Pending')">Mobile OK</span>
+                        </div>
+                    </td>
+                    <td class="align-top">
+                        <span th:if="${user.userSetting == null || user.userSetting.languageCode == null || user.userSetting.countryCode == null}" class="text-muted">-</span>
+                        <span th:if="${user.userSetting != null && user.userSetting.languageCode != null && user.userSetting.countryCode != null}"
+                              th:text="${user.userSetting.languageCode + '-' + user.userSetting.countryCode}">en-TR</span>
+                    </td>
+                    <td class="align-top">
+                        <div>Captcha: <span th:text="${user.showCaptcha ? 'Yes' : 'No'}">No</span></div>
+                        <div>Failed: <span th:text="${user.failedLoginCount}">0</span></div>
+                    </td>
+                    <td class="align-top text-muted small">
+                        <div>Created: <span th:attr="data-localized-instant=${user.createdDate != null ? user.createdDate : null}"
+                                            th:text="${user.createdDate != null ? user.createdDate : '-'}">2026-01-01T00:00:00Z</span></div>
+                        <div>Last login attempt: <span th:attr="data-localized-instant=${user.lastLoginAttempt != null ? user.lastLoginAttempt : null}"
+                                                       th:text="${user.lastLoginAttempt != null ? user.lastLoginAttempt : '-'}">-</span></div>
+                        <div>Last token cdate: <span th:attr="data-localized-instant=${user.lastTokenCreatedDate != null ? user.lastTokenCreatedDate : null}"
+                                                     th:text="${user.lastTokenCreatedDate != null ? user.lastTokenCreatedDate : '-'}">-</span></div>
+                    </td>
+                    <td class="align-top text-right">
+                        <a class="btn btn-sm btn-outline-primary"
+                           th:href="@{/auth/adm/pages/users/{id}(id=${user.id})}">Details</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

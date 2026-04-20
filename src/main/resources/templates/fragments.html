@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
-	xmlns:sec="https://www.thymeleaf.org/thymeleaf-extras-springsecurity5">
+	xmlns:sec="https://www.thymeleaf.org/extras/spring-security">
 <head th:fragment="html_head(pageTitle)">
 	<meta charset="ISO-8859-1">
 	<title>[[${pageTitle}]]</title>
@@ -11,7 +11,7 @@
 <body>
 	<th:block th:fragment="header">
 	<div sec:authorize="isAuthenticated()" class="text-center p-3">
-		<form th:action="@{/auth/logout}" method="post">
+		<form th:action="@{/auth/user/logout}" method="post">
 			Welcome <b><span sec:authentication="name">Username</span></b>
 			&nbsp;
 			<input type="submit" value="Logout" />

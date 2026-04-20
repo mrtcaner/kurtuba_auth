@@ -6,6 +6,8 @@ import com.kurtuba.auth.error.exception.BusinessLogicException;
 import jakarta.mail.internet.MimeBodyPart;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.mail.internet.MimeMultipart;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ import java.util.regex.Pattern;
 @Validated
 public class EmailServiceImpl implements EmailService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(EmailServiceImpl.class);
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("<[^>]+>");
     private static final Pattern HTML_BREAK_PATTERN = Pattern.compile("(?i)<br\\s*/?>");
     private static final Pattern HTML_BLOCK_END_PATTERN =
@@ -54,7 +57,11 @@ public class EmailServiceImpl implements EmailService {
             message.setContent(multipart);
             javaMailSender.send(message);
         } catch (Exception e) {
-            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(), e.getMessage());
+            String causeMessage = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            LOGGER.error("Failed to send multipart mail. recipient={}, subject={}, cause={}",
+                    details.getRecipient(), details.getSubject(), causeMessage, e);
+            throw new BusinessLogicException(ErrorEnum.MAIL_UNABLE_TO_SEND.getCode(),
+                    ErrorEnum.MAIL_UNABLE_TO_SEND.getMessage() + ": " + causeMessage, e);
         }
     }
 

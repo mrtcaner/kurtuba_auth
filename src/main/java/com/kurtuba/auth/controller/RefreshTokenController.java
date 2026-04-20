@@ -3,6 +3,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.TokenRefreshRequestDto;
 import com.kurtuba.auth.data.dto.TokenRefreshWebRequestDto;
+import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
@@ -71,16 +72,17 @@ public class RefreshTokenController {
             throw new BusinessLogicException(ErrorEnum.AUTH_REFRESH_TOKEN_INVALID);
         }
 
+        RegisteredClient client = registeredClientRepository
+                .findByClientId(tokenRefreshWebRequestDto.getClientId())
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
+
         ResponseCookie cookie = ResponseCookie.from("jwt",
                         userTokenService.refreshWebClientWithCookieTokens(jwt, tokenRefreshWebRequestDto.getClientId(),
                                 tokenRefreshWebRequestDto.getClientSecret()).accessToken)
-                .httpOnly(true)
-                .secure(false)
+                .httpOnly(client.isCookieHttpOnly())
+                .secure(client.isCookieSecure())
                 .path("/")
-                .maxAge(registeredClientRepository
-                        .findByClientId(tokenRefreshWebRequestDto.getClientId())
-                        .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID))
-                        .getCookieMaxAgeSeconds())
+                .maxAge(client.getCookieMaxAgeSeconds())
                 .build();
 
         return ResponseEntity.status(HttpStatus.OK)

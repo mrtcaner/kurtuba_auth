@@ -1,6 +1,7 @@
 package com.kurtuba.auth.data.dto;
 
 import com.kurtuba.auth.utils.Utils;
+import com.kurtuba.auth.utils.annotation.EmailMobile;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -15,7 +16,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PasswordResetByCodeDto {
 
-    @NotBlank
+    @EmailMobile
     String emailMobile;
     @NotBlank
     String code;

@@ -9,6 +9,8 @@ import com.kurtuba.auth.service.ISMSService;
 import com.kurtuba.auth.service.MessageJobService;
 import com.kurtuba.auth.service.EmailService;
 import com.twilio.rest.verify.v2.service.Verification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -19,6 +21,8 @@ import java.util.List;
 @Component
 @ConditionalOnProperty(prefix = "kurtuba.jobs", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class MessageSenderScheduledJob {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MessageSenderScheduledJob.class);
 
     final
     EmailService emailService;
@@ -39,6 +43,7 @@ public class MessageSenderScheduledJob {
     public void sendEmail() {
         List<MessageJob> jobs = messageJobService.findByStateAndContactTypeAndSendAfterDateBefore(MessageJobStateType.PENDING,
                 ContactType.EMAIL, Instant.now());
+        LOGGER.debug("Email message job fetched jobs. jobCount={}", jobs.size());
         jobs.forEach(emailJob -> {
             try{
                 emailService.sendMultipartMail(EmailDetails.builder()
@@ -51,6 +56,8 @@ public class MessageSenderScheduledJob {
                 emailJob.setTryCount(emailJob.getTryCount()+1);
                 emailJob.setState(MessageJobStateType.SUCCESS);
             }catch (Exception e){
+                LOGGER.error("Email message job failed. jobId={}, recipient={}, tryCount={}, maxTryCount={}",
+                        emailJob.getId(), emailJob.getRecipient(), emailJob.getTryCount(), emailJob.getMaxTryCount(), e);
                 emailJob.setError(e.getMessage());
                 emailJob.setTryCount(emailJob.getTryCount()+1);
                 if(emailJob.getTryCount() >= emailJob.getMaxTryCount()){
@@ -63,15 +70,12 @@ public class MessageSenderScheduledJob {
 
     }
 
-    /*@Scheduled(fixedDelay = 5000)
-    public void sendSMS() {
-    }*/
-
     @Scheduled(fixedDelay = 5000)
     public void sendTwilioVerificationSMS() {
         List<MessageJob> jobs = messageJobService
                 .findByStateAndContactTypeAndMessageServiceProviderTypeAndSendAfterDateBefore(MessageJobStateType.PENDING,
                 ContactType.MOBILE, MessageServiceProviderType.TWILIO_VERIFY, Instant.now());
+        LOGGER.debug("Twilio verification message job fetched jobs. jobCount={}", jobs.size());
         jobs.forEach(smsJob -> {
             try{
                 Verification verification = smsService.sendVerificationSMS(smsJob.getRecipient());
@@ -82,6 +86,8 @@ public class MessageSenderScheduledJob {
                 messageJobService.saveMessageJob(smsJob);
 
             }catch (Exception e){
+                LOGGER.error("Twilio verification message job failed. jobId={}, recipient={}, tryCount={}, maxTryCount={}",
+                        smsJob.getId(), smsJob.getRecipient(), smsJob.getTryCount(), smsJob.getMaxTryCount(), e);
                 smsJob.setError(e.getMessage());
                 smsJob.setTryCount(smsJob.getTryCount()+1);
                 // stays in pending state as long as maxTryCount reached

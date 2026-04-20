@@ -25,67 +25,18 @@ public class UserDto {
     private String email;
     private String mobile;
     private String username;
-    private List<UserRole> userRoles;
-    private UserSetting userSetting;
+    private List<UserRoleDto> userRoles;
+    private UserSettingDto userSetting;
     private Instant birthdate;
     private GenderType gender;
     private AuthProviderType authProvider;
     private boolean activated;
     private boolean locked;
+    private boolean blocked;
     private int failedLoginCount;
     private boolean showCaptcha;
     private boolean emailVerified;
     private boolean mobileVerified;
     private Instant lastLoginAttempt;
     private Instant createdDate;
-
-    public User toUser() {
-        return User.builder()
-                .id(id)
-                .name(name)
-                .surname(surname)
-                .email(email)
-                .username(username)
-                .userRoles(userRoles)
-                .userSetting(userSetting)
-                .birthdate(birthdate)
-                .gender(gender)
-                .authProvider(authProvider)
-                .mobile(mobile)
-                .activated(activated)
-                .locked(locked)
-                .failedLoginCount(failedLoginCount)
-                .showCaptcha(showCaptcha)
-                .emailVerified(emailVerified)
-                .mobileVerified(mobileVerified)
-                .lastLoginAttempt(lastLoginAttempt)
-                .createdDate(createdDate)
-                .build();
-    }
-
-    public static UserDto fromUser(User user) {
-        return UserDto.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .surname(user.getSurname())
-                .email(user.getEmail())
-                .username(user.getUsername())
-                .userRoles(user.getUserRoles())
-                .userSetting(user.getUserSetting())
-                .birthdate(user.getBirthdate())
-                .gender(user.getGender())
-                .authProvider(user.getAuthProvider())
-                .mobile(user.getMobile())
-                .activated(user.isActivated())
-                .locked(user.isLocked())
-                .failedLoginCount(user.getFailedLoginCount())
-                .showCaptcha(user.isShowCaptcha())
-                .emailVerified(user.isEmailVerified())
-                .mobileVerified(user.isMobileVerified())
-                .lastLoginAttempt(user.getLastLoginAttempt())
-                .createdDate(user.getCreatedDate())
-                .build();
-    }
-
-
 }

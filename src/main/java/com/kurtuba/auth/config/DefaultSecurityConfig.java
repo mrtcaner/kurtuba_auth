@@ -51,11 +51,14 @@ public class DefaultSecurityConfig {
     private final CustomAuthenticationProvider authProvider;
     private final TokenUtils tokenUtils;
     private final Environment environment;
+    private final RateLimitProperties rateLimitProperties;
 
-    public DefaultSecurityConfig(CustomAuthenticationProvider authProvider, TokenUtils tokenUtils, Environment environment) {
+    public DefaultSecurityConfig(CustomAuthenticationProvider authProvider, TokenUtils tokenUtils, Environment environment,
+                                 RateLimitProperties rateLimitProperties) {
         this.authProvider = authProvider;
         this.tokenUtils = tokenUtils;
         this.environment = environment;
+        this.rateLimitProperties = rateLimitProperties;
     }
 
     @Bean
@@ -118,14 +121,10 @@ public class DefaultSecurityConfig {
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http.sessionManagement(conf -> conf.maximumSessions(1))
             .authorizeHttpRequests(
-                    authorize -> authorize.requestMatchers("/auth/login", "/error").permitAll().anyRequest().authenticated())
+                    authorize -> authorize.requestMatchers("/auth/login", "/auth/adm/login", "/error").permitAll().anyRequest().authenticated())
             .oauth2ResourceServer(
                     oauth2 -> oauth2.jwt(Customizer.withDefaults()))//will require token for certain endpoints
             .csrf(csrfConf -> csrfConf.disable())
-            .formLogin(login -> login
-                    .loginPage("/auth/login")
-                    .loginProcessingUrl("/auth/login")
-                    .permitAll())
             .logout(logout -> logout.logoutUrl("/auth/logout"));
 
         return http.build();
@@ -152,13 +151,16 @@ public class DefaultSecurityConfig {
     }
 
     private String[] publicSecurityMatchers() {
-        Stream<String> publicApiMatchers = Arrays.stream(RateLimitPublicApi.values()).map(RateLimitPublicApi::getPattern);
-        Stream<String> baseMatchers = Stream.of("/auth/oauth2/jwks", "/favicon.ico", "/error");
+        Stream<String> rateLimitedPublicApiMatchers = Arrays.stream(RateLimitPublicApi.values())
+                                                 .map(rateLimitProperties::getPublicApi)
+                                                 .map(RateLimitProperties.PublicApiProperties::getPattern);
+        Stream<String> baseMatchers = Stream.of("/auth/oauth2/jwks", "/auth/adm/login", "/auth/service/login",
+                                                "/favicon.ico", "/error");
         Stream<String> actuatorMatchers = isNonProdProfileActive()
                 ? Stream.of("/actuator/**")
                 : Stream.of("/actuator/health", "/actuator/health/**", "/actuator/info");
 
-        return Stream.of(baseMatchers, actuatorMatchers, publicApiMatchers)
+        return Stream.of(baseMatchers, actuatorMatchers, rateLimitedPublicApiMatchers)
                 .flatMap(stream -> stream)
                 .toArray(String[]::new);
     }

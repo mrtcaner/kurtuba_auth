@@ -15,6 +15,5 @@ public class TokensResponseDto {
     @NotBlank
     public String accessToken;
 
-    @NotBlank
     public String refreshToken;
 }

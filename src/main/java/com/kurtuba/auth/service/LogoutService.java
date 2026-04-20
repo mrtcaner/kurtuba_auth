@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+
 @Service
 @RequiredArgsConstructor
 public class LogoutService {
@@ -17,6 +19,7 @@ public class LogoutService {
     public void doLogout(String jti) {
         userTokenRepository.findByJti(jti).ifPresent(userToken -> {
             userToken.setBlocked(true);
+            userToken.setUpdatedDate(Instant.now());
             userTokenRepository.save(userToken);
         });
     }

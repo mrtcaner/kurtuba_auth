@@ -1,25 +1,31 @@
 package com.kurtuba.auth.service;
 
+import com.kurtuba.adm.data.dto.AdmUserDto;
+import com.kurtuba.adm.data.dto.AdmUserFcmTokenDto;
+import com.kurtuba.adm.data.dto.AdmUserFcmTokenSearchCriteria;
+import com.kurtuba.adm.data.dto.UserAdminSearchCriteria;
 import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
-import com.kurtuba.auth.data.model.RegisteredClient;
-import com.kurtuba.auth.data.model.User;
-import com.kurtuba.auth.data.model.UserFcmToken;
-import com.kurtuba.auth.data.model.UserMetaChange;
-import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
+import com.kurtuba.auth.data.mapper.UserMapper;
+import com.kurtuba.auth.data.model.*;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.data.repository.UserFcmTokenRepository;
 import com.kurtuba.auth.data.repository.UserRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.ServiceUtils;
+import com.kurtuba.auth.utils.annotation.EmailMobile;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +33,8 @@ import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 
@@ -34,10 +42,13 @@ import java.time.*;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import jakarta.persistence.criteria.JoinType;
+import java.util.stream.Collectors;
 
 
 import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 
+@Slf4j
 @Service
 @Validated
 @RequiredArgsConstructor
@@ -50,9 +61,11 @@ public class UserService {
     private final MessageJobService messageJobService;
     private final UserMetaChangeService userMetaChangeService;
     private final ServiceUtils serviceUtils;
-    private final LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
+    private final LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
+    private final LocalizationSupportedLangRepository localizationSupportedLangRepository;
     private final UserFcmTokenRepository userFcmTokenRepository;
     private final RegisteredClientRepository registeredClientRepository;
+    private final UserMapper userMapper;
 
     @Value("${kurtuba.meta-change.validity.password-reset-code.minutes}")
     private int passwordResetCodeValidityMinutes;
@@ -70,12 +83,20 @@ public class UserService {
         User user = userRepository.getUserById(userId).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
+
         if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        if (!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())) {
-            throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_OLD_PASSWORD);
+        if(user.getAuthProvider().equals(AuthProviderType.KURTUBA)){
+            if (!new BCryptPasswordEncoder().matches(passwordChangeDto.getOldPassword(), user.getPassword())) {
+                throw new BusinessLogicException(ErrorEnum.USER_PASSWORD_CHANGE_WRONG_OLD_PASSWORD);
+            }
+        } else {
+            LOGGER.info("User {} with {} auth provider changing password", user.getId(), user.getAuthProvider());
         }
 
         if (!passwordChangeDto.getNewPassword().equals(passwordChangeDto.getRepeatNewPassword())) {
@@ -83,6 +104,7 @@ public class UserService {
         }
 
         user.setPassword(new BCryptPasswordEncoder().encode(passwordChangeDto.getNewPassword()));
+        user.setAuthProvider(AuthProviderType.KURTUBA);
         userRepository.save(user);
         UserMetaChange metaChange = userMetaChangeService.create(UserMetaChange.builder()
                 .metaOperationType(MetaOperationType.PASSWORD_CHANGE)
@@ -94,10 +116,10 @@ public class UserService {
                 .expirationDate(Instant.now())
                 .build());
 
-        //todo: send sms if no email? currently no regular sms sending capability
+        //todo: send sms if no email?
         if(StringUtils.hasLength(user.getEmail())){
             messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_CHANGE,
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                    user.getUserSetting().getLanguageCode(), metaChange.getId());
         }
     }
 
@@ -106,15 +128,19 @@ public class UserService {
         return userRepository.getUserByEmail(email);
     }
 
-    public Optional<User> getUserByEmailOrMobile(String email) {
-        return userRepository.getUserByEmailOrMobile(email);
+    public Optional<User> getUserByEmailOrMobile(String emailMobile) {
+        return userRepository.getUserByEmailOrMobile(emailMobile);
     }
 
     public Optional<User> getUserById(String id) {
         return userRepository.getUserById(id);
     }
 
-    public Iterable<User> getUsersByIds(Set<String> ids) {
+    public List<UserBasicDto> getActiveAdminUsers() {
+        return userRepository.getAdminUsers().stream().map(userMapper::mapToUserBasicDto).toList();
+    }
+
+    public List<User> getUsersByIds(List<String> ids) {
         return userRepository.findAllById(ids);
     }
 
@@ -128,6 +154,26 @@ public class UserService {
 
     public Optional<User> getUserByUsernameOrEmail(String email) {
         return userRepository.getUserByEmailOrUsername(email);
+    }
+
+    public List<User> getAllUsers() {
+        return (List<User>) userRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> searchUsers(UserAdminSearchCriteria criteria) {
+        return userRepository.findAll(buildUserAdminSpecification(criteria), Sort.by(Sort.Direction.DESC, "createdDate"));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdmUserDto> searchAdmUsers(UserAdminSearchCriteria criteria) {
+        List<User> users = searchUsers(criteria);
+        Map<String, Instant> latestTokenCreatedDatesByUserId = userTokenService.findLatestCreatedDatesByUserIds(
+                users.stream().map(User::getId).collect(Collectors.toSet()));
+
+        return users.stream()
+                .map(user -> userMapper.mapToAdmUserDto(user, latestTokenCreatedDatesByUserId.get(user.getId())))
+                .toList();
     }
 
     public boolean isEmailAvailable(String email) {
@@ -175,7 +221,7 @@ public class UserService {
         User user = userRepository.getUserById(userId).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
+        if (user.isBlocked() || user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
@@ -201,10 +247,10 @@ public class UserService {
 
         if (byCode) {
             messageJobService.sendUserEmailChangeCodeMail(email, metaChange.getCode(),
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                    user.getUserSetting().getLanguageCode(), metaChange.getId());
         } else {
             messageJobService.sendUserEmailChangeLinkMail(email, metaChange.getLinkParam(),
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                    user.getUserSetting().getLanguageCode(), metaChange.getId());
         }
 
         return metaChange;
@@ -212,9 +258,13 @@ public class UserService {
     }
 
     @Transactional
-    public UserMetaChange requestResetPassword(@NotBlank String emailMobile, boolean byCode) {
+    public UserMetaChange requestResetPassword(@EmailMobile String emailMobile, boolean byCode) {
         User user = userRepository.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
 
         if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
@@ -270,10 +320,10 @@ public class UserService {
             //email
             if (byCode) {
                 messageJobService.sendPasswordResetCodeMail(user.getEmail(), metaChange.getCode(),
-                        user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                        user.getUserSetting().getLanguageCode(), metaChange.getId());
             } else {
                 messageJobService.sendPasswordResetLinkMail(user.getEmail(), metaChange.getLinkParam(),
-                        user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                        user.getUserSetting().getLanguageCode(), metaChange.getId());
             }
         } else {
             //mobile
@@ -346,13 +396,15 @@ public class UserService {
 
     @Transactional
     public void updateUserLang(@NotBlank String userId,@NotBlank String langCode) {
-        if(localizationAvailableLocaleRepository.findByLanguageCode(langCode).isEmpty()){
-            throw new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_LANGUAGE);
-        }
-        userRepository.getUserById(userId).ifPresent(user -> {
-            user.getUserSetting().getLocale().setLanguageCode(langCode);
-            userRepository.save(user);
-        });
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        String normalizedLanguageCode = normalizeCode(langCode);
+        localizationSupportedLangRepository.findByLanguageCode(normalizedLanguageCode)
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_LANGUAGE));
+
+        user.getUserSetting().setLanguageCode(normalizedLanguageCode);
+        userRepository.save(user);
     }
 
     @Transactional
@@ -411,6 +463,87 @@ public class UserService {
                                                                                    .build()).toList();
     }
 
+    @Transactional(readOnly = true)
+    public Map<String, List<UserFcmTokenResponseDto>> getUsersFcmTokens(@NotEmpty List<String> userIds) {
+        List<UserFcmToken> userFcmTokenOpt = userFcmTokenRepository.findByUserIdIn(userIds);
+        return userFcmTokenOpt.stream().map(userFcmToken -> UserFcmTokenResponseDto.builder()
+                                                                                   .fcmToken(userFcmToken.getFcmToken())
+                                                                                   .userId(userFcmToken.getUserId())
+                                                                                   .clientId(userFcmToken.getRegisteredClientId())
+                                                                                   .clientType(registeredClientRepository.findByClientId(userFcmToken.getRegisteredClientId()).get().getClientType().name())
+                                                                                   .updatedAt(userFcmToken.getUpdatedAt())
+                                                                                   .build()).collect(Collectors.groupingBy(UserFcmTokenResponseDto::getUserId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdmUserFcmTokenDto> getAdmUserFcmTokens() {
+        List<AdmUserFcmTokenDto> tokens = userFcmTokenRepository.findAllForAdminList().stream()
+                .map(token -> AdmUserFcmTokenDto.builder()
+                        .userId(token.getUserId())
+                        .userEmail(token.getUserEmail())
+                        .userMobile(token.getUserMobile())
+                        .registeredClientId(token.getRegisteredClientId())
+                        .fcmToken(token.getFcmToken())
+                        .firebaseInstallationId(token.getFirebaseInstallationId())
+                        .updatedAt(token.getUpdatedAt())
+                        .build())
+                .toList();
+
+        Map<String, List<String>> userRolesByUserId = userRepository.findAllById(
+                        tokens.stream().map(AdmUserFcmTokenDto::getUserId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(User::getId, user -> user.getUserRoles() == null ? List.of() :
+                        user.getUserRoles().stream()
+                                .filter(userRole -> userRole.getRole() != null && userRole.getRole().getName() != null)
+                                .map(userRole -> userRole.getRole().getName())
+                                .sorted(String::compareToIgnoreCase)
+                                .toList()));
+
+        tokens.forEach(token -> token.setUserRoles(userRolesByUserId.getOrDefault(token.getUserId(), List.of())));
+        return tokens;
+    }
+
+    @Transactional
+    public void deleteFcmTokens(@NotEmpty List<String> fcmTokens) {
+        int deletedCount = userFcmTokenRepository.deleteByFcmTokenIn(fcmTokens);
+        log.info("Deleted {} FCM tokens out of {} ", deletedCount, fcmTokens.size());
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdmUserFcmTokenDto> searchAdmUserFcmTokens(AdmUserFcmTokenSearchCriteria criteria) {
+        List<AdmUserFcmTokenDto> tokens = userFcmTokenRepository.searchForAdminList(
+                        normalizeSearchTerm(criteria.getUserId()),
+                        normalizeSearchTerm(criteria.getUserEmail()),
+                        normalizeSearchTerm(criteria.getUserMobile()),
+                        normalizeSearchTerm(criteria.getUserRole()),
+                        normalizeSearchTerm(criteria.getFirebaseInstallationId()),
+                        normalizeSearchTerm(criteria.getFcmToken()))
+                .stream()
+                .map(token -> AdmUserFcmTokenDto.builder()
+                        .userId(token.getUserId())
+                        .userEmail(token.getUserEmail())
+                        .userMobile(token.getUserMobile())
+                        .registeredClientId(token.getRegisteredClientId())
+                        .fcmToken(token.getFcmToken())
+                        .firebaseInstallationId(token.getFirebaseInstallationId())
+                        .updatedAt(token.getUpdatedAt())
+                        .build())
+                .toList();
+
+        Map<String, List<String>> userRolesByUserId = userRepository.findAllById(
+                        tokens.stream().map(AdmUserFcmTokenDto::getUserId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(User::getId, user -> user.getUserRoles() == null ? List.of() :
+                        user.getUserRoles().stream()
+                                .filter(userRole -> userRole.getRole() != null && userRole.getRole().getName() != null)
+                                .map(userRole -> userRole.getRole().getName())
+                                .sorted(String::compareToIgnoreCase)
+                                .toList()));
+
+        tokens.forEach(token -> token.setUserRoles(userRolesByUserId.getOrDefault(token.getUserId(), List.of())));
+        return tokens;
+    }
+
     @Transactional
     public UserMetaChange validatePasswordResetLinkParam(String linkParam) {
         UserMetaChange userMetaChange = userMetaChangeService.findByLinkParam(linkParam).orElseThrow(() ->
@@ -428,9 +561,17 @@ public class UserService {
         serviceUtils.validateUserMetaChange(userMetaChange, code);
     }
 
+    private String normalizeSearchTerm(String value) {
+        return StringUtils.hasText(value) ? value.trim().toLowerCase(Locale.ROOT) : "";
+    }
+
     private void saveNewPassword(@NotNull UserMetaChange userMetaChange, String newPassword, String repeatNewPassword) {
         User user = userRepository.getUserById(userMetaChange.getUserId()).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
 
         if (!user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
@@ -441,6 +582,7 @@ public class UserService {
         }
 
         user.setPassword(new BCryptPasswordEncoder().encode(newPassword));
+        user.setAuthProvider(AuthProviderType.KURTUBA);
         userRepository.save(user);
         userMetaChange.setExecuted(true);
         userMetaChange.setUpdatedDate(Instant.now());
@@ -448,7 +590,7 @@ public class UserService {
 
         if (StringUtils.hasLength(user.getEmail())) {
             messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.PASSWORD_RESET,
-                    user.getUserSetting().getLocale().getLanguageCode(), userMetaChange.getId());
+                    user.getUserSetting().getLanguageCode(), userMetaChange.getId());
         }
 
         //todo uncomment after SMS integration
@@ -460,7 +602,98 @@ public class UserService {
 
     @Transactional
     public User saveUser(User user) {
+       user.setEmail(StringUtils.hasLength(user.getEmail()) ? user.getEmail() : null);
+       user.setMobile(StringUtils.hasLength(user.getMobile()) ? user.getMobile() : null);
+       user.setUsername(StringUtils.hasLength(user.getUsername()) ? user.getUsername() : null);
        return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateAdminSecurityAndActivity(String userId,
+                                               boolean activated,
+                                               boolean locked,
+                                               boolean blocked,
+                                               boolean showCaptcha,
+                                               int failedLoginCount) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+        user.setActivated(activated);
+        user.setLocked(locked);
+        boolean wasBlocked = user.isBlocked();
+        user.setBlocked(blocked);
+        user.setShowCaptcha(showCaptcha);
+        user.setFailedLoginCount(Math.max(failedLoginCount, 0));
+        User savedUser = saveUser(user);
+        if (blocked && !wasBlocked) {
+            userTokenService.blockUsersTokens(userId);
+        }
+        return savedUser;
+    }
+
+    private Specification<User> buildUserAdminSpecification(UserAdminSearchCriteria criteria) {
+        return (root, query, cb) -> {
+            if (!Long.class.equals(query.getResultType()) && !long.class.equals(query.getResultType())) {
+                root.fetch("userSetting", JoinType.LEFT);
+                root.fetch("userRoles", JoinType.LEFT).fetch("role", JoinType.LEFT);
+                query.distinct(true);
+            }
+
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            addContainsPredicate(predicates, cb, root.get("id"), criteria.getId());
+            addContainsPredicate(predicates, cb, root.get("username"), criteria.getUsername());
+            addContainsPredicate(predicates, cb, root.get("email"), criteria.getEmail());
+            addContainsPredicate(predicates, cb, root.get("mobile"), criteria.getMobile());
+            addContainsPredicate(predicates, cb, root.get("name"), criteria.getName());
+            addContainsPredicate(predicates, cb, root.get("surname"), criteria.getSurname());
+
+            if (StringUtils.hasLength(criteria.getAuthProvider())) {
+                predicates.add(cb.equal(root.get("authProvider"), AuthProviderType.valueOf(criteria.getAuthProvider())));
+            }
+
+            addBooleanFilterPredicate(predicates, cb, root.get("activated"), criteria.getActivated());
+            addBooleanFilterPredicate(predicates, cb, root.get("locked"), criteria.getLocked());
+            addBooleanFilterPredicate(predicates, cb, root.get("blocked"), criteria.getBlocked());
+            addBooleanFilterPredicate(predicates, cb, root.get("showCaptcha"), criteria.getShowCaptcha());
+            addBooleanFilterPredicate(predicates, cb, root.get("emailVerified"), criteria.getEmailVerified());
+            addBooleanFilterPredicate(predicates, cb, root.get("mobileVerified"), criteria.getMobileVerified());
+
+            if (StringUtils.hasLength(criteria.getLocale())) {
+                var userSettingJoin = root.join("userSetting", JoinType.LEFT);
+                String normalizedLocale = "%" + criteria.getLocale().toLowerCase() + "%";
+                predicates.add(cb.or(
+                        cb.like(cb.lower(userSettingJoin.get("languageCode")), normalizedLocale),
+                        cb.like(cb.lower(userSettingJoin.get("countryCode")), normalizedLocale)
+                ));
+            }
+
+            if (StringUtils.hasLength(criteria.getRole())) {
+                var userRoleJoin = root.join("userRoles", JoinType.LEFT);
+                var roleJoin = userRoleJoin.join("role", JoinType.LEFT);
+                predicates.add(cb.like(cb.lower(roleJoin.get("name")), "%" + criteria.getRole().toLowerCase() + "%"));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+    }
+
+    private void addContainsPredicate(List<jakarta.persistence.criteria.Predicate> predicates,
+                                      jakarta.persistence.criteria.CriteriaBuilder cb,
+                                      jakarta.persistence.criteria.Path<String> path,
+                                      String value) {
+        if (StringUtils.hasLength(value)) {
+            predicates.add(cb.like(cb.lower(path), "%" + value.toLowerCase() + "%"));
+        }
+    }
+
+    private void addBooleanFilterPredicate(List<jakarta.persistence.criteria.Predicate> predicates,
+                                           jakarta.persistence.criteria.CriteriaBuilder cb,
+                                           jakarta.persistence.criteria.Path<Boolean> path,
+                                           String value) {
+        if (!StringUtils.hasLength(value) || "all".equalsIgnoreCase(value)) {
+            return;
+        }
+        predicates.add("yes".equalsIgnoreCase(value) ? cb.isTrue(path) : cb.isFalse(path));
     }
 
 
@@ -510,7 +743,7 @@ public class UserService {
         if (StringUtils.hasLength(user.getEmail())) {
             //send change notification mail to old e-mail
             messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.EMAIL_CHANGE,
-                    user.getUserSetting().getLocale().getLanguageCode(), userMetaChange.getId());
+                    user.getUserSetting().getLanguageCode(), userMetaChange.getId());
         }
 
         user.setEmail(userMetaChange.getMeta());
@@ -520,7 +753,7 @@ public class UserService {
         userMetaChange.setUpdatedDate(Instant.now());
         userMetaChangeService.update(userMetaChange);
 
-        return UserDto.fromUser(user);
+        return userMapper.mapToUserDto(user);
     }
 
     /**
@@ -535,7 +768,7 @@ public class UserService {
         User user = userRepository.getUserById(userId).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
 
-        if (user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
+        if (user.isBlocked() || user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
@@ -597,7 +830,7 @@ public class UserService {
         if (StringUtils.hasLength(user.getMobile())) {
             //send change notification mail to user
             messageJobService.sendUserMetaChangeNotificationMail(user.getEmail(), MetaOperationType.MOBILE_CHANGE,
-                    user.getUserSetting().getLocale().getLanguageCode(), userMetaChange.getId());
+                    user.getUserSetting().getLanguageCode(), userMetaChange.getId());
         }
 
         user.setMobile(userMetaChange.getMeta());
@@ -607,7 +840,10 @@ public class UserService {
         userMetaChange.setUpdatedDate(Instant.now());
         userMetaChangeService.update(userMetaChange);
 
-        return UserDto.fromUser(user);
+        return userMapper.mapToUserDto(user);
     }
 
+    private String normalizeCode(String value) {
+        return value == null ? null : value.trim().toLowerCase();
+    }
 }

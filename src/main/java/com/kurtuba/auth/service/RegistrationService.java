@@ -2,6 +2,7 @@ package com.kurtuba.auth.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kurtuba.auth.data.dto.AvailableLocalizationOptionsDto;
 import com.kurtuba.auth.data.dto.RegistrationDto;
 import com.kurtuba.auth.data.dto.RegistrationOtherProviderDto;
 import com.kurtuba.auth.data.dto.TokensResponseDto;
@@ -9,16 +10,20 @@ import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
-import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
+import com.kurtuba.auth.data.mapper.UserMapper;
+import com.kurtuba.auth.data.model.LocalizationSupportedCountry;
+import com.kurtuba.auth.data.model.LocalizationSupportedLang;
 import com.kurtuba.auth.data.model.Role;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.model.UserRole;
-import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.ServiceUtils;
 import com.kurtuba.auth.utils.TokenUtils;
+import com.kurtuba.auth.utils.annotation.EmailMobile;
 import com.kurtuba.auth.utils.annotation.MobileNumber;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -33,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -69,10 +75,14 @@ public class RegistrationService {
     UserRoleService userRoleService;
 
     final
-    LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
+    LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
+
+    final
+    LocalizationSupportedLangRepository localizationSupportedLangRepository;
 
     final
     ServiceUtils serviceUtils;
+    private final UserMapper userMapper;
 
     @Value("${kurtuba.meta-change.email-max-try-count}")
     private int metaChangeEmailMaxTryCount;
@@ -91,15 +101,18 @@ public class RegistrationService {
     @Value("${kurtuba.auth-provider.facebook.client-secret:}")
     private String facebookClientSecret;
 
-    public RegistrationService(UserService userService, UserMetaChangeService userMetaChangeService, AuthenticationService authenticationService, UserTokenService userTokenService, MessageJobService messageJobService, UserRoleService userRoleService, LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository, ServiceUtils serviceUtils) {
+    public RegistrationService(UserService userService, UserMetaChangeService userMetaChangeService, AuthenticationService authenticationService, UserTokenService userTokenService, MessageJobService messageJobService, UserRoleService userRoleService, LocalizationSupportedCountryRepository localizationSupportedCountryRepository, LocalizationSupportedLangRepository localizationSupportedLangRepository, ServiceUtils serviceUtils,
+                               UserMapper userMapper) {
         this.userService = userService;
         this.userMetaChangeService = userMetaChangeService;
         this.authenticationService = authenticationService;
         this.userTokenService = userTokenService;
         this.messageJobService = messageJobService;
         this.userRoleService = userRoleService;
-        this.localizationAvailableLocaleRepository = localizationAvailableLocaleRepository;
+        this.localizationSupportedCountryRepository = localizationSupportedCountryRepository;
+        this.localizationSupportedLangRepository = localizationSupportedLangRepository;
         this.serviceUtils = serviceUtils;
+        this.userMapper = userMapper;
     }
 
     @Transactional
@@ -110,13 +123,9 @@ public class RegistrationService {
         String pass = registrationDto.getPassword();
         registrationDto.setPassword(new BCryptPasswordEncoder().encode(pass));
 
-        User user = registrationDto.toUser();
+        User user = userMapper.maptoUser(registrationDto);
+        normalizeUserLocalization(user);
         user.getUserSetting().setCanChangeUsername(!StringUtils.hasLength(user.getUsername()));
-
-        user.getUserSetting().setLocale(localizationAvailableLocaleRepository
-                .findByLanguageCodeAndCountryCode(user.getUserSetting().getLocale().getLanguageCode(),
-                        user.getUserSetting().getLocale().getCountryCode())
-                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION)));
         user.getUserSetting().setCreatedDate(Instant.now());
         user.getUserSetting().setUser(user);
 
@@ -175,7 +184,7 @@ public class RegistrationService {
                 decodedUser = decodeGoogleRegistration(newUserByOtherProvider);
             } catch (Exception e) {
                 LOGGER.warn("Google token registration failed", e);
-                throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN);
+                throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN, e);
             }
         }
         if (newUserByOtherProvider.getProvider().equals(AuthProviderType.FACEBOOK)) {
@@ -183,7 +192,7 @@ public class RegistrationService {
                 decodedUser = decodeFacebookRegistration(newUserByOtherProvider);
             } catch (Exception e) {
                 LOGGER.warn("Facebook token registration failed", e);
-                throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN);
+                throw new BusinessLogicException(ErrorEnum.USER_OTHER_PROVIDER_INVALID_TOKEN, e);
             }
         }
 
@@ -194,7 +203,10 @@ public class RegistrationService {
 
         if (existingUser == null) {
             //this user never existed, let make one and return a token
-            User user = decodedUser.toUser();
+            User user = userMapper.maptoUser(decodedUser);
+            user.getUserSetting().setLanguageCode(newUserByOtherProvider.getLanguageCode());
+            user.getUserSetting().setCountryCode(newUserByOtherProvider.getCountryCode());
+            normalizeUserLocalization(user);
             user.setEmailVerified(true);
             user.setPassword(new BCryptPasswordEncoder().encode(UUID.randomUUID().toString()));
             /*String provisionalUsername = user.getEmail().split("@")[0];
@@ -203,10 +215,6 @@ public class RegistrationService {
             }
             user.setUsername(provisionalUsername + "." + generateRandomAlphanumericString(6));*/
             user.getUserSetting().setCanChangeUsername(true);
-            user.getUserSetting().setLocale(localizationAvailableLocaleRepository
-                    .findByLanguageCodeAndCountryCode(newUserByOtherProvider.getLanguageCode(),
-                                                      newUserByOtherProvider.getCountryCode())
-                    .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION)));
             user.getUserSetting().setCreatedDate(Instant.now());
             user.getUserSetting().setUser(user);
             user.setActivated(true);
@@ -223,21 +231,31 @@ public class RegistrationService {
             return user;
         }
 
-        if (!existingUser.isActivated() || existingUser.isLocked() || existingUser.isShowCaptcha()) {
+        // todo: activated, locked and showCaptcha can be handled here but must use the same implementation as in
+        //  register/login
+        if (existingUser.isBlocked() || !existingUser.isActivated() || existingUser.isLocked() || existingUser.isShowCaptcha()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
 
-        if (existingUser.getAuthProvider().equals(newUserByOtherProvider.getProvider())) {
+       // todo: uncomment this to control user-provider-relationship
+       /* if (existingUser.getAuthProvider().equals(newUserByOtherProvider.getProvider())) {
             return existingUser;
-        }
+        }*/
 
         // same email is treated as the same account across manual and social providers
         return existingUser;
 
     }
 
-    public List<LocalizationAvailableLocale> getAvailableLocales() {
-        return localizationAvailableLocaleRepository.findAllByOrderByLanguageCodeAscCountryCodeAsc();
+    public AvailableLocalizationOptionsDto getAvailableLocales() {
+        return AvailableLocalizationOptionsDto.builder()
+                .languages(localizationSupportedLangRepository.findAllByOrderByLanguageCodeAsc().stream()
+                        .map(LocalizationSupportedLang::getLanguageCode)
+                        .toList())
+                .countries(localizationSupportedCountryRepository.findAllByOrderByCountryCodeAsc().stream()
+                        .map(LocalizationSupportedCountry::getCountryCode)
+                        .toList())
+                .build();
     }
 
     RegistrationDto decodeGoogleRegistration(RegistrationOtherProviderDto request) {
@@ -418,6 +436,10 @@ public class RegistrationService {
             throw new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST);
         }
 
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
+
         if (user.isActivated()) {
             throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
         }
@@ -438,7 +460,7 @@ public class RegistrationService {
     }
 
     @Transactional
-    public UserMetaChange sendAccountActivationMessage(@NotBlank String emailMobile, boolean byCode) {
+    public UserMetaChange sendAccountActivationMessage(@EmailMobile String emailMobile, boolean byCode) {
         if (emailMobile.contains("@")) {
             //email
             return sendAccountActivationMail(emailMobile, byCode);
@@ -459,6 +481,11 @@ public class RegistrationService {
 
         User user = userService.getUserByEmail(email).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
 
         if (user.isActivated()) {
             // already activated
@@ -482,10 +509,10 @@ public class RegistrationService {
         metaChange = userMetaChangeService.create(metaChange);
         if (byCode) {
             messageJobService.sendAccountActivationCodeMail(user.getEmail(), metaChange.getCode(),
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                    user.getUserSetting().getLanguageCode(), metaChange.getId());
         } else {
             messageJobService.sendAccountActivationLinkMail(user.getEmail(), metaChange.getLinkParam(),
-                    user.getUserSetting().getLocale().getLanguageCode(), metaChange.getId());
+                    user.getUserSetting().getLanguageCode(), metaChange.getId());
         }
 
         return metaChange;
@@ -501,8 +528,17 @@ public class RegistrationService {
      */
     @Transactional
     public UserMetaChange sendAccountActivationSMS(@MobileNumber String mobile) {
+
+        if(!mobile.startsWith("+")){
+            throw new BusinessLogicException(ErrorEnum.INVALID_MOBILE_NUMBER_FORMAT);
+        }
+
         User user = userService.getUserByEmailOrMobile(mobile).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
 
         if (user.isActivated()) {
             // already activated
@@ -526,6 +562,23 @@ public class RegistrationService {
         metaChange = userMetaChangeService.create(metaChange);
         messageJobService.sendVerificationCodeSMSViaTwilio(user.getMobile(), metaChange.getId());
         return metaChange;
+    }
+
+    private void normalizeUserLocalization(User user) {
+        String normalizedLanguageCode = normalizeCode(user.getUserSetting().getLanguageCode());
+        String normalizedCountryCode = normalizeCode(user.getUserSetting().getCountryCode());
+
+        localizationSupportedLangRepository.findByLanguageCode(normalizedLanguageCode)
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_LANGUAGE));
+        localizationSupportedCountryRepository.findByCountryCode(normalizedCountryCode)
+                .orElseThrow(() -> new BusinessLogicException(ErrorEnum.LOCALIZATION_UNSUPPORTED_REGION));
+
+        user.getUserSetting().setLanguageCode(normalizedLanguageCode);
+        user.getUserSetting().setCountryCode(normalizedCountryCode);
+    }
+
+    private String normalizeCode(String value) {
+        return value == null ? null : value.trim().toLowerCase();
     }
 
 }

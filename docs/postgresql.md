@@ -2,12 +2,10 @@
 
 ## Overview
 
-`kurtuba-auth` can run in two PostgreSQL-oriented modes:
+`kurtuba-auth` runs on PostgreSQL and can be operated in two PostgreSQL-oriented modes:
 
 - a simple developer-friendly mode where one PostgreSQL user is used for both Flyway and the application
 - a more production-oriented mode where schema migration and runtime access are split across separate roles
-
-The repository defaults to H2 for demo and showcase use, but PostgreSQL is the intended relational database for persistent environments.
 
 ## What Has Been Validated
 
@@ -40,9 +38,9 @@ Characteristics:
 
 Use this when you want to:
 
-- move off H2
 - test against a real PostgreSQL engine quickly
 - keep configuration simple
+- run the service locally without production-style role splitting
 
 ### 2. Production-oriented role split
 
@@ -70,7 +68,7 @@ Example config:
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/kurtuba_auth
+    url: jdbc:postgresql://localhost:5433/kurtuba_auth
     driver-class-name: org.postgresql.Driver
     username: postgres
     password: postgres
@@ -86,7 +84,7 @@ Recommended notes for this mode:
 - keep `ddl-auto` as `validate` when Flyway is enabled
 - do not use `create-drop` on a persistent PostgreSQL database
 - let Flyway own schema creation and migration
-- keep this setup in a profile-specific file rather than changing the default demo `application.yml`
+- keep this setup explicit in local or environment-specific configuration rather than mixing it into unrelated deployment settings
 
 ## Production-Oriented PostgreSQL Setup
 
@@ -103,7 +101,7 @@ That script is designed to:
 
 ### Important behavior of `init_db.sql`
 
-The checked-in script is intentionally more production-oriented than the default H2 demo setup.
+The checked-in script is intentionally more production-oriented than the simple local PostgreSQL setup.
 
 It assumes:
 
@@ -139,7 +137,7 @@ If you use the runtime account for the application:
 ```yaml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/kurtuba_auth
+    url: jdbc:postgresql://localhost:5433/kurtuba_auth
     driver-class-name: org.postgresql.Driver
     username: kurtuba_auth_user
     password: change-me
@@ -152,31 +150,14 @@ spring:
 
 If you run Flyway externally with a stronger migration credential, the application should still use `ddl-auto: validate` so entity/schema mismatches are caught at startup.
 
-## H2 vs PostgreSQL Guidance
-
-Use H2 when:
-
-- you want the repo to run immediately
-- you are evaluating capabilities
-- you are exercising the API surface casually
-- you do not need persistence across restarts
-
-Use PostgreSQL when:
-
-- you want realistic relational behavior
-- you want to validate Flyway migrations
-- you want to test role/grant behavior
-- you want a deployment-like environment
-- you want to verify that schema validation passes outside H2
-
 ## Recommended Dev Workflow
 
 For most developers, the easiest progression is:
 
-1. Start with the default H2-backed demo config.
-2. Move to a separate PostgreSQL profile once you need realistic persistence.
-3. Enable Flyway and set Hibernate to `validate`.
-4. Use the split-role `init_db.sql` only when you are ready for a stricter database model.
+1. Start with a local PostgreSQL instance and the checked-in local defaults.
+2. Keep Flyway enabled and Hibernate on `validate`.
+3. Use one shared database account first if that keeps local setup simpler.
+4. Move to the split-role `init_db.sql` model when you are ready for stricter privilege boundaries.
 
 ## Operational Notes
 

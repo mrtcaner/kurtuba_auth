@@ -4,7 +4,9 @@ import com.kurtuba.auth.data.dto.RegistrationDto;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.ContactType;
-import com.kurtuba.auth.data.model.*;
+import com.kurtuba.auth.data.model.Role;
+import com.kurtuba.auth.data.model.UserRole;
+import com.kurtuba.auth.data.model.UserSetting;
 
 public class TestUtils {
 
@@ -13,10 +15,8 @@ public class TestUtils {
         return UserSetting.builder()
                 .canChangeUsername(false)
                 .user(null)
-                .locale(LocalizationAvailableLocale.builder()
-                        .languageCode("en")
-                        .countryCode("tr")
-                        .build())
+                .languageCode("en")
+                .countryCode("tr")
                 .bio("")
                 .profileCover("")
                 .profilePic("")
@@ -38,7 +38,7 @@ public class TestUtils {
         return RegistrationDto.builder()
                 .name("aa")
                 .surname("bb")
-                .username("")
+                .username("cc")
                 .email("user12345@user.com")
                 .mobile("+905122345678")
                 .password("a.123456")

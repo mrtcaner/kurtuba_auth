@@ -25,6 +25,10 @@ public class AuthenticationService {
         User user = userService.getUserByEmailOrMobile(emailMobile).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.LOGIN_INVALID_CREDENTIALS));
 
+        if (user.isBlocked()) {
+            throw new BusinessLogicException(ErrorEnum.USER_BLOCKED);
+        }
+
         // first do account lock and timing check
         long timeToWait = Double.valueOf(Math.pow(2, user.getFailedLoginCount() - 10)).longValue() * 5;// is 0 until
         // 10 failed attempts

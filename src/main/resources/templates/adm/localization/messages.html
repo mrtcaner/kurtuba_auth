@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{adm/fragments :: shell(pageTitle='Localization', activeSection='localization', content=~{::content})}">
+<th:block th:fragment="content">
+    <div class="mb-4">
+        <h2 class="mb-2">Localization</h2>
+        <p class="text-muted mb-0">Manage message translations, supported languages, and supported countries.</p>
+    </div>
+
+    <th:block th:replace="~{adm/fragments :: localizationNav(activeLocalizationSection='messages')}" />
+
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" role="alert" th:text="${errorMessage}"></div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Filters</h5>
+                    <form th:action="@{/auth/adm/pages/localization/messages}" method="get">
+                        <div class="form-group">
+                            <label for="filterLang">Language Code</label>
+                            <input id="filterLang" name="filterLang" type="text" class="form-control"
+                                   th:value="${filterLang}" placeholder="en" />
+                        </div>
+                        <div class="form-group">
+                            <label for="filterKey">Message Key</label>
+                            <input id="filterKey" name="filterKey" type="text" class="form-control"
+                                   th:value="${filterKey}" placeholder="mail.account.activation.subject" />
+                        </div>
+                        <div class="form-group">
+                            <label for="filterMessage">Message Contains</label>
+                            <input id="filterMessage" name="filterMessage" type="text" class="form-control"
+                                   th:value="${filterMessage}" placeholder="activation" />
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a class="btn btn-outline-secondary" th:href="@{/auth/adm/pages/localization/messages}">Reset</a>
+                            <button type="submit" class="btn btn-primary">Search</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Create Message</h5>
+                    <form th:action="@{/auth/adm/pages/localization/messages}" th:object="${createForm}" method="post">
+                        <div class="form-group">
+                            <label for="languageCode">Language Code</label>
+                            <input id="languageCode" type="text" class="form-control" th:field="*{languageCode}" placeholder="en" />
+                            <small class="text-danger" th:if="${#fields.hasErrors('languageCode')}" th:errors="*{languageCode}">Language code error</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="key">Message Key</label>
+                            <input id="key" type="text" class="form-control" th:field="*{key}" placeholder="mail.account.activation.subject" />
+                            <small class="text-danger" th:if="${#fields.hasErrors('key')}" th:errors="*{key}">Key error</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Message</label>
+                            <textarea id="message" rows="5" class="form-control" th:field="*{message}"></textarea>
+                            <small class="text-danger" th:if="${#fields.hasErrors('message')}" th:errors="*{message}">Message error</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">Create Localization</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                            <tr>
+                                <th style="width: 15%">Lang</th>
+                                <th style="width: 30%">Key</th>
+                                <th>Message</th>
+                                <th style="width: 18%">Updated</th>
+                                <th style="width: 12%"></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:if="${#lists.isEmpty(messages)}">
+                                <td colspan="5" class="text-center text-muted py-4">No localization messages found.</td>
+                            </tr>
+                            <tr th:each="message : ${messages}">
+                                <td class="align-top">
+                                    <span class="badge badge-light" th:text="${message.languageCode}">en</span>
+                                </td>
+                                <td class="align-top">
+                                    <code th:text="${message.key}">mail.account.activation.subject</code>
+                                </td>
+                                <td>
+                                    <form th:action="@{/auth/adm/pages/localization/messages/{id}(id=${message.id})}" method="post">
+                                        <input type="hidden" name="id" th:value="${message.id}" />
+                                        <input type="hidden" name="filterLang" th:value="${filterLang}" />
+                                        <input type="hidden" name="filterKey" th:value="${filterKey}" />
+                                        <input type="hidden" name="filterMessage" th:value="${filterMessage}" />
+                                        <div class="form-group mb-2">
+                                            <textarea name="message" rows="3" class="form-control" th:text="${message.message}">value</textarea>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Save Message</button>
+                                    </form>
+                                </td>
+                                <td class="align-top text-muted"
+                                    th:attr="data-localized-instant=${message.updatedDate != null ? message.updatedDate : message.createdDate}"
+                                    th:text="${message.updatedDate != null ? message.updatedDate : message.createdDate}">2026-01-01T00:00:00Z</td>
+                                <td class="align-top">
+                                    <form th:action="@{/auth/adm/pages/localization/messages/{id}/delete(id=${message.id})}" method="post"
+                                          onsubmit="return confirm('Delete this localization message?');">
+                                        <input type="hidden" name="filterLang" th:value="${filterLang}" />
+                                        <input type="hidden" name="filterKey" th:value="${filterKey}" />
+                                        <input type="hidden" name="filterMessage" th:value="${filterMessage}" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

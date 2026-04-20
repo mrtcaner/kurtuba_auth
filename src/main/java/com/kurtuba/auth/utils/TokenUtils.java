@@ -32,6 +32,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.*;
 
 @Component
@@ -99,7 +100,7 @@ public class TokenUtils {
             digest = MessageDigest.getInstance("SHA3-256");
         } catch (NoSuchAlgorithmException e) {
             throw new BusinessLogicException(ErrorEnum.GENERIC_EXCEPTION.getCode()
-                    , "SHA3-256 algorithm not found. Unable to create refresh token");
+                    , "SHA3-256 algorithm not found. Unable to create refresh token", e);
         }
         final byte[] hashBytes = digest.digest(
                 originalBase64String.getBytes(StandardCharsets.UTF_8));

@@ -4,7 +4,7 @@
 
 This guide is for backend developers who want to evaluate `kurtuba-auth` as a self-hosted authentication server for their own services.
 
-If your question is basically “Can I run this, issue tokens, verify them from my backend, and move to PostgreSQL later?” this is the right starting point.
+If your question is basically “Can I run this, issue tokens, verify them from my backend, and use it against a real PostgreSQL database?” this is the right starting point.
 
 ## What You Get
 
@@ -23,24 +23,33 @@ Out of the box, the repository is structured to support:
 
 The simplest way to evaluate the project is:
 
-1. Run it with the default demo configuration.
-2. Use H2 for a quick startup.
-3. Review the docs for token/key handling.
-4. Move to PostgreSQL only when you want realistic persistence.
+1. Run it with the checked-in PostgreSQL-backed local defaults.
+2. Review the docs for token/key handling.
+3. Verify JWT/JWKS behavior from your backend.
+4. Tighten config for your own environment.
 
-The default checked-in config is intentionally demo-oriented, so you can inspect the server behavior without having to build a full production environment first.
+The checked-in config is still local-development oriented, but runtime persistence now assumes PostgreSQL from the start.
 
-## Step 1: Run the Server in Demo Mode
+## Step 1: Run the Server with PostgreSQL
 
-The default `application.yml` is H2-backed and Flyway-disabled on purpose.
+The fastest realistic startup path is the checked-in Docker Compose stack together with the checked-in defaults.
 
 Typical run command:
 
 ```bash
+docker compose up -d
+./scripts/bootstrap-local-db.sh
 mvn spring-boot:run
 ```
 
-This is the lowest-friction way to explore the API surface and basic auth behavior.
+You will need a reachable PostgreSQL database and valid JWK decryption config. See [postgresql.md](/Users/murat/projects/kurtuba-auth/docs/postgresql.md) for the database side.
+
+If you only want the database:
+
+```bash
+docker compose up -d postgres
+./scripts/bootstrap-local-db.sh
+```
 
 ## Step 2: Understand the Minimum Config You Must Care About
 
@@ -153,20 +162,14 @@ Check:
 
 This tells you whether it fits your backend’s resource-server model.
 
-## When to Move From H2 to PostgreSQL
+## Why PostgreSQL Is the Baseline
 
-Use H2 when:
-
-- you are only evaluating features
-- you want a minimal startup path
-- you do not care about persistence across restarts
-
-Move to PostgreSQL when:
+Use PostgreSQL from the start when:
 
 - you want realistic relational behavior
-- you want persistent users/tokens
+- you want persistent users and token state
 - you want Flyway-managed schema migration
-- you want something closer to deployment reality
+- you want something close to deployment reality
 
 The PostgreSQL path has already been validated in this public repo with:
 
@@ -174,23 +177,23 @@ The PostgreSQL path has already been validated in this public repo with:
 - Flyway enabled
 - Hibernate set to `validate`
 
-Use [postgresql.md](/Users/murat/projects/kurtuba-auth/docs/postgresql.md) for that transition.
+Use [postgresql.md](/Users/murat/projects/kurtuba-auth/docs/postgresql.md) for setup details.
 
 ## Two PostgreSQL Modes
 
 You do not have to start with the production-style role split.
 
-### Simple mode
+### Structured local mode
 
-Use one PostgreSQL user for both Flyway and the app.
+Use the checked-in bootstrap script, which creates the database plus separate Flyway and runtime roles from the existing [init_db.sql](/Users/murat/projects/kurtuba-auth/src/main/resources/db/sql/init_db.sql) model.
 
-This is the easiest backend integration path.
+```bash
+docker compose up -d
+./scripts/bootstrap-local-db.sh
+mvn spring-boot:run
+```
 
-### Structured mode
-
-Use the more production-oriented role split described in [init_db.sql](/Users/murat/projects/kurtuba-auth/src/main/resources/db/sql/init_db.sql).
-
-This is better when you want stricter privilege boundaries between migration and runtime access.
+This keeps local startup close to the production-shaped privilege split while still being easy to repeat.
 
 ## Things You Should Notice Before Adopting It
 
@@ -211,7 +214,7 @@ This project is a good fit if you want:
 - a Spring Boot auth server you can actually read and modify
 - control over user accounts, token lifecycle, and signing keys
 - a backend-friendly JWT/JWKS model
-- a path from demo mode to PostgreSQL-backed deployment
+- a path from local PostgreSQL startup to deployment
 
 ## Less Ideal Fit
 

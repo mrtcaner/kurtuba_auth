@@ -13,7 +13,7 @@ This repository is relevant if you are looking for:
 - cookie-based JWT handling for web clients
 - service-to-service token issuance
 - JWK-based signing key storage and rotation
-- a Spring Boot auth server that can run on H2 for demo use and PostgreSQL for real integration
+- a Spring Boot auth server backed by PostgreSQL and Flyway
 
 ## Documentation
 
@@ -40,10 +40,34 @@ This repository is licensed under the Apache License 2.0. See [LICENSE](LICENSE)
 - Password reset by code or hosted link
 - Token blocking and revocation
 - RSA-oriented JWK/JWE signing-key packaging with rollover support
-- H2-based demo startup and PostgreSQL/Flyway deployment paths
+- PostgreSQL-backed local, test, and deployment paths
 
 ## Notes
 
-The current repository contains documentation for both implemented capabilities and operational caveats. Some defaults are suitable for demo or local development only, especially around datasource choice, provider credentials, jobs, rate limiting, cookie security, and signing-key handling.
+The current repository contains documentation for both implemented capabilities and operational caveats. The service is PostgreSQL-first, and local/demo usage should still be treated as a configuration concern rather than a separate in-memory database mode. Some defaults remain suitable only for local development, especially around provider credentials, jobs, rate limiting, cookie security, and signing-key handling.
+
+## Local Infra
+
+A minimal local stack is provided in [docker-compose.yml](/Users/murat/projects/kurtuba-auth/docker-compose.yml).
+
+- Start the full local stack: `docker compose up -d`
+- Start PostgreSQL only: `docker compose up -d postgres`
+- Bootstrap the local database and roles: `./scripts/bootstrap-local-db.sh`
+
+With the checked-in local defaults, the default local database credentials are:
+
+- database: `kurtuba_auth`
+- application username: `kurtuba_auth_user`
+- application password: `12345`
+- flyway username: `kurtuba_auth_migrator`
+- flyway password: `12345`
+
+With your current checked-in defaults, the intended local run path is:
+
+```bash
+docker compose up -d
+./scripts/bootstrap-local-db.sh
+mvn spring-boot:run
+```
 
 Start with [Backend Quickstart](docs/backend-quickstart.md) if you are evaluating the repo as an auth server for your backend. Then read [Overview](docs/overview.md), [Configuration Reference](docs/configuration.md), [PostgreSQL Setup](docs/postgresql.md), [Demo Defaults vs Production Requirements](docs/demo-vs-production.md), and [Key Management](docs/key-management.md) before using the service in a real deployment.

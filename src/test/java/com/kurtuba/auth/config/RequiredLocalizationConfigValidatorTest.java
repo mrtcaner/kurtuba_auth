@@ -1,7 +1,9 @@
 package com.kurtuba.auth.config;
 
-import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
-import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
+import com.kurtuba.auth.data.model.LocalizationSupportedCountry;
+import com.kurtuba.auth.data.model.LocalizationSupportedLang;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,17 +22,25 @@ import static org.mockito.Mockito.when;
 class RequiredLocalizationConfigValidatorTest {
 
     @Mock
-    private LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
+    private LocalizationSupportedLangRepository localizationSupportedLangRepository;
+
+    @Mock
+    private LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
 
     @InjectMocks
     private RequiredLocalizationConfigValidator validator;
 
     @Test
     void run_allowsStartupWhenFallbackLocaleExists() {
-        when(localizationAvailableLocaleRepository.findByLanguageCodeAndCountryCode("en", "us"))
-                .thenReturn(Optional.of(LocalizationAvailableLocale.builder()
-                        .id("locale-en-us")
+        when(localizationSupportedLangRepository.findByLanguageCode("en"))
+                .thenReturn(Optional.of(LocalizationSupportedLang.builder()
+                        .id("lang-en")
                         .languageCode("en")
+                        .createdDate(Instant.now())
+                        .build()));
+        when(localizationSupportedCountryRepository.findByCountryCode("us"))
+                .thenReturn(Optional.of(LocalizationSupportedCountry.builder()
+                        .id("country-us")
                         .countryCode("us")
                         .createdDate(Instant.now())
                         .build()));
@@ -40,7 +50,7 @@ class RequiredLocalizationConfigValidatorTest {
 
     @Test
     void run_failsStartupWhenFallbackLocaleIsMissing() {
-        when(localizationAvailableLocaleRepository.findByLanguageCodeAndCountryCode("en", "us"))
+        when(localizationSupportedLangRepository.findByLanguageCode("en"))
                 .thenReturn(Optional.empty());
 
         assertThrows(IllegalStateException.class,

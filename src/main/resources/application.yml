@@ -1,95 +1,109 @@
 server:
   port: 8080
-  servlet:
-   session:
-     tracking-modes: cookie
-     persistent: false
+  forward-headers-strategy: framework
 
 auth:
   server:
     issuer-url: ${AUTH_SERVER_ISSUER_URL:http://localhost:8080}
 
-spring:
-  datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:testdb}
-    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:org.h2.Driver}
-    username: ${SPRING_DATASOURCE_USERNAME:sa}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
-
-  jpa:
-    show-sql: false
-    open-in-view: false
-    properties:
-      hibernate:
-        default_batch_fetch_size: 100
-        format_sql: true
-    hibernate:
-      ddl-auto: create-drop
-  flyway:
-    enabled: false
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-      settings:
-        trace: false
-        web-allow-others: false
-
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:${auth.server.issuer-url}/auth/oauth2/jwks}
-      client:
-        registration:
-          google:
-            clientId: ${GOOGLE_CLIENT_ID:example-google-client-id.apps.googleusercontent.com}
-            clientSecret: ${GOOGLE_CLIENT_SECRET:example-google-client-secret}
-            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/login/oauth2/code/google}
-            scope:
-              - email
-              - profile
-  mail:
-    host: ${SPRING_MAIL_HOST:localhost}
-    port: ${SPRING_MAIL_PORT:1025}
-    username: ${SPRING_MAIL_USERNAME:example-mail-user}
-    password: ${SPRING_MAIL_PASSWORD:example-mail-password}
-    protocol: ${SPRING_MAIL_PROTOCOL:smtp}
-
 logging:
   level:
     root: info
 
-management:
-  health:
-    mail:
-      enabled: false
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/kurtuba_auth}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    placeholderReplacement: false
+    schemas:
+      - public
+    default-schema: public
+    user: ${FLYWAY_USERNAME:${DB_USERNAME:postgres}}
+    password: ${FLYWAY_PASSWORD:${DB_PASSWORD:postgres}}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${auth.server.issuer-url}/auth/oauth2/jwks
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+  data:
     redis:
-      enabled: false
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health, info, env
 
 kurtuba:
-  jobs:
-    enabled: false
+  mail:
+    from-address: ${KURTUBA_MAIL_FROM_ADDRESS:noreply@kurtuba.app}
+    support-address: ${KURTUBA_MAIL_SUPPORT_ADDRESS:support@kurtuba.app}
   rate-limit:
     enabled: false
+    public-api:
+      registration:
+        pattern: /auth/registration/**
+        capacity: 100
+        refill: 15m
+      login:
+        pattern: /auth/login
+        capacity: 100
+        refill: 10m
+      token-refresh:
+        pattern: /auth/token
+        capacity: 300
+        refill: 10m
+      web-token-refresh:
+        pattern: /auth/web/token
+        capacity: 200
+        refill: 10m
+      password-reset:
+        pattern: /auth/user/password/reset/**
+        capacity: 30
+        refill: 1h
+      sms:
+        pattern: /auth/sms/**
+        capacity: 5
+        refill: 15m
+      verification:
+        pattern: /auth/user/email/verification/link/**
+        capacity: 30
+        refill: 15m
   server:
     url: ${KURTUBA_SERVER_URL:http://localhost:8080}
-  mail:
-    from-address: ${KURTUBA_MAIL_FROM_ADDRESS:no-reply@example.test}
-    support-address: ${KURTUBA_MAIL_SUPPORT_ADDRESS:support@example.test}
+  auth-provider:
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+    facebook:
+      client-id: ${FACEBOOK_CLIENT_ID:}
+      client-secret: ${FACEBOOK_CLIENT_SECRET:}
   jwk:
     file: ${KURTUBA_JWK_FILE:classpath:jwk.json}
-    keys: ${KURTUBA_JWK_KEYS:{"replace-with-your-jwk-entry-id":"replace-with-your-base64-secret"}}
+    keys: '{"32abb5cf-a1fb-4cdd-9af7-fe517a0bda47": "pkBJlIfLcEW0tvIutbZjsjwBYOZ2DkRw2Hiy5S+m+uI=", "f5a7e70c-fb73-42ab-b217-841ea4e5d5b1": "A5kZEy3jC4ChSTtbq92AsARDrqslb+J7WmWwkMevhds=", "12e87ac2-9ee3-4bab-85ca-758cbd998b26":"2lWwOTIvMxfwO1n9TwOvtuuOaTva95vmW8kyGYaoe6w="}'
   meta-change:
     email-max-try-count: 3
     sms-max-try-count: 5
     validity:
       password-reset-code:
-        minutes: 30
+        minutes: 60
       email:
         activation-code:
           minutes: 10080
@@ -98,8 +112,8 @@ kurtuba:
       sms:
         activation-code:
           minutes: 10
-        change-code:
-          minutes: 10
+          change-code:
+            minutes: 10
   job:
     email:
       send:
@@ -107,19 +121,23 @@ kurtuba:
     sms:
       send:
         max-try-count: 3
-  auth-provider:
-    google:
-      client-id: ${KURTUBA_GOOGLE_CLIENT_ID:}
-      client-secret: ${KURTUBA_GOOGLE_CLIENT_SECRET:}
-    facebook:
-      client-id: ${KURTUBA_FACEBOOK_CLIENT_ID:}
-      client-secret: ${KURTUBA_FACEBOOK_CLIENT_SECRET:}
   twilio:
+    ireland:
+      live:
+        sid: ${TWILIO_IRELAND_LIVE_SID:}
+        auth-token: ${TWILIO_IRELAND_LIVE_AUTH_TOKEN:}
+      test:
+        sid: ${TWILIO_IRELAND_TEST_SID:}
+        auth-token: ${TWILIO_IRELAND_TEST_AUTH_TOKEN:}
     us:
       live:
-        sid: ${KURTUBA_TWILIO_US_LIVE_SID:ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
-        auth-token: ${KURTUBA_TWILIO_US_LIVE_AUTH_TOKEN:example-twilio-auth-token-us-live}
+        sid: ${TWILIO_US_LIVE_SID:}
+        auth-token: ${TWILIO_US_LIVE_AUTH_TOKEN:}
+      test:
+        sid: ${TWILIO_US_TEST_SID:}
+        auth-token: ${TWILIO_US_TEST_AUTH_TOKEN:}
+
     messaging-service:
-      sid: ${KURTUBA_TWILIO_MESSAGING_SERVICE_SID:MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
+      sid: ${TWILIO_MESSAGING_SERVICE_SID:}
     verify-service:
-      sid: ${KURTUBA_TWILIO_VERIFY_SERVICE_SID:VAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx}
+      sid: ${TWILIO_VERIFY_SERVICE_SID:}

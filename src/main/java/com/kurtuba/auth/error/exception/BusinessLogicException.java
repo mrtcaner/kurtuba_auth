@@ -1,9 +1,9 @@
 package com.kurtuba.auth.error.exception;
 
 import com.kurtuba.auth.error.enums.ErrorEnum;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 public class BusinessLogicException extends RuntimeException {
 
     private int errorCode;

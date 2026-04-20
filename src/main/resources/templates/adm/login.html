@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: html_head(pageTitle='Admin Login')}" />
+<body>
+<div class="container text-center">
+    <div>
+        <h2>Admin Login</h2>
+        <br/>
+    </div>
+    <form th:action="@{/auth/adm/login}" method="post" style="max-width: 400px; margin: 0 auto;">
+        <div class="border border-secondary rounded p-3">
+            <div th:if="${param.error != null}">
+                <p class="text-danger">Invalid admin credentials or missing admin access.</p>
+            </div>
+            <div>
+                <p><input type="email" name="username" required class="form-control" placeholder="E-mail" /></p>
+            </div>
+            <div>
+                <p><input type="password" name="password" required class="form-control" placeholder="Password" /></p>
+            </div>
+            <div>
+                <p><input type="submit" value="Login" class="btn btn-primary" /></p>
+            </div>
+        </div>
+    </form>
+</div>
+</body>
+</html>

@@ -5,8 +5,10 @@ import com.kurtuba.auth.data.dto.RegistrationOtherProviderDto;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MetaOperationType;
+import com.kurtuba.auth.data.mapper.UserMapper;
 import com.kurtuba.auth.data.model.*;
-import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.utils.TestUtils;
@@ -49,13 +51,19 @@ public class RegistrationServiceTest {
     private UserRoleService userRoleService;
 
     @Mock
-    private LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
+    private LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
+
+    @Mock
+    private LocalizationSupportedLangRepository localizationSupportedLangRepository;
 
     @Mock
     private MessageJobService messageJobService;
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private UserMapper userMapper;
 
     @InjectMocks
     private RegistrationService registrationService;
@@ -70,6 +78,33 @@ public class RegistrationServiceTest {
     String userMetaChangeByCodeId = "byCode";
     String userMetaChangeByLinkId = "byLink";
 
+    private User buildMappedUser(RegistrationDto source) {
+        UserSetting userSetting = TestUtils.defaultUserSettingBuilder();
+        userSetting.setLanguageCode(source.getLanguageCode());
+        userSetting.setCountryCode(source.getCountryCode());
+
+        User user = User.builder()
+                .name(source.getName())
+                .surname(source.getSurname())
+                .username(StringUtils.hasLength(source.getUsername()) ? source.getUsername() : null)
+                .email(StringUtils.hasLength(source.getEmail()) ? source.getEmail() : null)
+                .mobile(StringUtils.hasLength(source.getMobile()) ? source.getMobile() : null)
+                .password(source.getPassword())
+                .authProvider(source.getAuthProvider())
+                .userSetting(userSetting)
+                .activated(false)
+                .locked(false)
+                .failedLoginCount(0)
+                .showCaptcha(false)
+                .emailVerified(false)
+                .mobileVerified(false)
+                .createdDate(Instant.now())
+                .lastLoginAttempt(Instant.now())
+                .build();
+        userSetting.setUser(user);
+        return user;
+    }
+
     @Nested
     class FirstNestedClass {
 
@@ -80,7 +115,7 @@ public class RegistrationServiceTest {
             registrationDto = RegistrationDto.builder()
                     .name("aa")
                     .surname("bb")
-                    .username("")
+                    .username("cc")
                     .email("user@user.com")
                     .mobile("+905122345678")
                     .password("a.123456")
@@ -92,8 +127,8 @@ public class RegistrationServiceTest {
                     .build();
 
             UserSetting userSetting = TestUtils.defaultUserSettingBuilder();
-            userSetting.getLocale().setLanguageCode(registrationDto.getLanguageCode());
-            userSetting.getLocale().setCountryCode(registrationDto.getCountryCode());
+            userSetting.setLanguageCode(registrationDto.getLanguageCode());
+            userSetting.setCountryCode(registrationDto.getCountryCode());
 
             UserRole userRole = TestUtils.defaultUserRoleBuilder();
 
@@ -172,6 +207,8 @@ public class RegistrationServiceTest {
                     .thenReturn(Optional.empty(), Optional.of(savedUser));
             when(userService.getUserByMobile(registrationDto.getMobile()))
                     .thenReturn(Optional.empty());
+            when(userMapper.maptoUser(any(RegistrationDto.class)))
+                    .then(invocationOnMock -> buildMappedUser(invocationOnMock.getArgument(0)));
 
             when(userMetaChangeService.create((any(UserMetaChange.class)))).then(invocationOnMock -> {
                 UserMetaChange usrMtChange = invocationOnMock.getArgument(0);
@@ -182,11 +219,15 @@ public class RegistrationServiceTest {
                 }
             });
 
-            // return whatever passed as param. this test-run is not to test available locales repository/service
-            when(localizationAvailableLocaleRepository.findByLanguageCodeAndCountryCode(anyString(), anyString()))
-                    .then(invocationOnMock -> Optional.of(LocalizationAvailableLocale.builder()
+            when(localizationSupportedLangRepository.findByLanguageCode(anyString()))
+                    .then(invocationOnMock -> Optional.of(LocalizationSupportedLang.builder()
                             .languageCode(invocationOnMock.getArgument(0))
-                            .countryCode(invocationOnMock.getArgument(1))
+                            .createdDate(Instant.now())
+                            .build()));
+            when(localizationSupportedCountryRepository.findByCountryCode(anyString()))
+                    .then(invocationOnMock -> Optional.of(LocalizationSupportedCountry.builder()
+                            .countryCode(invocationOnMock.getArgument(0))
+                            .createdDate(Instant.now())
                             .build()));
 
             when(userRoleService.create(any(UserRole.class))).then(invocationOnMock -> {
@@ -215,6 +256,7 @@ public class RegistrationServiceTest {
             String metaChangeId = registrationService.register(registrationDto).getId();
             assertEquals(metaChangeId, emailActivationLinkUserMetaChange.getId());
         }
+
     }
 
     @Nested
@@ -226,7 +268,7 @@ public class RegistrationServiceTest {
             registrationDto = RegistrationDto.builder()
                     .name("aa")
                     .surname("bb")
-                    .username("")
+                    .username("cc")
                     .email("user@user.com")
                     .mobile("+905122345678")
                     .password("a.123456")
@@ -263,7 +305,7 @@ public class RegistrationServiceTest {
                     .provider(AuthProviderType.GOOGLE)
                     .providerClientId("google-client")
                     .token("token")
-                    .redirectUri("https://kurtuba.app/redirect")
+                    .redirectUri("https://kurtuba.app/deeplink")
                     .languageCode("en")
                     .countryCode("tr")
                     .build();
@@ -306,6 +348,8 @@ public class RegistrationServiceTest {
             spyRegistrationService = spy(registrationService);
             lenient().doReturn(decodedRegistration).when(spyRegistrationService)
                     .decodeGoogleRegistrationFromIdToken(providerDto.getToken(), providerDto.getProviderClientId());
+            lenient().when(userMapper.maptoUser(any(RegistrationDto.class)))
+                    .then(invocationOnMock -> buildMappedUser(invocationOnMock.getArgument(0)));
         }
 
         @Test
@@ -341,10 +385,15 @@ public class RegistrationServiceTest {
         @Test
         void registerByAnotherProvider_whenNewUser_thenCreateUserWithoutExposingStoredPassword() {
             when(userService.getUserByEmail(decodedRegistration.getEmail())).thenReturn(Optional.empty());
-            when(localizationAvailableLocaleRepository.findByLanguageCodeAndCountryCode(anyString(), anyString()))
-                    .thenReturn(Optional.of(LocalizationAvailableLocale.builder()
+            when(localizationSupportedLangRepository.findByLanguageCode(anyString()))
+                    .thenReturn(Optional.of(LocalizationSupportedLang.builder()
                             .languageCode("en")
+                            .createdDate(Instant.now())
+                            .build()));
+            when(localizationSupportedCountryRepository.findByCountryCode(anyString()))
+                    .thenReturn(Optional.of(LocalizationSupportedCountry.builder()
                             .countryCode("tr")
+                            .createdDate(Instant.now())
                             .build()));
             doAnswer(invocation -> invocation.getArgument(0)).when(userService).saveUser(any(User.class));
             doAnswer(invocation -> invocation.getArgument(0)).when(userRoleService).create(any(UserRole.class));

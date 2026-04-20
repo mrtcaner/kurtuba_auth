@@ -2,6 +2,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
+import com.kurtuba.auth.data.mapper.UserMapper;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserMetaChange;
@@ -39,97 +40,108 @@ public class RegistrationController {
 
     final LoginService loginService;
 
-    public RegistrationController(UserService userService, RegistrationService registrationService, RegisteredClientRepository registeredClientRepository, LoginService loginService) {
+    final UserMapper userMapper;
+
+    public RegistrationController(UserService userService, RegistrationService registrationService,
+                                  RegisteredClientRepository registeredClientRepository, LoginService loginService,
+                                  UserMapper userMapper) {
         this.registrationService = registrationService;
         this.userService = userService;
         this.registeredClientRepository = registeredClientRepository;
         this.loginService = loginService;
+        this.userMapper = userMapper;
     }
 
     @PostMapping("")
-    @ApiResponse(responseCode = "201", description = "User created successfully",
-            content = {@Content(mediaType = "application/json",
-                    schema = @Schema(implementation = RegistrationResponseDto.class))})
+    @ApiResponse(responseCode = "201", description = "User created successfully", content = {@Content(mediaType =
+            "application/json", schema = @Schema(implementation = RegistrationResponseDto.class))})
     public ResponseEntity register(@Valid @RequestBody RegistrationDto newUser) {
-        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
-                RegistrationResponseDto.builder()
-                        .userMetaChangeId(registrationService.register(newUser).getId())
-                        .user(UserDto.fromUser(userService.getUserByEmail(newUser.getEmail()).orElseThrow(() ->
-                                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST))))
-                        .build());
+        UserMetaChange userMetaChange = registrationService.register(newUser);
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
+                             .body(RegistrationResponseDto.builder()
+                                                          .userMetaChangeId(userMetaChange.getId())
+                                                          .user(userMapper.mapToUserDto(
+                                                                  userService.getUserById(userMetaChange.getUserId())
+                                                                             .orElseThrow(
+                                                                                     () -> new BusinessLogicException(
+                                                                                             ErrorEnum.USER_DOESNT_EXIST))))
+                                                          .build());
     }
 
     @GetMapping("/locales")
-    public ResponseEntity<List<AvailableLocaleDto>> getAvailableLocales() {
+    public ResponseEntity<AvailableLocalizationOptionsDto> getAvailableLocales() {
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
-                .body(registrationService.getAvailableLocales().stream()
-                        .map(AvailableLocaleDto::fromEntity)
-                        .toList());
+                             .body(registrationService.getAvailableLocales());
     }
 
-    @ApiResponse(responseCode = "201", description = "User created successfully",
-            content = {@Content(mediaType = "application/json",
-                    schema = @Schema(implementation = TokensResponseDto.class))})
+    @ApiResponse(responseCode = "201", description = "User created successfully", content = {@Content(mediaType =
+            "application/json", schema = @Schema(implementation = TokensResponseDto.class))})
     @PostMapping("/other-provider")
-    public ResponseEntity<TokensResponseDto> registerViaAnotherProvider(@Valid @RequestBody RegistrationOtherProviderDto newUser) {
+    public ResponseEntity<TokensResponseDto> registerViaAnotherProvider(
+            @Valid @RequestBody RegistrationOtherProviderDto newUser) {
         User user = registrationService.registerByAnotherProvider(newUser);
         String registeredClientId;
         String registeredClientSecret;
-        if(newUser.getRegisteredClientId() != null){
+        if (newUser.getRegisteredClientId() != null) {
             registeredClientId = newUser.getRegisteredClientId();
             registeredClientSecret = newUser.getRegisteredClientSecret();
-        }else{
-            List<RegisteredClient> defaultClientList =
-                    registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT);
-            if(defaultClientList.isEmpty()){
+        } else {
+            List<RegisteredClient> defaultClientList = registeredClientRepository.findByClientType(
+                    RegisteredClientType.DEFAULT);
+            if (defaultClientList.isEmpty()) {
                 throw new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID);
             }
             registeredClientId = defaultClientList.getFirst().getClientId();
             registeredClientSecret = defaultClientList.getFirst().getClientSecret();
         }
 
-        TokensResponseDto tokenResponseDto = loginService.getTokensForUser(user, registeredClientId, registeredClientSecret);
-        return ResponseEntity
-                .status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
-                .body(tokenResponseDto);
+        TokensResponseDto tokenResponseDto = loginService.getTokensForUser(user, registeredClientId,
+                                                                           registeredClientSecret);
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(tokenResponseDto);
     }
 
-    @ApiResponse(responseCode = "200", description = "Boolean result",
-            content = {@Content(mediaType = "application/json",
-                    schema = @Schema(implementation = Boolean.class))})
+    @ApiResponse(responseCode = "200", description = "Boolean result", content = {@Content(mediaType = "application" +
+                                                                                                       "/json",
+            schema = @Schema(implementation = Boolean.class))})
     @GetMapping("/username/available/{username}")
     public ResponseEntity<Boolean> isUsernameAvailable(@NotBlank @PathVariable String username) {
-        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isUsernameAvailable(username));
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
+                             .body(userService.isUsernameAvailable(username));
     }
 
-    @ApiResponse(responseCode = "200", description = "Boolean result",
-            content = {@Content(mediaType = "application/json",
-                    schema = @Schema(implementation = Boolean.class))})
+    @ApiResponse(responseCode = "200", description = "Boolean result", content = {@Content(mediaType = "application" +
+                                                                                                       "/json",
+            schema = @Schema(implementation = Boolean.class))})
     @GetMapping("/email/available/{email}")
-    public ResponseEntity<Boolean> isEmailAvailable(@NotBlank @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email) {
-        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isEmailAvailable(email));
+    public ResponseEntity<Boolean> isEmailAvailable(
+            @NotBlank @Email(regexp = Utils.EMAIL_REGEX) @PathVariable String email) {
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
+                             .body(userService.isEmailAvailable(email));
     }
 
-    @ApiResponse(responseCode = "200", description = "Boolean result",
-            content = {@Content(mediaType = "application/json",
-                    schema = @Schema(implementation = Boolean.class))})
+    @ApiResponse(responseCode = "200", description = "Boolean result", content = {@Content(mediaType = "application" +
+                                                                                                       "/json",
+            schema = @Schema(implementation = Boolean.class))})
     @GetMapping("/mobile/available/{mobile}")
     public ResponseEntity<Boolean> isMobileAvailable(@NotBlank @PathVariable String mobile) {
-        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200)).body(userService.isMobileAvailable(mobile));
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.OK_200))
+                             .body(userService.isMobileAvailable(mobile));
     }
 
     /**
      * Resends activation CODE/LINK to the given contact
      */
-    @ApiResponse(responseCode = "201", description = "activation CODE/LINK sent",
-            content = {@Content(mediaType = "application/json",
-                    schema = @Schema(implementation = UserMetaChangeDto.class))})
+    @ApiResponse(responseCode = "201", description = "activation CODE/LINK sent", content = {@Content(mediaType =
+            "application/json", schema = @Schema(implementation = UserMetaChangeDto.class))})
     @PostMapping("/activation")
-    public ResponseEntity<UserMetaChangeDto> resendAccountActivationMessage(@Valid @RequestBody AccountActivationRequestDto accountActivationRequestDto) {
-        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201)).body(
-                UserMetaChangeDto.builder().userMetaChangeId(registrationService.sendAccountActivationMessage(accountActivationRequestDto.getEmailMobile(),
-                        accountActivationRequestDto.isByCode()).getId()).build()
-        );
+    public ResponseEntity<UserMetaChangeDto> resendAccountActivationMessage(
+            @Valid @RequestBody AccountActivationRequestDto accountActivationRequestDto) {
+        return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
+                             .body(UserMetaChangeDto.builder()
+                                                    .userMetaChangeId(registrationService.sendAccountActivationMessage(
+                                                            accountActivationRequestDto.getEmailMobile(),
+                                                            accountActivationRequestDto.isByCode()).getId())
+                                                    .build());
     }
 
     /**
@@ -137,20 +149,20 @@ public class RegistrationController {
      * if client credentials provided in the request then upon successful activation returns token(s)
      * else empty string
      */
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User activated",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = Void.class))}),
-            @ApiResponse(responseCode = "201", description = "User activated and tokens created",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = TokensResponseDto.class))})})
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "User activated", content =
+            {@Content(mediaType = "application/json", schema = @Schema(implementation = Void.class))}),
+            @ApiResponse(responseCode = "201", description = "User activated and tokens created", content =
+                    {@Content(mediaType = "application/json", schema = @Schema(implementation =
+                            TokensResponseDto.class))})})
     @PutMapping("/activation")
     public ResponseEntity activateAccountByCode(@Valid @RequestBody AccountActivationDto accountActivationDto) {
-        TokensResponseDto tokens = registrationService.activateAccountByCode(accountActivationDto.getEmailMobile(), accountActivationDto.getCode(),
-                accountActivationDto.getClientId(), accountActivationDto.getClientSecret());
+        TokensResponseDto tokens = registrationService.activateAccountByCode(accountActivationDto.getEmailMobile(),
+                                                                             accountActivationDto.getCode(),
+                                                                             accountActivationDto.getClientId(),
+                                                                             accountActivationDto.getClientSecret());
 
-        return tokens == null ? ResponseEntity.status(HttpStatus.OK_200).build() :
-                ResponseEntity.status(HttpStatus.CREATED_201).body(tokens);
+        return tokens == null ? ResponseEntity.status(HttpStatus.OK_200).build()
+                              : ResponseEntity.status(HttpStatus.CREATED_201).body(tokens);
 
     }
 
@@ -166,18 +178,22 @@ public class RegistrationController {
             UserMetaChange umc = registrationService.activateAccountByLink(linkParam);
             modelAndView.setViewName("genericResult.html");//sucess
             modelAndView.addAllObjects(ResultPageDto.builder()
-                    .success(true)
-                    .title("Congratulations!")
-                    .message1("You can now log in to your account with your " + umc.getContactType().toString().toLowerCase())
-                    .build().toMap());
+                                                    .success(true)
+                                                    .title("Congratulations!")
+                                                    .message1("You can now log in to your account with your " +
+                                                              umc.getContactType().toString().toLowerCase())
+                                                    .build()
+                                                    .toMap());
         } catch (BusinessLogicException ex) {
             modelAndView.setViewName("genericResult.html");//failure
             modelAndView.addAllObjects(ResultPageDto.builder()
-                    .success(false)
-                    .title("Verification Failed!")
-                    .message1(ex.getMessage())
-                    .message2("Try logging in to your account to request a new verification link")
-                    .build().toMap());
+                                                    .success(false)
+                                                    .title("Verification Failed!")
+                                                    .message1(ex.getMessage())
+                                                    .message2("Try logging in to your account to request a new " +
+                                                              "verification link")
+                                                    .build()
+                                                    .toMap());
         }
         return modelAndView;
     }

@@ -1,5 +1,6 @@
 package com.kurtuba.auth.service;
 
+import com.kurtuba.auth.config.RateLimitProperties;
 import com.kurtuba.auth.data.enums.RateLimitPublicApi;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class RateLimitingService {
 
     private final ProxyManager<String> proxyManager;
+    private final RateLimitProperties rateLimitProperties;
 
     public Bucket resolveBucket(String ip, RateLimitPublicApi api) {
         // Sanitize IP (IPv6 safe)
@@ -22,7 +24,7 @@ public class RateLimitingService {
 
         return proxyManager.builder().build(key, () ->
                 BucketConfiguration.builder()
-                                   .addLimit(api.getLimit())
+                                   .addLimit(rateLimitProperties.getPublicApi(api).toBandwidth())
                                    .build()
         );
     }

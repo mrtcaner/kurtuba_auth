@@ -5,16 +5,23 @@ import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.JWTClaimType;
 import com.kurtuba.auth.data.enums.MessageJobStateType;
+import com.kurtuba.auth.data.mapper.UserMapper;
 import com.kurtuba.auth.data.model.User;
+import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
+import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.service.LogoutService;
 import com.kurtuba.auth.service.MessageJobService;
+import com.kurtuba.auth.service.UserTokenService;
 import com.kurtuba.auth.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.eclipse.jetty.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -24,6 +31,9 @@ import org.springframework.web.servlet.ModelAndView;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 
 @RestController
@@ -34,19 +44,10 @@ public class UserController {
     private final UserService userService;
     private final LogoutService logoutService;
     private final MessageJobService messageJobService;
+    private final UserMapper userMapper;
+    private final UserTokenService userTokenService;
+    private final RegisteredClientRepository registeredClientRepository;
 
-    /**
-     * this method is for internal use only
-     * token must have SERVICE in scope claim
-     */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
-    public ResponseEntity getUserById(@PathVariable @NotBlank String id) {
-        return ResponseEntity.status(HttpStatus.OK_200)
-                             .body(UserDto.fromUser(userService.getUserById(id)
-                                                               .orElseThrow(() -> new BusinessLogicException(
-                                                                       ErrorEnum.USER_DOESNT_EXIST))));
-    }
 
     /**
      * users with a valid token can access
@@ -65,10 +66,41 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST_400).build();
         }
         return ResponseEntity.status(HttpStatus.OK_200)
-                             .body(UserDto.fromUser(userService.getUserById(authentication.getName())
-                                                               .orElseThrow(() -> new BusinessLogicException(
-                                                                       ErrorEnum.USER_DOESNT_EXIST))));
+                             .body(userMapper.mapToUserDto(userService.getUserById(authentication.getName())
+                                                                      .orElseThrow(() -> new BusinessLogicException(
+                                                                              ErrorEnum.USER_DOESNT_EXIST))));
     }
+
+    /**
+     * this method is for internal use only
+     * token must have SERVICE in scope claim
+     */
+    @PutMapping("/info/users/basic")
+    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
+    public ResponseEntity<UsersBasicResponseDto> getUserById(
+            @NotNull @RequestBody UsersBasicRequestDto usersBasicRequestDto) {
+        return ResponseEntity.status(HttpStatus.OK_200)
+                             .body(UsersBasicResponseDto.builder()
+                                                        .usersById(userService.getUsersByIds(usersBasicRequestDto.getUserIds())
+                                                                              .stream()
+                                                                              .map(userMapper::mapToUserBasicDto)
+                                                                              .collect(Collectors.toMap(UserBasicDto::getId,
+                                                                                                        userBasicDto -> userBasicDto,
+                                                                                                        (existing, replacement) -> existing,
+                                                                                                        LinkedHashMap::new)))
+                                                        .build());
+    }
+
+    /**
+     * this method is for internal use only
+     * token must have SERVICE in scope claim
+     */
+    @GetMapping("/admin-users")
+    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
+    public ResponseEntity<List<UserBasicDto>> getAdminUsers() {
+        return ResponseEntity.status(HttpStatus.OK_200).body(userService.getActiveAdminUsers());
+    }
+
 
     /**
      * users with a valid token can access
@@ -90,9 +122,48 @@ public class UserController {
                               .orElseThrow(() -> new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         return ResponseEntity.status(HttpStatus.OK_200)
                              .body(UserLocaleDto.builder()
-                                                .langCode(usr.getUserSetting().getLocale().getLanguageCode())
-                                                .countryCode(usr.getUserSetting().getLocale().getCountryCode())
+                                                .langCode(usr.getUserSetting().getLanguageCode())
+                                                .countryCode(usr.getUserSetting().getCountryCode())
                                                 .build());
+    }
+
+    @PutMapping("/locale/users")
+    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
+    public ResponseEntity<UsersLocalesResponseDto> getUserLocalesByUserIds(
+            @NotNull @RequestBody UsersLocalesRequestDto usersLocalesRequestDto) {
+        UsersLocalesResponseDto.UsersLocalesResponseDtoBuilder usersLocalesDtoBuilder =
+                UsersLocalesResponseDto.builder();
+        if (usersLocalesRequestDto.getUserIds().size() == 1) {
+            User usr = userService.getUserById(usersLocalesRequestDto.getUserIds().getFirst())
+                                  .orElseThrow(() -> new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+            return ResponseEntity.status(HttpStatus.OK_200)
+                                 .body(usersLocalesDtoBuilder.locales(
+                                                                     Map.of(usersLocalesRequestDto.getUserIds().getFirst(), UserLocaleDto.builder()
+                                                                                                                                         .langCode(
+                                                                                                                                                 usr.getUserSetting()
+                                                                                                                                                    .getLanguageCode())
+                                                                                                                                         .countryCode(
+                                                                                                                                                 usr.getUserSetting()
+                                                                                                                                                    .getCountryCode())
+                                                                                                                                         .build()))
+                                                             .build());
+
+        }
+
+        return ResponseEntity.status(HttpStatus.OK_200)
+                             .body(usersLocalesDtoBuilder.locales(
+                                                                 userService.getUsersByIds(usersLocalesRequestDto.getUserIds())
+                                                                            .stream()
+                                                                            .collect(Collectors.toMap(User::getId,
+                                                                                                      user -> UserLocaleDto.builder()
+                                                                                                                                        .langCode(
+                                                                                                                                                user.getUserSetting()
+                                                                                                                                                    .getLanguageCode())
+                                                                                                                                        .countryCode(
+                                                                                                                                                user.getUserSetting()
+                                                                                                                                                    .getCountryCode())
+                                                                                                                                        .build())))
+                                                         .build());
     }
 
     /**
@@ -387,10 +458,10 @@ public class UserController {
 
     // Users can only see their own verification code status
     @GetMapping("/verification/send-status")
-    public ResponseEntity<MessageJobStateType> getVerificationMessageStatus(@NotBlank @RequestParam String userMetaChangeId,
-                                                                            Principal principal) {
-        return ResponseEntity.ok(messageJobService.findByUserMetaChangeIdAndUserId(userMetaChangeId,
-                                                                                 principal.getName()));
+    public ResponseEntity<MessageJobStateType> getVerificationMessageStatus(
+            @NotBlank @RequestParam String userMetaChangeId, Principal principal) {
+        return ResponseEntity.ok(
+                messageJobService.findByUserMetaChangeIdAndUserId(userMetaChangeId, principal.getName()));
 
     }
 
@@ -414,17 +485,52 @@ public class UserController {
 
     }
 
+    /**
+     * this method is for internal use only
+     * token must have SERVICE in scope claim
+     */
+    @PostMapping("/fcm-token/users")
+    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
+    public ResponseEntity<UsersFcmTokensResponseDto> getUserFcmTokensByUserIds(
+            @RequestBody UsersFcmTokensRequestDto usersFcmTokensRequestDto) {
+        Map<String, List<UserFcmTokenResponseDto>> fcmTokens = userService.getUsersFcmTokens(
+                usersFcmTokensRequestDto.getUserIds());
+        return ResponseEntity.ok(UsersFcmTokensResponseDto.builder().usersFcmTokens(fcmTokens).build());
+
+    }
+
+    /**
+     * this method is for internal use only
+     * token must have SERVICE in scope claim
+     */
+    @PutMapping("/fcm-token/users")
+    @PreAuthorize("hasAuthority('SCOPE_SERVICE')")
+    public ResponseEntity<Void> deleteUserFcmTokens(@RequestBody FcmTokensDeleteRequestDto fcmTokensDeleteRequestDto) {
+        userService.deleteFcmTokens(fcmTokensDeleteRequestDto.getFcmTokens());
+        return ResponseEntity.ok().build();
+    }
+
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(JwtAuthenticationToken authentication) {
         logoutService.doLogout(authentication.getToken().getId());
-        return ResponseEntity.ok().build();
+        RegisteredClient client = userTokenService.findByJTI(authentication.getToken().getId())
+                                                  .flatMap(userToken -> registeredClientRepository.findByClientId(
+                                                          userToken.getClientId()))
+                                                  .orElse(null);
+        ResponseCookie cookie = ResponseCookie.from("jwt", "")
+                                              .httpOnly(client == null || client.isCookieHttpOnly())
+                                              .secure(client != null && client.isCookieSecure())
+                                              .path("/")
+                                              .maxAge(0)
+                                              .build();
+        return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString()).build();
     }
 
     @PostMapping("/logout/firebase")
     public ResponseEntity<Void> logoutFcm(@NotBlank @RequestParam String firebaseInstallationId,
                                           JwtAuthenticationToken authentication) {
-        logoutService.doLogoutFcm(authentication.getToken().getId(), firebaseInstallationId);
+        logoutService.doLogoutFcm(authentication.getToken().getSubject(), firebaseInstallationId);
         return ResponseEntity.ok().build();
     }
 

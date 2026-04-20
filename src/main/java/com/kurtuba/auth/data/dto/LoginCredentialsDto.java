@@ -1,5 +1,6 @@
 package com.kurtuba.auth.data.dto;
 
+import com.kurtuba.auth.utils.annotation.EmailMobile;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginCredentialsDto {
-    @NotBlank
+    @EmailMobile
     String emailMobile;
 
     @NotBlank

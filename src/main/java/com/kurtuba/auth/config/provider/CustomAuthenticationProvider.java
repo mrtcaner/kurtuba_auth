@@ -64,6 +64,7 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
                 .password(user.getPassword())
                 .authorities(auths)
                 .locked(user.isLocked())
+                .blocked(user.isBlocked())
                 .activated(user.isActivated())
                 .build();
     }

@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ConditionalOnProperty(prefix = "kurtuba.rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
+// this is only needed if you want to use the redis rate limiter
 public class RedisConfig {
     @Value("${spring.data.redis.host:localhost}")
     private String redisHost;

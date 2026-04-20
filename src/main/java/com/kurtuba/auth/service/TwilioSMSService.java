@@ -65,10 +65,10 @@ public class TwilioSMSService implements ISMSService {
                 ApiException apiException = (ApiException) e;
                 if (apiException.getCode().equals(60203)) {
                     //  Max check attempts reached, status 429
-                    throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_TOO_MANY_RESEND);
+                    throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_TOO_MANY_RESEND, e);
                 } else if (apiException.getCode().equals(20003)) {
                     //  Invalid credentials
-                    throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_AUTHENTICATION_ERROR);
+                    throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_AUTHENTICATION_ERROR, e);
                 }
             }
         }
@@ -89,14 +89,14 @@ public class TwilioSMSService implements ISMSService {
             LOGGER.error("Twilio verification check failed for mobile {}", userMobile, e);
             if (e instanceof ApiException && ((ApiException) e).getCode().equals(60202)) {
                 //  Max check attempts reached, status 429
-                throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED);
+                throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED, e);
             }
 
             if (e instanceof ApiException && ((ApiException) e).getStatusCode().equals(HttpStatus.NOT_FOUND_404)) {
-                throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_NOT_FOUND);
+                throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_NOT_FOUND, e);
             }
 
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_UNEXPECTED_ERROR);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_UNEXPECTED_ERROR, e);
         }
     }
 
@@ -106,7 +106,7 @@ public class TwilioSMSService implements ISMSService {
             return Verification.updater(VERIFY_SERVICE_SID, sid, Verification.Status.CANCELED).update();
         } catch (Exception e) {
             LOGGER.error("Twilio verification delete failed for sid {}", sid, e);
-            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_UNEXPECTED_ERROR);
+            throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_UNEXPECTED_ERROR, e);
         }
     }
 

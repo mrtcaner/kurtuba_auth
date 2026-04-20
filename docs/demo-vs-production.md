@@ -18,7 +18,7 @@ Authentication systems are unusually sensitive to configuration quality. Demo-fr
 
 In this service, that distinction matters in areas such as:
 
-- database durability
+- database provisioning and role setup
 - signing-key management
 - cookie security
 - provider credentials
@@ -33,24 +33,19 @@ A production deployment should therefore be treated as a configuration-hardening
 
 The current application configuration includes several values and behaviors that are appropriate for local testing or demonstration but should not be used unchanged in production.
 
-### In-memory H2 database
+### PostgreSQL still needs local-vs-production treatment
 
-A demo run may use an in-memory H2 database.
+The repository is PostgreSQL-first, but local PostgreSQL convenience and production PostgreSQL hardening are still different things.
 
-Why this is fine for demos:
-- zero setup
-- starts quickly
-- disposable state
-- convenient for tests and local experiments
+Why local PostgreSQL defaults are fine for development:
+- easier onboarding
+- realistic SQL behavior
+- compatibility with Flyway and Testcontainers
 
-Why this is not acceptable for production:
-- data is not durable in the same way as a production database
-- token state, users, clients, and recovery metadata would be lost across restarts
-- operational behavior does not reflect real relational database usage
-
-Production expectation:
-- use PostgreSQL or another persistent relational database supported by the application
-- ensure backup, migration, and recovery processes exist
+Why production still needs more:
+- database credentials and privileges must be reviewed
+- backup and recovery expectations must exist
+- ownership, grants, and migration discipline still matter
 
 ### Flyway disabled
 
@@ -85,7 +80,7 @@ The repository now documents two PostgreSQL postures:
 - a simple developer path using one database account for both Flyway and the app
 - a more production-oriented path using the checked-in `init_db.sql` role split
 
-This distinction matters because teams often need a middle ground between “H2 demo” and “full production hardening.”
+This distinction matters because teams often need a middle ground between “local PostgreSQL” and “full production hardening.”
 
 Practical guidance:
 - use the shared-user approach for local integration and CI if you want simplicity
@@ -211,21 +206,6 @@ Why this matters in production:
 
 Production expectation:
 - enable and validate health checks for required dependencies
-
-### H2 console enabled
-
-The H2 console may be enabled in local config.
-
-Why this is useful for demos:
-- easy data inspection
-- simple debugging
-
-Why this is unsafe in production:
-- exposes database tooling over HTTP
-- unnecessary attack surface
-
-Production expectation:
-- disable
 
 ## Code-Level Behaviors That Are Demo-Friendly But Need Review
 
@@ -382,7 +362,7 @@ Before calling a deployment production-ready, verify at least the following:
 - replace sample SMTP credentials
 - replace sample Twilio credentials
 - review and protect actuator exposure
-- disable H2 console
+- avoid exposing database-specific admin tooling over HTTP
 - enable and test rate limiting
 - enable required background jobs
 - review cookie security settings

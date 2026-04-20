@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{adm/fragments :: shell(pageTitle='Push Notifications', activeSection='push-notifications', content=~{::content})}">
+<th:block th:fragment="content">
+    <div class="mb-4">
+        <h2 class="mb-2">Push Notifications</h2>
+        <p class="text-muted mb-0">Inspect registered FCM tokens together with the user contact data tied to each installation.</p>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white p-0">
+            <button class="btn btn-link btn-block text-left text-dark px-3 py-3"
+                    type="button"
+                    data-toggle="collapse"
+                    data-target="#pushNotificationFiltersPanel"
+                    aria-expanded="true"
+                    aria-controls="pushNotificationFiltersPanel">
+                <strong>Search Filters</strong>
+            </button>
+        </div>
+        <div id="pushNotificationFiltersPanel" class="collapse show">
+            <div class="card-body">
+                <form th:action="@{/auth/adm/pages/push-notifications}" method="get">
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="userId">User ID</label>
+                            <input id="userId" name="userId" type="text" class="form-control" th:value="${userId}" placeholder="user id" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="userEmail">User Email</label>
+                            <input id="userEmail" name="userEmail" type="text" class="form-control" th:value="${userEmail}" placeholder="user@example.com" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="userMobile">User Phone Number</label>
+                            <input id="userMobile" name="userMobile" type="text" class="form-control" th:value="${userMobile}" placeholder="+905..." />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group col-md-4">
+                            <label for="userRole">User Role</label>
+                            <input id="userRole" name="userRole" type="text" class="form-control" th:value="${userRole}" placeholder="ADMIN" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="firebaseInstallationId">Firebase Installation ID</label>
+                            <input id="firebaseInstallationId" name="firebaseInstallationId" type="text" class="form-control"
+                                   th:value="${firebaseInstallationId}" placeholder="firebase installation id" />
+                        </div>
+                        <div class="form-group col-md-4">
+                            <label for="fcmToken">FCM Token</label>
+                            <input id="fcmToken" name="fcmToken" type="text" class="form-control" th:value="${fcmToken}" placeholder="fcm token" />
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <a class="btn btn-outline-secondary" th:href="@{/auth/adm/pages/push-notifications}">Reset</a>
+                        <button type="submit" class="btn btn-primary">Search Tokens</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-1">Registered FCM Tokens</h5>
+                <p class="text-muted mb-0">Newest updates are shown first.</p>
+            </div>
+            <span class="badge badge-primary" th:text="${#lists.size(fcmTokens)}">0</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="thead-light">
+                <tr>
+                    <th>User ID</th>
+                    <th>Email</th>
+                    <th>Mobile</th>
+                    <th>User Roles</th>
+                    <th>Client</th>
+                    <th>Firebase Installation ID</th>
+                    <th>FCM Token</th>
+                    <th>Updated At</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(fcmTokens)}">
+                    <td colspan="8" class="text-center text-muted py-4">No FCM tokens found.</td>
+                </tr>
+                <tr th:each="row : ${fcmTokens}">
+                    <td class="align-top"><code th:text="${row.userId}">user-id</code></td>
+                    <td class="align-top" th:text="${row.userEmail != null ? row.userEmail : '-'}">user@example.com</td>
+                    <td class="align-top" th:text="${row.userMobile != null ? row.userMobile : '-'}">+905...</td>
+                    <td class="align-top">
+                        <span th:if="${row.userRoles == null || #lists.isEmpty(row.userRoles)}" class="text-muted">-</span>
+                        <div th:each="role : ${row.userRoles}">
+                            <span class="badge badge-light" th:text="${role}">USER</span>
+                        </div>
+                    </td>
+                    <td class="align-top"><code th:text="${row.registeredClientId != null ? row.registeredClientId : '-'}">client-id</code></td>
+                    <td class="align-top"><code th:text="${row.firebaseInstallationId}">firebase-installation-id</code></td>
+                    <td class="align-top">
+                        <code class="d-inline-block text-truncate"
+                              style="max-width: 220px;"
+                              th:attr="title=${row.fcmToken}"
+                              th:text="${row.fcmToken}">fcm-token</code>
+                    </td>
+                    <td class="align-top text-muted"
+                        th:attr="data-localized-instant=${row.updatedAt != null ? row.updatedAt : null}"
+                        th:text="${row.updatedAt != null ? row.updatedAt : '-'}">2026-01-01T00:00:00Z</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</th:block>
+</body>
+</html>

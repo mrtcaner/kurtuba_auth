@@ -20,11 +20,11 @@ public class EmailAddressValidator implements ConstraintValidator<EmailAddress, 
     @Override
     public boolean isValid(String emailAddress, ConstraintValidatorContext context) {
 
-        if (notBlank && (emailAddress == null || emailAddress.isEmpty())) {
+        if (notBlank && (emailAddress == null || emailAddress.trim().isEmpty())) {
             return false;
         }
 
-        if (!notBlank && (emailAddress == null || emailAddress.isEmpty())) {
+        if (!notBlank && (emailAddress == null || emailAddress.trim().isEmpty())) {
             return true;
         }
 

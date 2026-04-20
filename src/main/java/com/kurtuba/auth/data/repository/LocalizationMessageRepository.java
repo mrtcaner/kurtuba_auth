@@ -12,6 +12,18 @@ public interface LocalizationMessageRepository extends CrudRepository<Localizati
 
     List<LocalizationMessage> findByLanguageCode(String languageCode);
 
-    List<LocalizationMessage> findByMessageKey(String languageCode);
+    List<LocalizationMessage> findByMessageKeyContainingIgnoreCase(String key);
+
+    List<LocalizationMessage> findByMessageContainingIgnoreCase(String message);
+
+    List<LocalizationMessage> findByLanguageCodeAndMessageKeyContainingIgnoreCase(String languageCode, String key);
+
+    List<LocalizationMessage> findByLanguageCodeAndMessageContainingIgnoreCase(String languageCode, String message);
+
+    List<LocalizationMessage> findByMessageKeyContainingIgnoreCaseAndMessageContainingIgnoreCase(String key, String message);
+
+    List<LocalizationMessage> findByLanguageCodeAndMessageKeyContainingIgnoreCaseAndMessageContainingIgnoreCase(String languageCode,
+                                                                                                                  String key,
+                                                                                                                  String message);
 
 }

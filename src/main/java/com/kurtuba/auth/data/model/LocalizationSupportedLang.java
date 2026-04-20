@@ -1,12 +1,17 @@
 package com.kurtuba.auth.data.model;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Immutable;
 
 import java.time.Instant;
 
@@ -15,10 +20,9 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "localization_available_locale")
-public class LocalizationAvailableLocale {
-
-    private static final long serialVersionUID = 1L;
+@Immutable
+@Table(name = "localization_supported_langs")
+public class LocalizationSupportedLang {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -26,9 +30,6 @@ public class LocalizationAvailableLocale {
 
     @NotBlank
     private String languageCode;
-
-    @NotBlank
-    private String countryCode;
 
     @NotNull
     private Instant createdDate;

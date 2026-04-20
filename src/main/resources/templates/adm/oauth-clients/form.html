@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body th:replace="~{adm/fragments :: shell(pageTitle=${isNewClient} ? 'Create OAuth Client' : 'Edit OAuth Client', activeSection='oauth-clients', content=~{::content})}">
+<th:block th:fragment="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1" th:text="${isNewClient} ? 'Create OAuth Client' : 'Edit OAuth Client'">Edit OAuth Client</h2>
+            <p class="text-muted mb-0">This is a server-rendered admin form for managing registered OAuth client configuration.</p>
+        </div>
+        <a class="btn btn-outline-secondary" th:href="@{/auth/adm/oauth-clients}">Back to List</a>
+    </div>
+
+    <div th:if="${successMessage}" class="alert alert-success" role="alert" th:text="${successMessage}"></div>
+
+    <form th:object="${form}"
+          th:action="${isNewClient} ? @{/auth/adm/oauth-clients} : @{/auth/adm/oauth-clients/{id}(id=${form.id})}"
+          method="post">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <input type="hidden" th:field="*{id}" />
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="clientId">Client ID</label>
+                        <input id="clientId" type="text" class="form-control" th:field="*{clientId}" />
+                        <small class="text-danger" th:if="${#fields.hasErrors('clientId')}" th:errors="*{clientId}">Client ID error</small>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="clientName">Client Name</label>
+                        <input id="clientName" type="text" class="form-control" th:field="*{clientName}" />
+                        <small class="text-danger" th:if="${#fields.hasErrors('clientName')}" th:errors="*{clientName}">Client name error</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="clientType">Client Type</label>
+                        <select id="clientType" class="form-control" th:field="*{clientType}">
+                            <option value="">Select type</option>
+                            <option th:each="clientType : ${clientTypes}"
+                                    th:value="${clientType}"
+                                    th:text="${clientType}">WEB</option>
+                        </select>
+                        <small class="text-danger" th:if="${#fields.hasErrors('clientType')}" th:errors="*{clientType}">Client type error</small>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="rawClientSecret">Client Secret</label>
+                        <input id="rawClientSecret" type="text" class="form-control" th:field="*{rawClientSecret}" />
+                        <small class="form-text text-muted" th:text="${isNewClient} ? 'Leave empty for public clients.' : 'Leave empty to keep the existing hashed secret.'">Secret help text</small>
+                        <small class="text-danger" th:if="${#fields.hasErrors('rawClientSecret')}" th:errors="*{rawClientSecret}">Client secret error</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="accessTokenTtlMinutes">Access Token TTL (minutes)</label>
+                        <input id="accessTokenTtlMinutes" type="number" min="1" class="form-control" th:field="*{accessTokenTtlMinutes}" />
+                        <small class="text-danger" th:if="${#fields.hasErrors('accessTokenTtlMinutes')}" th:errors="*{accessTokenTtlMinutes}">Access token TTL error</small>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="cookieMaxAgeSeconds">Cookie Max Age (seconds)</label>
+                        <input id="cookieMaxAgeSeconds" type="number" min="0" class="form-control" th:field="*{cookieMaxAgeSeconds}" />
+                        <small class="text-danger" th:if="${#fields.hasErrors('cookieMaxAgeSeconds')}" th:errors="*{cookieMaxAgeSeconds}">Cookie age error</small>
+                    </div>
+                </div>
+
+                <div class="form-row mb-3">
+                    <div class="form-group col-md-4 mb-0">
+                        <div class="form-check">
+                            <input id="scopeEnabled" type="checkbox" class="form-check-input" th:field="*{scopeEnabled}" />
+                            <label class="form-check-label" for="scopeEnabled">Scope Enabled</label>
+                        </div>
+                    </div>
+                    <div class="form-group col-md-4 mb-0">
+                        <div class="form-check">
+                            <input id="refreshTokenEnabled" type="checkbox" class="form-check-input" th:field="*{refreshTokenEnabled}" />
+                            <label class="form-check-label" for="refreshTokenEnabled">Refresh Token Enabled</label>
+                        </div>
+                    </div>
+                    <div class="form-group col-md-4 mb-0">
+                        <div class="form-check">
+                            <input id="sendTokenInCookie" type="checkbox" class="form-check-input" th:field="*{sendTokenInCookie}" />
+                            <label class="form-check-label" for="sendTokenInCookie">Send Token In Cookie</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row mb-3">
+                    <div class="form-group col-md-4 mb-0">
+                        <div class="form-check">
+                            <input id="cookieHttpOnly" type="checkbox" class="form-check-input" th:field="*{cookieHttpOnly}" />
+                            <label class="form-check-label" for="cookieHttpOnly">Cookie HttpOnly</label>
+                        </div>
+                    </div>
+                    <div class="form-group col-md-4 mb-0">
+                        <div class="form-check">
+                            <input id="cookieSecure" type="checkbox" class="form-check-input" th:field="*{cookieSecure}" />
+                            <label class="form-check-label" for="cookieSecure">Cookie Secure</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-6">
+                        <label for="refreshTokenTtlMinutes">Refresh Token TTL (minutes)</label>
+                        <input id="refreshTokenTtlMinutes" type="number" min="0" class="form-control" th:field="*{refreshTokenTtlMinutes}" />
+                        <small class="text-danger" th:if="${#fields.hasErrors('refreshTokenTtlMinutes')}" th:errors="*{refreshTokenTtlMinutes}">Refresh token TTL error</small>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="audsText">Audiences</label>
+                        <textarea id="audsText" class="form-control" rows="4" th:field="*{audsText}"></textarea>
+                        <small class="form-text text-muted">Enter one value per line. Commas also work.</small>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group col-md-4">
+                        <label for="scopesText">Scopes</label>
+                        <textarea id="scopesText" class="form-control" rows="5" th:field="*{scopesText}"></textarea>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="redirectUrlsText">Redirect URLs</label>
+                        <textarea id="redirectUrlsText" class="form-control" rows="5" th:field="*{redirectUrlsText}"></textarea>
+                    </div>
+                    <div class="form-group col-md-4">
+                        <label for="postLogoutRedirectUrlsText">Post Logout Redirect URLs</label>
+                        <textarea id="postLogoutRedirectUrlsText" class="form-control" rows="5" th:field="*{postLogoutRedirectUrlsText}"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer d-flex justify-content-between align-items-center">
+                <small class="text-muted" th:if="${form.createdDate != null}">
+                    Created at
+                    <span th:attr="data-localized-instant=${form.createdDate != null ? form.createdDate : null}"
+                          th:text="${form.createdDate}">2026-01-01T00:00:00Z</span>
+                </small>
+                <button type="submit" class="btn btn-primary" th:text="${isNewClient} ? 'Create Client' : 'Save Changes'">Save Changes</button>
+            </div>
+        </div>
+    </form>
+</th:block>
+</body>
+</html>

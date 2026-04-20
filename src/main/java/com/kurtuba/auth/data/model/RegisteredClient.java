@@ -62,6 +62,10 @@ public class RegisteredClient {
 
     private boolean sendTokenInCookie;
 
+    private boolean cookieHttpOnly;
+
+    private boolean cookieSecure;
+
     private int cookieMaxAgeSeconds;
 
     private Instant createdDate;

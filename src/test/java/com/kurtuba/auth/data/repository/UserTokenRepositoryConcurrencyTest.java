@@ -1,9 +1,11 @@
 package com.kurtuba.auth.data.repository;
 
 import com.kurtuba.auth.data.model.UserToken;
+import com.kurtuba.auth.support.PostgresIntegrationTestSupport;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
@@ -25,8 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
-class UserTokenRepositoryConcurrencyTest {
+class UserTokenRepositoryConcurrencyTest extends PostgresIntegrationTestSupport {
 
     @Autowired
     private UserTokenRepository userTokenRepository;

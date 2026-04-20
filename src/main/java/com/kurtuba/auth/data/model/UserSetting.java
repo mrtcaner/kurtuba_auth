@@ -2,6 +2,7 @@ package com.kurtuba.auth.data.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
@@ -36,9 +37,11 @@ public class UserSetting implements Serializable {
 
     boolean canChangeUsername;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "localization_available_locale_id", referencedColumnName = "id")
-    private LocalizationAvailableLocale locale;
+    @NotBlank
+    private String languageCode;
+
+    @NotBlank
+    private String countryCode;
 
     @NotNull
     private Instant createdDate;

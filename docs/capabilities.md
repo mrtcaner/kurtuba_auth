@@ -236,4 +236,4 @@ In addition to end-user auth features, the service includes a number of operatio
 - rate-limit integration points
 - scheduled job execution for message sending
 - centralized exception handling
-- H2 demo mode and PostgreSQL/Flyway deployment path
+- PostgreSQL/Flyway-backed runtime and deployment path

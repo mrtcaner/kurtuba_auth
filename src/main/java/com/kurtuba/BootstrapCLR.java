@@ -3,10 +3,12 @@ package com.kurtuba;
 import com.kurtuba.auth.data.dto.LocalizationMessageDto;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
-import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
+import com.kurtuba.auth.data.model.LocalizationSupportedCountry;
+import com.kurtuba.auth.data.model.LocalizationSupportedLang;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.model.Role;
-import com.kurtuba.auth.data.repository.LocalizationAvailableLocaleRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.data.repository.RoleRepository;
 import com.kurtuba.auth.service.LocalizationMessageService;
@@ -37,7 +39,10 @@ public class BootstrapCLR implements CommandLineRunner {
     private LocalizationMessageService localizationMessageService;
 
     @Autowired
-    private LocalizationAvailableLocaleRepository localizationAvailableLocaleRepository;
+    private LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
+
+    @Autowired
+    private LocalizationSupportedLangRepository localizationSupportedLangRepository;
 
     @Autowired
     private RoleRepository roleRepository;
@@ -51,15 +56,23 @@ public class BootstrapCLR implements CommandLineRunner {
     }
 
     private void seedLocales() {
-        seedLocale("en", "tr");
-        seedLocale("tr", "tr");
-        seedLocale("en", "us");
+        seedLanguage("en");
+        seedLanguage("tr");
+        seedCountry("tr");
+        seedCountry("us");
     }
 
-    private void seedLocale(String languageCode, String countryCode) {
-        localizationAvailableLocaleRepository.findByLanguageCodeAndCountryCode(languageCode, countryCode)
-                .orElseGet(() -> localizationAvailableLocaleRepository.save(LocalizationAvailableLocale.builder()
+    private void seedLanguage(String languageCode) {
+        localizationSupportedLangRepository.findByLanguageCode(languageCode)
+                .orElseGet(() -> localizationSupportedLangRepository.save(LocalizationSupportedLang.builder()
                         .languageCode(languageCode)
+                        .createdDate(Instant.now())
+                        .build()));
+    }
+
+    private void seedCountry(String countryCode) {
+        localizationSupportedCountryRepository.findByCountryCode(countryCode)
+                .orElseGet(() -> localizationSupportedCountryRepository.save(LocalizationSupportedCountry.builder()
                         .countryCode(countryCode)
                         .createdDate(Instant.now())
                         .build()));
@@ -125,18 +138,19 @@ public class BootstrapCLR implements CommandLineRunner {
 
     private void seedRegisteredClients() {
         seedClient("default-client", RegisteredClientType.DEFAULT, null, Set.of("http://localhost:8080"),
-                false, null, 60, true, 10080, false, 0);
+                false, null, 60, true, 10080, false, false, false, 0);
         seedClient("demo-web-client", RegisteredClientType.WEB, null, Set.of("http://localhost:8080"),
-                true, Set.of(AuthoritiesType.USER.name()), 60, true, 10080, true, 86400);
+                true, Set.of(AuthoritiesType.USER.name()), 60, true, 10080, true, true, false, 86400);
         seedClient("demo-service-client", RegisteredClientType.SERVICE, "demo-service-secret",
                 Set.of("http://localhost:8080"), true, Set.of(AuthoritiesType.SERVICE.name()),
-                60, false, 0, false, 0);
+                60, false, 0, false, false, false, 0);
     }
 
     private void seedClient(String clientName, RegisteredClientType type, String rawSecret, Set<String> auds,
                             boolean scopeEnabled, Set<String> scopes, int accessTokenTtlMinutes,
                             boolean refreshTokenEnabled, int refreshTokenTtlMinutes,
-                            boolean sendTokenInCookie, int cookieMaxAgeSeconds) {
+                            boolean sendTokenInCookie, boolean cookieHttpOnly, boolean cookieSecure,
+                            int cookieMaxAgeSeconds) {
         registeredClientRepository.findByClientName(clientName).orElseGet(() -> registeredClientRepository.save(
                 RegisteredClient.builder()
                         .clientId(clientName)
@@ -150,6 +164,8 @@ public class BootstrapCLR implements CommandLineRunner {
                         .refreshTokenEnabled(refreshTokenEnabled)
                         .refreshTokenTtlMinutes(refreshTokenTtlMinutes)
                         .sendTokenInCookie(sendTokenInCookie)
+                        .cookieHttpOnly(cookieHttpOnly)
+                        .cookieSecure(cookieSecure)
                         .cookieMaxAgeSeconds(cookieMaxAgeSeconds)
                         .createdDate(Instant.now())
                         .build()));

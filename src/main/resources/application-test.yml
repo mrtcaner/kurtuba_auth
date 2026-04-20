@@ -1,0 +1,130 @@
+server:
+  port: 8080
+
+auth:
+  server:
+    issuer-url: ${AUTH_SERVER_ISSUER_URL:http://localhost:8080}
+
+logging:
+  level:
+    root: info
+
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+  test:
+    database:
+      replace: none
+  sql:
+    init:
+      mode: never
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${auth.server.issuer-url}/auth/oauth2/jwks
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, env
+
+kurtuba:
+  mail:
+    from-address: ${KURTUBA_MAIL_FROM_ADDRESS:noreply@example.test}
+    support-address: ${KURTUBA_MAIL_SUPPORT_ADDRESS:support@example.test}
+  rate-limit:
+    enabled: false
+    public-api:
+      registration:
+        pattern: ${KURTUBA_RATE_LIMIT_REGISTRATION_PATTERN:/auth/registration/**}
+        capacity: ${KURTUBA_RATE_LIMIT_REGISTRATION_CAPACITY:100}
+        refill: ${KURTUBA_RATE_LIMIT_REGISTRATION_REFILL:15m}
+      login:
+        pattern: ${KURTUBA_RATE_LIMIT_LOGIN_PATTERN:/auth/login}
+        capacity: ${KURTUBA_RATE_LIMIT_LOGIN_CAPACITY:50}
+        refill: ${KURTUBA_RATE_LIMIT_LOGIN_REFILL:10m}
+      token-refresh:
+        pattern: ${KURTUBA_RATE_LIMIT_TOKEN_REFRESH_PATTERN:/auth/token}
+        capacity: ${KURTUBA_RATE_LIMIT_TOKEN_REFRESH_CAPACITY:200}
+        refill: ${KURTUBA_RATE_LIMIT_TOKEN_REFRESH_REFILL:10m}
+      web-token-refresh:
+        pattern: ${KURTUBA_RATE_LIMIT_WEB_TOKEN_REFRESH_PATTERN:/auth/web/token}
+        capacity: ${KURTUBA_RATE_LIMIT_WEB_TOKEN_REFRESH_CAPACITY:200}
+        refill: ${KURTUBA_RATE_LIMIT_WEB_TOKEN_REFRESH_REFILL:10m}
+      password-reset:
+        pattern: ${KURTUBA_RATE_LIMIT_PASSWORD_RESET_PATTERN:/auth/user/password/reset/**}
+        capacity: ${KURTUBA_RATE_LIMIT_PASSWORD_RESET_CAPACITY:15}
+        refill: ${KURTUBA_RATE_LIMIT_PASSWORD_RESET_REFILL:1h}
+      sms:
+        pattern: ${KURTUBA_RATE_LIMIT_SMS_PATTERN:/auth/sms/**}
+        capacity: ${KURTUBA_RATE_LIMIT_SMS_CAPACITY:5}
+        refill: ${KURTUBA_RATE_LIMIT_SMS_REFILL:15m}
+      verification:
+        pattern: ${KURTUBA_RATE_LIMIT_VERIFICATION_PATTERN:/auth/user/email/verification/link/**}
+        capacity: ${KURTUBA_RATE_LIMIT_VERIFICATION_CAPACITY:15}
+        refill: ${KURTUBA_RATE_LIMIT_VERIFICATION_REFILL:15m}
+  server:
+    url: ${KURTUBA_SERVER_URL:http://localhost:8080}
+  jwk:
+    file: "classpath:jwk.json"
+    keys: '{"32abb5cf-a1fb-4cdd-9af7-fe517a0bda47": "pkBJlIfLcEW0tvIutbZjsjwBYOZ2DkRw2Hiy5S+m+uI=", "f5a7e70c-fb73-42ab-b217-841ea4e5d5b1": "A5kZEy3jC4ChSTtbq92AsARDrqslb+J7WmWwkMevhds=", "12e87ac2-9ee3-4bab-85ca-758cbd998b26":"2lWwOTIvMxfwO1n9TwOvtuuOaTva95vmW8kyGYaoe6w="}'
+  meta-change:
+    email-max-try-count: 3
+    sms-max-try-count: 5
+    validity:
+      password-reset-code:
+        minutes: 60
+      email:
+        activation-code:
+          minutes: 10080
+        change-code:
+          minutes: 1440
+      sms:
+        activation-code:
+          minutes: 10
+          change-code:
+            minutes: 10
+  job:
+    email:
+      send:
+        max-try-count: 3
+    sms:
+      send:
+        max-try-count: 3
+  twilio:
+    ireland:
+      live:
+        sid: ${TWILIO_IRELAND_LIVE_SID:}
+        auth-token: ${TWILIO_IRELAND_LIVE_AUTH_TOKEN:}
+      test:
+        sid: ${TWILIO_IRELAND_TEST_SID:}
+        auth-token: ${TWILIO_IRELAND_TEST_AUTH_TOKEN:}
+    us:
+      live:
+        sid: ${TWILIO_US_LIVE_SID:}
+        auth-token: ${TWILIO_US_LIVE_AUTH_TOKEN:}
+      test:
+        sid: ${TWILIO_US_TEST_SID:}
+        auth-token: ${TWILIO_US_TEST_AUTH_TOKEN:}
+
+    messaging-service:
+      sid: ${TWILIO_MESSAGING_SERVICE_SID:}
+    verify-service:
+      sid: ${TWILIO_VERIFY_SERVICE_SID:}

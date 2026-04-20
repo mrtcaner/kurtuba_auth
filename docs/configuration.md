@@ -21,7 +21,7 @@ In practice, configuration should be documented in two layers:
 - what each property does
 - whether the current default is safe for real deployment
 
-The checked-in `application.yml` is intentionally demo-friendly. For PostgreSQL-backed runs, use a separate profile or external config file instead of changing the default demo file.
+The checked-in base config is intentionally local-development oriented. For real startup, use PostgreSQL-backed checked-in defaults or externalized environment-specific config rather than relying on ad hoc overrides.
 
 ## `server.*`
 
@@ -68,7 +68,7 @@ Demo/local default:
 
 Defines the JDBC connection string.
 
-Current demo usage points to an in-memory H2 database. That is useful for local runs and tests, but production and serious integration work should use PostgreSQL or another persistent relational database supported by the application.
+Runtime datasource configuration should point at PostgreSQL. Local, test, and production usage now share the same database family even if the surrounding operational setup differs.
 
 ### `spring.datasource.driver-class-name`
 
@@ -139,7 +139,7 @@ Production expectation:
 
 Controls whether Flyway migrations are applied at startup.
 
-If disabled during demo runs, schema evolution may be handled by JPA auto-DDL instead. In production and PostgreSQL integration runs, this should generally be enabled and paired with managed migrations.
+In normal usage this should be enabled and paired with managed migrations.
 
 Production recommendation:
 - enable Flyway
@@ -155,27 +155,6 @@ That means:
 - a stricter production setup can separate migrator and runtime roles
 
 See `docs/postgresql.md` for both modes.
-
-## `spring.h2.*`
-
-### `spring.h2.console.enabled`
-
-Enables the H2 console.
-
-Useful only for local development and debugging.
-
-Production expectation:
-- disable
-
-### `spring.h2.console.path`
-
-The URL path for the H2 console.
-
-### `spring.h2.console.settings.*`
-
-Fine-grained H2 console settings.
-
-These are development-only concerns in most real deployments.
 
 ## `spring.security.oauth2.resourceserver.jwt.*`
 
@@ -439,7 +418,6 @@ Depending on the rest of the codebase and profiles, the following should also be
 - OAuth provider-specific settings beyond Google
 - rate-limit backend configuration
 - environment variable overrides
-- profile-specific files if introduced later
 
 ## Required vs Optional Settings
 

@@ -106,8 +106,7 @@ The repository currently centers on the following technologies and architectural
 - Spring Security
 - Spring Data JPA
 - Spring Session JDBC
-- H2 for local/demo runs
-- PostgreSQL for production-oriented relational persistence
+- PostgreSQL for local, test, and production-oriented relational persistence
 - JWT access tokens with JWKS publishing
 - JWK/JWE-based signing-key packaging and key rollover support
 - BCrypt password hashing
@@ -182,17 +181,11 @@ Important properties of the model include:
 - Tokens can be blocked in persistent storage
 - User login behavior includes failed-attempt counting, captcha signaling, and account lockout logic
 
-## Database Modes
+## Database Posture
 
-The repository intentionally supports two different relational-database postures.
+The repository is now PostgreSQL-first.
 
-### Demo posture
-
-The checked-in default configuration uses H2 and disables Flyway so the service can be evaluated quickly with minimal setup.
-
-### Integration and deployment posture
-
-The service can also run against PostgreSQL with Flyway enabled. This path has now been validated in the public repository against a real PostgreSQL instance using a throwaway database, the checked-in migration, and Hibernate schema validation.
+The service runs against PostgreSQL with Flyway enabled in local, test, and deployment-oriented usage. This path has been validated in the public repository against a real PostgreSQL instance using a throwaway database, the checked-in migrations, and Hibernate schema validation.
 
 For PostgreSQL setup guidance, see `docs/postgresql.md`.
 
@@ -200,9 +193,8 @@ For PostgreSQL setup guidance, see `docs/postgresql.md`.
 
 The current configuration is suitable for local and demo runs, but not all defaults are appropriate for production.
 
-Examples of demo-oriented behavior include:
+Examples of local-development-oriented behavior include:
 
-- In-memory H2 database defaults
 - Example mail and provider credentials
 - Localhost-oriented URLs
 - Disabled jobs and optional integrations
@@ -237,5 +229,5 @@ This overview should be read together with the following documents:
 - `docs/auth-model.md` for token, client, and security behavior
 - `docs/key-management.md` for signing algorithms, JWK storage, generation, and rotation
 - `docs/configuration.md` for property reference and runtime expectations
-- `docs/postgresql.md` for H2-to-PostgreSQL progression and role-split database setup
+- `docs/postgresql.md` for PostgreSQL setup and role-split database options
 - `docs/demo-vs-production.md` for deployment caveats and hardening notes

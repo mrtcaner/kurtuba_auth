@@ -7,7 +7,7 @@
 		<h2>Please Login</h2>
 		<br/>
 	</div>
-	<form th:action="@{/auth/login}" method="post" style="max-width: 400px; margin: 0 auto;">
+	<form th:action="@{/auth/login/form}" method="post" style="max-width: 400px; margin: 0 auto;">
 	<div class="border border-secondary rounded p-3">
 		<div th:if="${param.error}">
 			<p class="text-danger">Invalid username or password.</p>

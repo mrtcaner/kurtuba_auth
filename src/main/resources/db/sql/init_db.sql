@@ -1,6 +1,5 @@
 
--- Example usage:
--- psql -h localhost -p 5432 -U postgres -d postgres -f init_db.sql
+-- psql -h localhost -p 5433 -U postgres -d postgres -f init_db.sql
 
 -- don't run if db already exists!
 CREATE DATABASE kurtuba_auth
@@ -17,13 +16,13 @@ REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE USAGE  ON SCHEMA public FROM PUBLIC;
 
 -- flyway migration role
-CREATE ROLE kurtuba_auth_migrator WITH LOGIN PASSWORD 'change-me';
+CREATE ROLE kurtuba_auth_migrator WITH LOGIN PASSWORD '12345';
 
 GRANT USAGE, CREATE ON SCHEMA public TO kurtuba_auth_migrator;
 GRANT CONNECT ON DATABASE kurtuba_auth TO kurtuba_auth_migrator;
 
 -- application runtime role
-CREATE ROLE kurtuba_auth_user WITH LOGIN PASSWORD 'change-me';
+CREATE ROLE kurtuba_auth_user WITH LOGIN PASSWORD '12345';
 
 GRANT USAGE ON SCHEMA public TO kurtuba_auth_user;
 GRANT CONNECT ON DATABASE kurtuba_auth TO kurtuba_auth_user;

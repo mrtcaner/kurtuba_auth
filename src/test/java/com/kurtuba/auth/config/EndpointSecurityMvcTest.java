@@ -2,30 +2,49 @@ package com.kurtuba.auth.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kurtuba.adm.controller.AdmUserController;
+import com.kurtuba.adm.controller.AdmLoginController;
+import com.kurtuba.adm.controller.AdmPageController;
 import com.kurtuba.adm.controller.LocalizationController;
+import com.kurtuba.adm.controller.LocalizationAdminPageController;
+import com.kurtuba.adm.controller.OAuthClientAdminPageController;
+import com.kurtuba.adm.controller.TokenAdminPageController;
 import com.kurtuba.adm.controller.TokenManagementController;
+import com.kurtuba.adm.controller.UserAdminPageController;
+import com.kurtuba.adm.data.dto.UserAdminSearchCriteria;
 import com.kurtuba.auth.controller.JwksController;
 import com.kurtuba.auth.controller.LoginController;
+import com.kurtuba.auth.controller.LoginPageController;
 import com.kurtuba.auth.controller.RefreshTokenController;
 import com.kurtuba.auth.controller.RegistrationController;
 import com.kurtuba.auth.controller.SmsController;
 import com.kurtuba.auth.controller.UserController;
+import com.kurtuba.auth.data.dto.AvailableLocalizationOptionsDto;
 import com.kurtuba.auth.data.dto.LoginCredentialsDto;
 import com.kurtuba.auth.data.dto.PasswordResetRequestDto;
 import com.kurtuba.auth.data.dto.RegistrationDto;
 import com.kurtuba.auth.data.dto.TokenRefreshRequestDto;
 import com.kurtuba.auth.data.dto.TokensResponseDto;
+import com.kurtuba.auth.data.dto.UserBasicDto;
+import com.kurtuba.auth.data.dto.UserDto;
+import com.kurtuba.auth.data.dto.UserSettingDto;
+import com.kurtuba.auth.data.dto.UserSettingLocaleDto;
+import com.kurtuba.auth.data.enums.RateLimitPublicApi;
 import com.kurtuba.auth.data.enums.AuthProviderType;
 import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.MessageJobStateType;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
-import com.kurtuba.auth.data.model.LocalizationAvailableLocale;
+import com.kurtuba.auth.data.mapper.UserMapper;
 import com.kurtuba.auth.data.model.LocalizationMessage;
+import com.kurtuba.auth.data.model.LocalizationSupportedCountry;
+import com.kurtuba.auth.data.model.LocalizationSupportedLang;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.model.User;
 import com.kurtuba.auth.data.model.UserMetaChange;
 import com.kurtuba.auth.data.model.UserSetting;
+import com.kurtuba.auth.data.model.UserToken;
 import com.kurtuba.auth.data.dto.UserFcmTokenResponseDto;
+import com.kurtuba.auth.data.repository.LocalizationSupportedCountryRepository;
+import com.kurtuba.auth.data.repository.LocalizationSupportedLangRepository;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.service.ISMSService;
 import com.kurtuba.auth.service.LocalizationMessageService;
@@ -33,6 +52,7 @@ import com.kurtuba.auth.service.LoginService;
 import com.kurtuba.auth.service.LogoutService;
 import com.kurtuba.auth.service.MessageJobService;
 import com.kurtuba.auth.service.RegistrationService;
+import com.kurtuba.auth.service.UserRoleService;
 import com.kurtuba.auth.service.UserService;
 import com.kurtuba.auth.service.UserTokenService;
 import com.kurtuba.auth.utils.TokenUtils;
@@ -41,18 +61,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,6 +84,7 @@ import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -68,10 +93,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {
         LoginController.class,
+        LoginPageController.class,
+        AdmLoginController.class,
+        AdmPageController.class,
+        LocalizationAdminPageController.class,
+        TokenAdminPageController.class,
+        UserAdminPageController.class,
         RefreshTokenController.class,
         RegistrationController.class,
         UserController.class,
@@ -79,19 +111,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         JwksController.class,
         AdmUserController.class,
         TokenManagementController.class,
-        LocalizationController.class
+        LocalizationController.class,
+        OAuthClientAdminPageController.class
 })
-@Import(DefaultSecurityConfig.class)
+@Import({DefaultSecurityConfig.class, EndpointSecurityMvcTest.TestRateLimitConfig.class})
 @EnableWebSecurity
 @ActiveProfiles({"test", "dev"})
 @TestPropertySource(properties = {
-        "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost/auth/oauth2/jwks"
+        "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost/auth/oauth2/jwks",
+        "kurtuba.rate-limit.enabled=false"
 })
 class EndpointSecurityMvcTest {
 
     private static final String JWKS = "/auth/oauth2/jwks";
     private static final String LOGIN = "/auth/login";
     private static final String SERVICE_LOGIN = "/auth/service/login";
+    private static final String ADM_LOGIN = "/auth/adm/login";
     private static final String TOKEN_REFRESH = "/auth/token";
     private static final String WEB_TOKEN_REFRESH = "/auth/web/token";
     private static final String REGISTRATION_BASE = "/auth/registration";
@@ -105,40 +140,55 @@ class EndpointSecurityMvcTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private LoginService loginService;
 
-    @MockBean
+    @MockitoBean
     private RegisteredClientRepository registeredClientRepository;
 
-    @MockBean
+    @MockitoBean
+    private LocalizationSupportedLangRepository localizationSupportedLangRepository;
+
+    @MockitoBean
+    private LocalizationSupportedCountryRepository localizationSupportedCountryRepository;
+
+    @MockitoBean
     private UserTokenService userTokenService;
 
-    @MockBean
+    @MockitoBean
     private UserService userService;
 
-    @MockBean
+    @MockitoBean
+    private UserMapper userMapper;
+
+    @MockitoBean
+    private UserRoleService userRoleService;
+
+    @MockitoBean
     private LogoutService logoutService;
 
-    @MockBean
+    @MockitoBean
     private MessageJobService messageJobService;
 
-    @MockBean
+    @MockitoBean
     private RegistrationService registrationService;
 
-    @MockBean
+    @MockitoBean
     private ISMSService smsService;
 
-    @MockBean
+    @MockitoBean
     private LocalizationMessageService localizationMessageService;
 
-    @MockBean
+    @MockitoBean
     private TokenUtils tokenUtils;
 
-    @MockBean
+    @MockitoBean
+    private PasswordEncoder passwordEncoder;
+
+    @MockitoBean
     private JWKSet jwkSet;
 
-    @MockBean
+    @MockitoBean
     private com.kurtuba.auth.config.provider.CustomAuthenticationProvider customAuthenticationProvider;
 
     @BeforeEach
@@ -146,17 +196,43 @@ class EndpointSecurityMvcTest {
         when(jwkSet.toJSONObject(true)).thenReturn(Map.of("keys", List.of()));
         when(loginService.authenticateAndGetTokens(anyString(), anyString(), anyString(), anyString()))
                 .thenReturn(tokensResponse());
+        when(loginService.authenticateAdminAndGetTokens(anyString(), anyString(), anyString(), any()))
+                .thenReturn(tokensResponse());
         when(loginService.getTokensForUser(any(User.class), anyString(), anyString()))
                 .thenReturn(tokensResponse());
         when(registeredClientRepository.findByClientId(anyString())).thenReturn(Optional.of(registeredClient()));
+        when(registeredClientRepository.findById("client-1")).thenReturn(Optional.of(registeredClient()));
+        when(registeredClientRepository.findByClientId("new-client")).thenReturn(Optional.empty());
         when(registeredClientRepository.findByClientId("service-client-id"))
                 .thenReturn(Optional.of(serviceRegisteredClient()));
+        when(registeredClientRepository.findByClientId("34ff7c95-ac55-4e7c-817e-6aa9333e21f6"))
+                .thenReturn(Optional.of(adminWebRegisteredClient()));
+        when(registeredClientRepository.findByClientName(anyString())).thenReturn(Optional.empty());
+        when(registeredClientRepository.findByClientName("New Client")).thenReturn(Optional.empty());
         when(registeredClientRepository.findByClientType(RegisteredClientType.DEFAULT))
                 .thenReturn(List.of(registeredClient()));
+        when(registeredClientRepository.findAll()).thenReturn(List.of(registeredClient(), serviceRegisteredClient()));
+        when(registeredClientRepository.save(any(RegisteredClient.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(localizationSupportedLangRepository.findAllByOrderByLanguageCodeAsc()).thenReturn(List.of(
+                LocalizationSupportedLang.builder().id("lang-en").languageCode("en").createdDate(Instant.now()).build(),
+                LocalizationSupportedLang.builder().id("lang-tr").languageCode("tr").createdDate(Instant.now()).build()
+        ));
+        when(localizationSupportedLangRepository.findByLanguageCode(anyString())).thenReturn(Optional.empty());
+        when(localizationSupportedLangRepository.save(any(LocalizationSupportedLang.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(localizationSupportedCountryRepository.findAllByOrderByCountryCodeAsc()).thenReturn(List.of(
+                LocalizationSupportedCountry.builder().id("country-tr").countryCode("tr").createdDate(Instant.now()).build(),
+                LocalizationSupportedCountry.builder().id("country-us").countryCode("us").createdDate(Instant.now()).build()
+        ));
+        when(localizationSupportedCountryRepository.findByCountryCode(anyString())).thenReturn(Optional.empty());
+        when(localizationSupportedCountryRepository.save(any(LocalizationSupportedCountry.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(passwordEncoder.encode(anyString())).thenAnswer(invocation -> "encoded-" + invocation.getArgument(0, String.class));
         when(userTokenService.refreshUserTokens(any())).thenReturn(tokensResponse());
         when(userTokenService.findAllByUserId(anyString())).thenReturn(List.of());
         when(userTokenService.findAllByUserIdAndBlocked(anyString(), anyBoolean())).thenReturn(List.of());
         when(userTokenService.checkDBIfTokenIsBlockedByJTI(anyString())).thenReturn(false);
+        when(userTokenService.findByJTI(anyString())).thenReturn(Optional.of(userToken()));
         when(userService.requestResetPassword(anyString(), anyBoolean()))
                 .thenReturn(UserMetaChange.builder().id("umc-reset").build());
         when(userService.requestChangeEmail(anyString(), anyString(), anyBoolean()))
@@ -165,6 +241,14 @@ class EndpointSecurityMvcTest {
                 .thenReturn(UserMetaChange.builder().id("umc-mobile").build());
         when(userService.getUserById(anyString())).thenReturn(Optional.of(user()));
         when(userService.getUserByEmail(anyString())).thenReturn(Optional.of(user()));
+        when(userService.getUsersByIds(any())).thenReturn(List.of(user()));
+        when(userService.searchUsers(any(UserAdminSearchCriteria.class))).thenReturn(List.of(user()));
+        when(userService.updateAdminSecurityAndActivity(anyString(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), anyInt()))
+                .thenReturn(user());
+        when(userMapper.mapToUserDto(any(User.class))).thenReturn(userDto());
+        when(userMapper.mapToUserBasicDto(any(User.class))).thenReturn(userBasicDto());
+        when(userRoleService.addRoleToUser(anyString(), anyString())).thenReturn(userRole());
+        doNothing().when(userRoleService).removeRoleFromUser(anyString(), anyString());
         when(userService.resetPasswordByCode(any())).thenReturn(tokensResponse());
         when(userService.validatePasswordResetLinkParam(anyString()))
                 .thenReturn(UserMetaChange.builder().id("umc-reset-link").build());
@@ -177,11 +261,11 @@ class EndpointSecurityMvcTest {
                         .updatedAt(Instant.now())
                         .build()));
         when(registrationService.register(any()))
-                .thenReturn(UserMetaChange.builder().id("umc-register").build());
-        when(registrationService.getAvailableLocales()).thenReturn(List.of(
-                LocalizationAvailableLocale.builder().languageCode("en").countryCode("us").build(),
-                LocalizationAvailableLocale.builder().languageCode("tr").countryCode("tr").build()
-        ));
+                .thenReturn(UserMetaChange.builder().id("umc-register").userId("user-1").build());
+        when(registrationService.getAvailableLocales()).thenReturn(AvailableLocalizationOptionsDto.builder()
+                .languages(List.of("en", "tr"))
+                .countries(List.of("tr", "us"))
+                .build());
         when(registrationService.registerByAnotherProvider(any())).thenReturn(user());
         when(registrationService.sendAccountActivationMessage(anyString(), anyBoolean()))
                 .thenReturn(UserMetaChange.builder().id("umc-activation").build());
@@ -201,9 +285,12 @@ class EndpointSecurityMvcTest {
         when(localizationMessageService.findAll()).thenReturn(List.of());
         when(localizationMessageService.findByLanguageCodeAndMessageKey(anyString(), anyString()))
                 .thenReturn(localizationMessage());
+        when(localizationMessageService.search(anyString(), anyString(), anyString()))
+                .thenReturn(List.of(localizationMessage()));
         when(localizationMessageService.create(any())).thenReturn(localizationMessage());
         when(localizationMessageService.update(any())).thenReturn(localizationMessage());
         when(localizationMessageService.finById(anyString())).thenReturn(Optional.of(localizationMessage()));
+        doNothing().when(localizationMessageService).deleteById(anyString());
         when(messageJobService.findByUserMetaChangeIdAndUserId(anyString(), anyString()))
                 .thenReturn(MessageJobStateType.PENDING);
         doNothing().when(userService).changePassword(any(), anyString());
@@ -221,8 +308,38 @@ class EndpointSecurityMvcTest {
         doNothing().when(userTokenService).blockUsersTokens(anyString());
     }
 
+    private static RateLimitProperties.PublicApiProperties publicApiProperties(String pattern) {
+        RateLimitProperties.PublicApiProperties properties = new RateLimitProperties.PublicApiProperties();
+        properties.setPattern(pattern);
+        properties.setCapacity(1);
+        properties.setRefill(Duration.ofMinutes(1));
+        return properties;
+    }
+
+    @TestConfiguration
+    static class TestRateLimitConfig {
+        @Bean
+        RateLimitProperties rateLimitProperties() {
+            RateLimitProperties properties = new RateLimitProperties();
+            properties.getPublicApi().put(RateLimitPublicApi.REGISTRATION.getKey(), publicApiProperties("/auth/registration/**"));
+            properties.getPublicApi().put(RateLimitPublicApi.LOGIN.getKey(), publicApiProperties("/auth/login"));
+            properties.getPublicApi().put(RateLimitPublicApi.TOKEN_REFRESH.getKey(), publicApiProperties("/auth/token"));
+            properties.getPublicApi().put(RateLimitPublicApi.WEB_TOKEN_REFRESH.getKey(), publicApiProperties("/auth/web/token"));
+            properties.getPublicApi().put(RateLimitPublicApi.PASSWORD_RESET.getKey(), publicApiProperties("/auth/user/password/reset/**"));
+            properties.getPublicApi().put(RateLimitPublicApi.SMS.getKey(), publicApiProperties("/auth/sms/**"));
+            properties.getPublicApi().put(RateLimitPublicApi.VERIFICATION.getKey(), publicApiProperties("/auth/user/email/verification/link/**"));
+            return properties;
+        }
+    }
+
     @Test
     void publicEndpointsRemainPublic() throws Exception {
+        mockMvc.perform(get(LOGIN).accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(ADM_LOGIN).accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
         mockMvc.perform(get(JWKS))
                 .andExpect(status().isOk());
 
@@ -235,6 +352,12 @@ class EndpointSecurityMvcTest {
                                 .clientSecret("client-secret")
                                 .build())))
                 .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_LOGIN)
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("username", "admin@example.com")
+                        .param("password", "a.123456"))
+                .andExpect(status().is3xxRedirection());
 
         mockMvc.perform(post(TOKEN_REFRESH)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -301,6 +424,23 @@ class EndpointSecurityMvcTest {
                                 }
                                 """))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminLoginRemainsPublicEvenWithExpiredBearerSources() throws Exception {
+        mockMvc.perform(get(ADM_LOGIN)
+                        .header("Authorization", "Bearer expired-or-invalid-token")
+                        .cookie(new jakarta.servlet.http.Cookie("jwt", "expired-or-invalid-token"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_LOGIN)
+                        .header("Authorization", "Bearer expired-or-invalid-token")
+                        .cookie(new jakarta.servlet.http.Cookie("jwt", "expired-or-invalid-token"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("username", "admin@example.com")
+                        .param("password", "a.123456"))
+                .andExpect(status().is3xxRedirection());
     }
 
     @Test
@@ -547,13 +687,28 @@ class EndpointSecurityMvcTest {
 
     @Test
     void serviceOnlyEndpointStillRequiresServiceScope() throws Exception {
-        mockMvc.perform(get(USER_BASE + "/user-1")
+        String requestBody = objectMapper.writeValueAsString(Map.of("userIds", List.of("user-1")));
+
+        mockMvc.perform(put(USER_BASE + "/info/users/basic")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
                         .with(jwtWithScope("USER")))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(get(USER_BASE + "/user-1")
+        mockMvc.perform(put(USER_BASE + "/info/users/basic")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody)
                         .with(jwtWithScope("SERVICE")))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void logoutClearsJwtCookie() throws Exception {
+        mockMvc.perform(post(USER_BASE + "/logout")
+                        .with(jwtWithScope("USER")))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("jwt=")))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("Max-Age=0")));
     }
 
     @Test
@@ -573,6 +728,19 @@ class EndpointSecurityMvcTest {
 
     @Test
     void allAdminRoutesRejectAnonymousAndNonAdminRequests() throws Exception {
+        mockMvc.perform(get(ADM_BASE).accept(MediaType.TEXT_HTML))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ADM_BASE).with(jwtWithScope("USER")).accept(MediaType.TEXT_HTML))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get(ADM_BASE + "/oauth-clients")
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ADM_BASE + "/oauth-clients")
+                        .with(jwtWithScope("USER"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isForbidden());
+
         mockMvc.perform(get(ADM_BASE + "/localization"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get(ADM_BASE + "/localization").with(jwtWithScope("USER")))
@@ -620,9 +788,9 @@ class EndpointSecurityMvcTest {
                                 """))
                 .andExpect(status().isForbidden());
 
-        mockMvc.perform(delete(ADM_BASE + "/localization/cache"))
+        mockMvc.perform(delete(ADM_BASE + "/localization/loc-1"))
                 .andExpect(status().isUnauthorized());
-        mockMvc.perform(delete(ADM_BASE + "/localization/cache").with(jwtWithScope("USER")))
+        mockMvc.perform(delete(ADM_BASE + "/localization/loc-1").with(jwtWithScope("USER")))
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(get(ADM_BASE + "/user/token/user-1"))
@@ -662,10 +830,222 @@ class EndpointSecurityMvcTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get(ADM_BASE + "/token/blocked/user/user-1").with(jwtWithScope("USER")))
                 .andExpect(status().isForbidden());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/tokens/block-user")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("userId", "user-1"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(ADM_BASE + "/pages/tokens/block-user")
+                        .with(jwtWithScope("USER"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("userId", "user-1"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/tokens/block-jti")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("userId", "user-1")
+                        .param("jti", "test-jti"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(ADM_BASE + "/pages/tokens/block-jti")
+                        .with(jwtWithScope("USER"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("userId", "user-1")
+                        .param("jti", "test-jti"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get(ADM_BASE + "/pages/users")
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ADM_BASE + "/pages/users")
+                        .with(jwtWithScope("USER"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get(ADM_BASE + "/pages/users/user-1")
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get(ADM_BASE + "/pages/users/user-1")
+                        .with(jwtWithScope("USER"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/roles")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("roleName", "ADMIN"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/roles")
+                        .with(jwtWithScope("USER"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("roleName", "ADMIN"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/roles/remove")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("roleName", "ADMIN"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/roles/remove")
+                        .with(jwtWithScope("USER"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("roleName", "ADMIN"))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/security")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("activated", "true")
+                        .param("locked", "false")
+                        .param("blocked", "false")
+                        .param("showCaptcha", "false")
+                        .param("failedLoginCount", "0"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/security")
+                        .with(jwtWithScope("USER"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("activated", "true")
+                        .param("locked", "false")
+                        .param("blocked", "false")
+                        .param("showCaptcha", "false")
+                        .param("failedLoginCount", "0"))
+                .andExpect(status().isForbidden());
     }
 
     @Test
     void allAdminRoutesAllowAdminScope() throws Exception {
+        mockMvc.perform(get(ADM_BASE)
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(ADM_BASE + "/oauth-clients")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get(ADM_BASE + "/pages/localization")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", "/auth/adm/pages/localization/messages"));
+
+        mockMvc.perform(get(ADM_BASE + "/pages/localization/messages")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/messages")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("languageCode", "en")
+                        .param("key", "test.key")
+                        .param("message", "value"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/messages/loc-1")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("id", "loc-1")
+                        .param("message", "updated value"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/messages/loc-1/delete")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("filterLang", "en")
+                        .param("filterKey", "test")
+                        .param("filterMessage", "value"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get(ADM_BASE + "/pages/localization/languages")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/languages")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("languageCode", "ar"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/languages/lang-en/delete")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get(ADM_BASE + "/pages/localization/countries")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/countries")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("countryCode", "de"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/localization/countries/country-tr/delete")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get(ADM_BASE + "/pages/tokens")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/tokens/block-user")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("userId", "user-1"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(post(ADM_BASE + "/pages/tokens/block-jti")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("userId", "user-1")
+                        .param("jti", "test-jti"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get(ADM_BASE + "/pages/users")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+        mockMvc.perform(get(ADM_BASE + "/pages/users/user-1")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/roles")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("roleName", "ADMIN"))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/roles/remove")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("roleName", "ADMIN"))
+                .andExpect(status().is3xxRedirection());
+        mockMvc.perform(post(ADM_BASE + "/pages/users/user-1/security")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("activated", "true")
+                        .param("locked", "false")
+                        .param("blocked", "false")
+                        .param("showCaptcha", "false")
+                        .param("failedLoginCount", "0"))
+                .andExpect(status().is3xxRedirection());
+
+        mockMvc.perform(get(ADM_BASE + "/oauth-clients/client-1")
+                        .with(jwtWithScope("ADMIN"))
+                        .accept(MediaType.TEXT_HTML))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post(ADM_BASE + "/oauth-clients")
+                        .with(jwtWithScope("ADMIN"))
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("clientId", "new-client")
+                        .param("clientName", "New Client")
+                        .param("clientType", "WEB")
+                        .param("accessTokenTtlMinutes", "60")
+                        .param("refreshTokenEnabled", "true")
+                        .param("refreshTokenTtlMinutes", "10080")
+                        .param("sendTokenInCookie", "false")
+                        .param("cookieMaxAgeSeconds", "0"))
+                .andExpect(status().is3xxRedirection());
+
         mockMvc.perform(get(ADM_BASE + "/localization").with(jwtWithScope("ADMIN")))
                 .andExpect(status().isOk());
 
@@ -692,8 +1072,8 @@ class EndpointSecurityMvcTest {
                                 """))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(delete(ADM_BASE + "/localization/cache").with(jwtWithScope("ADMIN")))
-                .andExpect(status().isOk());
+        mockMvc.perform(delete(ADM_BASE + "/localization/loc-1").with(jwtWithScope("ADMIN")))
+                .andExpect(status().isNoContent());
 
         mockMvc.perform(get(ADM_BASE + "/user/token/user-1").with(jwtWithScope("ADMIN")))
                 .andExpect(status().isOk());
@@ -762,6 +1142,19 @@ class EndpointSecurityMvcTest {
                 .build();
     }
 
+    private RegisteredClient adminWebRegisteredClient() {
+        return RegisteredClient.builder()
+                .id("admin-web-client-1")
+                .clientId("34ff7c95-ac55-4e7c-817e-6aa9333e21f6")
+                .clientName("adm-web-client")
+                .clientType(RegisteredClientType.WEB)
+                .auds(Set.of("adm"))
+                .scopes(Set.of("ADMIN", "USER"))
+                .sendTokenInCookie(true)
+                .cookieMaxAgeSeconds(3600)
+                .build();
+    }
+
     private RegistrationDto registrationDto() {
         return RegistrationDto.builder()
                 .name("Alice")
@@ -779,16 +1172,10 @@ class EndpointSecurityMvcTest {
     }
 
     private User user() {
-        LocalizationAvailableLocale locale = LocalizationAvailableLocale.builder()
-                .id("locale-1")
-                .languageCode("en")
-                .countryCode("TR")
-                .createdDate(Instant.now())
-                .build();
-
         UserSetting userSetting = UserSetting.builder()
                 .id("setting-1")
-                .locale(locale)
+                .languageCode("en")
+                .countryCode("TR")
                 .createdDate(Instant.now())
                 .build();
 
@@ -809,12 +1196,80 @@ class EndpointSecurityMvcTest {
                 .build();
     }
 
+    private UserDto userDto() {
+        return UserDto.builder()
+                .id("user-1")
+                .name("Alice")
+                .surname("Test")
+                .username("alice_test")
+                .email("user@example.com")
+                .mobile("+905122345678")
+                .authProvider(AuthProviderType.KURTUBA)
+                .activated(true)
+                .emailVerified(true)
+                .mobileVerified(true)
+                .createdDate(Instant.now())
+                .userSetting(UserSettingDto.builder()
+                        .id("setting-1")
+                        .languageCode("en")
+                        .countryCode("TR")
+                        .locale(UserSettingLocaleDto.builder()
+                                .id("TR_en")
+                                .countryCode("TR")
+                                .languageCode("en")
+                                .createdDate(Instant.now())
+                                .build())
+                        .createdDate(Instant.now())
+                        .build())
+                .build();
+    }
+
+    private UserBasicDto userBasicDto() {
+        return UserBasicDto.builder()
+                .id("user-1")
+                .name("Alice")
+                .surname("Test")
+                .username("alice_test")
+                .email("user@example.com")
+                .mobile("+905122345678")
+                .emailVerified(true)
+                .mobileVerified(true)
+                .createdDate(Instant.now())
+                .build();
+    }
+
     private LocalizationMessage localizationMessage() {
         return LocalizationMessage.builder()
                 .id("loc-1")
                 .languageCode("en")
                 .messageKey("test.key")
                 .message("value")
+                .createdDate(Instant.now())
+                .build();
+    }
+
+    private UserToken userToken() {
+        return UserToken.builder()
+                .id("token-1")
+                .userId("user-1")
+                .refreshToken("refresh")
+                .refreshTokenExp(Instant.now().plusSeconds(3600))
+                .refreshTokenUsed(false)
+                .jti("test-jti")
+                .clientId("client-id")
+                .auds(List.of("aud"))
+                .scopes(List.of("ADMIN"))
+                .blocked(false)
+                .createdDate(Instant.now())
+                .expirationDate(Instant.now().plusSeconds(3600))
+                .build();
+    }
+
+    private com.kurtuba.auth.data.model.UserRole userRole() {
+        return com.kurtuba.auth.data.model.UserRole.builder()
+                .id("user-role-1")
+                .user(user())
+                .role(com.kurtuba.auth.data.model.Role.builder().id("role-1").name("ADMIN").build())
                 .createdDate(Instant.now())
                 .build();
     }

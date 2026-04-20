@@ -24,6 +24,8 @@ public class Utils {
                                                                           .refreshTokenEnabled(true)
                                                                           .refreshTokenTtlMinutes(129600)
                                                                           .sendTokenInCookie(false)
+                                                                          .cookieHttpOnly(false)
+                                                                          .cookieSecure(false)
                                                                           .createdDate(Instant.now())
                                                                           .build();
 
@@ -45,5 +47,4 @@ public class Utils {
                 .toString();
     }
 }
-
 

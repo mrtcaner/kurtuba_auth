@@ -9,6 +9,8 @@ import jakarta.validation.ConstraintValidatorContext;
 
 public class MobileNumberValidator implements ConstraintValidator<MobileNumber, String> {
 
+    private static final PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
+
     boolean notBlank;
     boolean plusSignRequired;
 
@@ -22,16 +24,15 @@ public class MobileNumberValidator implements ConstraintValidator<MobileNumber, 
     @Override
     public boolean isValid(String mobileNumber, ConstraintValidatorContext context) {
 
-        if (notBlank && (mobileNumber == null || mobileNumber.isEmpty())) {
+        if (notBlank && (mobileNumber == null || mobileNumber.trim().isEmpty())) {
             return false;
         }
 
-        if (!notBlank && (mobileNumber == null || mobileNumber.isEmpty())) {
+        if (!notBlank && (mobileNumber == null || mobileNumber.trim().isEmpty())) {
             return true;
         }
 
         //number is not null or empty
-        PhoneNumberUtil phoneNumberUtil = PhoneNumberUtil.getInstance();
         try {
             Phonenumber.PhoneNumber mNumber = phoneNumberUtil.parse(mobileNumber,
                     plusSignRequired ?

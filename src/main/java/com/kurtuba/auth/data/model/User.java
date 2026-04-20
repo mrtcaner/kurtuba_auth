@@ -49,6 +49,7 @@ public class User implements Serializable {
     private String mobile;
 
     @Nullable
+    @Column(nullable = true)
     @EmailAddress(notBlank = false)
     private String email;
 
@@ -72,6 +73,8 @@ public class User implements Serializable {
 
     private boolean locked;
 
+    private boolean blocked;
+
     private int failedLoginCount;
 
     private boolean showCaptcha;
@@ -80,9 +83,7 @@ public class User implements Serializable {
 
     private boolean mobileVerified;
 
-    @Nullable
     private Instant lastLoginAttempt;
-
 
     @NotNull
     private Instant createdDate;

@@ -61,8 +61,8 @@ public class LoginController {
             // return a cookie
             // HttpStatus-204
             ResponseCookie cookie = ResponseCookie.from("jwt", tokenDto.accessToken)
-                    .httpOnly(true)
-                    .secure(false)
+                    .httpOnly(client.isCookieHttpOnly())
+                    .secure(client.isCookieSecure())
                     .path("/")
                     .maxAge(client.getCookieMaxAgeSeconds())
                     .build();
