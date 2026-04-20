@@ -28,7 +28,7 @@ public class UserValidationTest {
                 .id(UUID.randomUUID().toString())
                 .email("test@test.com")
                 .emailVerified(false)
-                .mobile("+905366568898")
+                .mobile("+905555555555")
                 .mobileVerified(false)
                 .activated(false)
                 .name("user")

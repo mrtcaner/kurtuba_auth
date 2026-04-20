@@ -460,7 +460,7 @@ COPY public.user_token_block (created_date, expiration_date, id, jti) FROM stdin
 --
 
 COPY public.users (activated, email_verified, failed_login_count, locked, mobile_verified, show_captcha, birthdate, created_date, last_login_attempt, name, auth_provider, email, id, mobile, password, surname, username, gender) FROM stdin;
-t	t	0	f	t	f	1985-08-25 00:00:00	2025-01-05 20:31:45.349792	2026-03-24 10:49:36.932103	muhlis	KURTUBA	user@user.com	b5a47277-bd17-4883-8cd8-b915bc6e852f	+905366568898	$2a$10$Bb95AqMp1rtSmpYVso4RUOchrkihiVFO/4XJ6xdWxoznfkPucp4Ce	muhlisson	muhlis	MALE
+t	t	0	f	t	f	1999-01-01 00:00:00	2025-01-05 20:31:45.349792	2026-03-24 10:49:36.932103	muhlis	KURTUBA	user@user.com	b5a47277-bd17-4883-8cd8-b915bc6e852f	+905555555555	$2a$10$Bb95AqMp1rtSmpYVso4RUOchrkihiVFO/4XJ6xdWxoznfkPucp4Ce	muhlisson	muhlis	MALE
 \.
 
 

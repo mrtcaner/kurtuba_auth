@@ -86,6 +86,22 @@ Practical guidance:
 - use the shared-user approach for local integration and CI if you want simplicity
 - use the split-role approach when you want clearer privilege boundaries
 
+### Seeded bootstrap user
+
+The baseline migration seeds a user account:
+
+- email: `user@user.com`
+- password: `a.1234`
+
+Why this is acceptable for evaluation:
+- makes first login and admin-page exploration easier
+- gives the repo a predictable bootstrap path after migrations run
+
+Why this must be reviewed for real deployments:
+- seeded credentials are not a safe production default
+- the credential is not profile-bounded
+- deployments should rotate, remove, or replace bootstrap accounts deliberately
+
 ### Localhost-based URLs
 
 Defaults such as `http://localhost:8080` are convenient in development, but they break production flows that generate URLs or identify the issuer.

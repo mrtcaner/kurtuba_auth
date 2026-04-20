@@ -21,6 +21,7 @@ This repository is relevant if you are looking for:
 - [Backend Quickstart](docs/backend-quickstart.md)
 - [Capabilities](docs/capabilities.md)
 - [Authentication Model](docs/auth-model.md)
+- [Admin Pages](docs/admin-pages.md)
 - [Key Management](docs/key-management.md)
 - [Configuration Reference](docs/configuration.md)
 - [PostgreSQL Setup](docs/postgresql.md)
