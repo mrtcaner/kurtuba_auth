@@ -30,6 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +48,8 @@ import jakarta.persistence.criteria.JoinType;
 import java.util.stream.Collectors;
 
 
+import static com.kurtuba.auth.utils.Utils.generateRandomNumericString;
+import static com.kurtuba.auth.utils.Utils.generateRandomString;
 import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 
 @Slf4j
@@ -55,6 +59,7 @@ import static com.kurtuba.auth.utils.Utils.generateVerificationCode;
 public class UserService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
+    private static final int USERNAME_GENERATION_MAX_ATTEMPTS = 20;
 
     private final UserRepository userRepository;
     private final UserTokenService userTokenService;
@@ -162,7 +167,8 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public List<User> searchUsers(UserAdminSearchCriteria criteria) {
-        return userRepository.findAll(buildUserAdminSpecification(criteria), Sort.by(Sort.Direction.DESC, "createdDate"));
+        return userRepository.findAll(buildUserAdminSpecification(criteria, true),
+                Sort.by(Sort.Direction.DESC, "createdDate"));
     }
 
     @Transactional(readOnly = true)
@@ -174,6 +180,15 @@ public class UserService {
         return users.stream()
                 .map(user -> userMapper.mapToAdmUserDto(user, latestTokenCreatedDatesByUserId.get(user.getId())))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<AdmUserDto> searchAdmUsers(UserAdminSearchCriteria criteria, Pageable pageable) {
+        Page<User> users = userRepository.findAll(buildUserAdminSpecification(criteria, false), pageable);
+        Map<String, Instant> latestTokenCreatedDatesByUserId = userTokenService.findLatestCreatedDatesByUserIds(
+                users.stream().map(User::getId).collect(Collectors.toSet()));
+
+        return users.map(user -> userMapper.mapToAdmUserDto(user, latestTokenCreatedDatesByUserId.get(user.getId())));
     }
 
     public boolean isEmailAvailable(String email) {
@@ -188,6 +203,26 @@ public class UserService {
         return !userRepository.getUserByUsername(username).isPresent();
     }
 
+    public String generateUniqueUsername() {
+        return generateUniqueUsername(Set.of());
+    }
+
+    @Transactional
+    public int generateMissingUsernames() {
+        List<User> usersWithoutUsername = userRepository.findUsersWithoutUsername();
+        Set<String> reservedUsernames = new HashSet<>();
+        usersWithoutUsername.forEach(user -> {
+            String username = generateUniqueUsername(reservedUsernames);
+            user.setUsername(username);
+            if (user.getUserSetting() != null) {
+                user.getUserSetting().setCanChangeUsername(true);
+            }
+            reservedUsernames.add(username);
+        });
+        userRepository.saveAll(usersWithoutUsername);
+        return usersWithoutUsername.size();
+    }
+
     /**
      * Runs when sign in with Google
      *
@@ -200,6 +235,7 @@ public class UserService {
         if (existUser == null) {
             User newUser = new User();
             newUser.setEmail(username);
+            newUser.setUsername(generateUniqueUsername());
             newUser.setAuthProvider(AuthProviderType.GOOGLE);
             newUser.setActivated(true);
 
@@ -391,6 +427,28 @@ public class UserService {
                 DateTimeFormatter.ofPattern("dd/MM/yyyy",
                 Locale.ENGLISH)).atStartOfDay().toInstant(ZoneOffset.UTC) : null);
         user.setGender(userPersonalInfoDto.getGender());
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateUsername(@NotBlank String userId, @NotBlank String requestedUsername) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (requestedUsername.equals(user.getUsername())) {
+            return;
+        }
+
+        if (!user.getUserSetting().isCanChangeUsername()) {
+            throw new BusinessLogicException(ErrorEnum.USER_USERNAME_CHANGE_NOT_ALLOWED);
+        }
+
+        if (userRepository.getUserByUsername(requestedUsername).isPresent()) {
+            throw new BusinessLogicException(ErrorEnum.USER_USERNAME_ALREADY_EXISTS);
+        }
+
+        user.setUsername(requestedUsername);
+        user.getUserSetting().setCanChangeUsername(false);
         userRepository.save(user);
     }
 
@@ -630,9 +688,10 @@ public class UserService {
         return savedUser;
     }
 
-    private Specification<User> buildUserAdminSpecification(UserAdminSearchCriteria criteria) {
+    private Specification<User> buildUserAdminSpecification(UserAdminSearchCriteria criteria, boolean fetchAssociations) {
         return (root, query, cb) -> {
-            if (!Long.class.equals(query.getResultType()) && !long.class.equals(query.getResultType())) {
+            if (fetchAssociations
+                    && !Long.class.equals(query.getResultType()) && !long.class.equals(query.getResultType())) {
                 root.fetch("userSetting", JoinType.LEFT);
                 root.fetch("userRoles", JoinType.LEFT).fetch("role", JoinType.LEFT);
                 query.distinct(true);
@@ -694,6 +753,17 @@ public class UserService {
             return;
         }
         predicates.add("yes".equalsIgnoreCase(value) ? cb.isTrue(path) : cb.isFalse(path));
+    }
+
+    private String generateUniqueUsername(Set<String> reservedUsernames) {
+        for (int attempt = 0; attempt < USERNAME_GENERATION_MAX_ATTEMPTS; attempt++) {
+            String username = "user_" + generateRandomString(2) + generateRandomNumericString(6);
+            if (!reservedUsernames.contains(username) && userRepository.getUserByUsername(username).isEmpty()) {
+                return username;
+            }
+        }
+
+        throw new IllegalStateException("Unable to generate unique username");
     }
 
 
@@ -794,6 +864,51 @@ public class UserService {
         messageJobService.sendVerificationCodeSMSViaTwilio(mobile, metaChange.getId());
 
         return metaChange;
+    }
+
+    @Transactional
+    public void deleteContact(@NotBlank String userId, @NotNull ContactType contactType) {
+        User user = userRepository.getUserById(userId).orElseThrow(() ->
+                new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
+
+        if (user.isBlocked() || user.isLocked() || user.isShowCaptcha() || !user.isActivated()) {
+            throw new BusinessLogicException(ErrorEnum.USER_INVALID_STATE);
+        }
+
+        boolean hasEmail = StringUtils.hasLength(user.getEmail());
+        boolean hasMobile = StringUtils.hasLength(user.getMobile());
+
+        if (contactType.equals(ContactType.EMAIL) && !hasEmail) {
+            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_NOT_PRESENT);
+        }
+
+        if (contactType.equals(ContactType.MOBILE) && !hasMobile) {
+            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_NOT_PRESENT);
+        }
+
+        if ((hasEmail ? 1 : 0) + (hasMobile ? 1 : 0) <= 1) {
+            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_DELETE_NOT_ALLOWED);
+        }
+
+        boolean deletingVerifiedContact = contactType.equals(ContactType.EMAIL) ? user.isEmailVerified()
+                : user.isMobileVerified();
+        boolean otherVerifiedContactExists = contactType.equals(ContactType.EMAIL) ? user.isMobileVerified()
+                : user.isEmailVerified();
+
+        if (deletingVerifiedContact && !otherVerifiedContactExists) {
+            throw new BusinessLogicException(ErrorEnum.USER_CONTACT_DELETE_NOT_ALLOWED);
+        }
+
+        if (contactType.equals(ContactType.EMAIL)) {
+            user.setEmail(null);
+            user.setEmailVerified(false);
+        } else {
+            user.setMobile(null);
+            user.setMobileVerified(false);
+        }
+
+        userMetaChangeService.deletePendingContactMetaChanges(user.getId(), contactType);
+        userRepository.save(user);
     }
 
     /**

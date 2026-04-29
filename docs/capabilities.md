@@ -16,10 +16,12 @@ Registration includes:
 - creating user settings
 - assigning the default `USER` role
 - validating uniqueness of email, mobile number, and username where provided
+- generating a unique username when the request does not provide one
 - associating the user with a supported locale
 - initiating account activation through the preferred verification channel
 
 A registration request may contain email, mobile number, or both, but at least one contact method must be present.
+When the service generates a username, it also allows the user to change that generated username once.
 
 ### Registration outputs
 
@@ -163,8 +165,10 @@ These capabilities include:
 - fetching current user info
 - fetching locale info
 - changing password
+- changing username when account settings permit it
 - updating personal info
 - updating language preference
+- deleting email or mobile contact details when another valid contact remains
 - verifying email
 - verifying mobile
 - managing FCM tokens

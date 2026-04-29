@@ -12,6 +12,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -72,6 +73,16 @@ public class UserMetaChangeService {
                                                                          MetaOperationType metaOperationType) {
         return userMetaChangeRepository.findByUserIdAndMetaOperationTypeAndExpirationDateAfterAndExecutedIsFalse(userId,
                 metaOperationType, Instant.now());
+    }
+
+    @Transactional
+    public void deletePendingContactMetaChanges(String userId, ContactType contactType) {
+        List<MetaOperationType> metaOperationTypes = switch (contactType) {
+            case EMAIL -> List.of(MetaOperationType.EMAIL_CHANGE);
+            case MOBILE -> List.of(MetaOperationType.MOBILE_CHANGE);
+            default -> throw new BusinessLogicException(ErrorEnum.INVALID_PARAMETER);
+        };
+        userMetaChangeRepository.deleteAllByExecutedIsFalseAndUserIdAndMetaOperationTypeIn(userId, metaOperationTypes);
     }
 
 }

@@ -3,6 +3,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.*;
 import com.kurtuba.auth.data.enums.AuthoritiesType;
+import com.kurtuba.auth.data.enums.ContactType;
 import com.kurtuba.auth.data.enums.JWTClaimType;
 import com.kurtuba.auth.data.enums.MessageJobStateType;
 import com.kurtuba.auth.data.mapper.UserMapper;
@@ -420,6 +421,18 @@ public class UserController {
 
     }
 
+    @DeleteMapping("/email")
+    public ResponseEntity<Void> deleteEmail(Principal principal) {
+        userService.deleteContact(principal.getName(), ContactType.EMAIL);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT_204).build();
+    }
+
+    @DeleteMapping("/mobile")
+    public ResponseEntity<Void> deleteMobile(Principal principal) {
+        userService.deleteContact(principal.getName(), ContactType.MOBILE);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT_204).build();
+    }
+
     /**
      * Verifies mobile using code
      *
@@ -446,6 +459,13 @@ public class UserController {
         userService.updateUserPersonalInfo(principal.getName(), userPersonalInfoDto);
         return ResponseEntity.status(HttpStatus.OK_200).build();
 
+    }
+
+    @PutMapping("/username")
+    public ResponseEntity<Void> updateUsername(@Valid @RequestBody UsernameUpdateDto usernameUpdateDto,
+                                               Principal principal) {
+        userService.updateUsername(principal.getName(), usernameUpdateDto.getUsername());
+        return ResponseEntity.ok().build();
     }
 
     @PutMapping("/lang")

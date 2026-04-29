@@ -7,6 +7,8 @@
         <p class="text-muted mb-0">Search and inspect users across identity, verification, locale, and access-related fields.</p>
     </div>
 
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Updated.</div>
+
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-white p-0">
             <button class="btn btn-link btn-block text-left text-dark px-3 py-3"
@@ -21,6 +23,7 @@
         <div id="identityFiltersPanel" class="collapse show">
             <div class="card-body">
                 <form th:action="@{/auth/adm/pages/users}" method="get">
+                    <input type="hidden" name="size" th:value="${pageSize}" />
                     <div class="form-row">
                         <div class="form-group col-md-3">
                             <label for="id">User ID</label>
@@ -88,6 +91,7 @@
                     <input type="hidden" name="surname" th:value="${surname}" />
                     <input type="hidden" name="locale" th:value="${locale}" />
                     <input type="hidden" name="role" th:value="${role}" />
+                    <input type="hidden" name="size" th:value="${pageSize}" />
                     <div class="form-row">
                         <div class="form-group col-md-4 col-lg-2">
                             <label for="authProvider">Auth Provider</label>
@@ -160,9 +164,43 @@
         <div class="card-body d-flex justify-content-between align-items-center">
             <div>
                 <h5 class="card-title mb-1">Users</h5>
-                <p class="text-muted mb-0">Results are currently filtered in memory and ordered by newest created date first.</p>
+                <p class="text-muted mb-0" th:if="${userPage.totalElements == 0}">No results for the current filters.</p>
+                <p class="text-muted mb-0" th:if="${userPage.totalElements > 0}">
+                    Showing
+                    <span th:text="${userPage.number * userPage.size + 1}">1</span>-<span th:text="${userPage.number * userPage.size + #lists.size(users)}">25</span>
+                    of <span th:text="${userPage.totalElements}">0</span>, ordered by newest created date first.
+                </p>
             </div>
-            <span class="badge badge-primary" th:text="${#lists.size(users)}">0</span>
+            <div class="d-flex align-items-center">
+                <form th:action="@{/auth/adm/pages/users/usernames/generate}" method="post" class="mb-0 mr-3">
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Generate Missing Usernames</button>
+                </form>
+                <form th:action="@{/auth/adm/pages/users}" method="get" class="form-inline mb-0 mr-3">
+                    <input type="hidden" name="id" th:value="${id}" />
+                    <input type="hidden" name="username" th:value="${username}" />
+                    <input type="hidden" name="email" th:value="${email}" />
+                    <input type="hidden" name="mobile" th:value="${mobile}" />
+                    <input type="hidden" name="name" th:value="${name}" />
+                    <input type="hidden" name="surname" th:value="${surname}" />
+                    <input type="hidden" name="authProvider" th:value="${authProvider}" />
+                    <input type="hidden" name="locale" th:value="${locale}" />
+                    <input type="hidden" name="role" th:value="${role}" />
+                    <input type="hidden" name="activated" th:value="${activated}" />
+                    <input type="hidden" name="locked" th:value="${locked}" />
+                    <input type="hidden" name="blocked" th:value="${blocked}" />
+                    <input type="hidden" name="showCaptcha" th:value="${showCaptcha}" />
+                    <input type="hidden" name="emailVerified" th:value="${emailVerified}" />
+                    <input type="hidden" name="mobileVerified" th:value="${mobileVerified}" />
+                    <label for="size" class="small text-muted mb-0 mr-2">Per page</label>
+                    <select id="size" name="size" class="form-control form-control-sm" onchange="this.form.submit()">
+                        <option th:each="option : ${pageSizeOptions}"
+                                th:value="${option}"
+                                th:text="${option}"
+                                th:selected="${pageSize == option}">25</option>
+                    </select>
+                </form>
+                <span class="badge badge-primary" th:text="${userPage.totalElements}">0</span>
+            </div>
         </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -244,6 +282,30 @@
                 </tr>
                 </tbody>
             </table>
+        </div>
+        <div class="card-body border-top d-flex flex-column flex-md-row justify-content-between align-items-md-center"
+             th:if="${userPage.totalPages > 1}">
+            <div class="small text-muted mb-3 mb-md-0">
+                Page <span th:text="${userPage.number + 1}">1</span> of <span th:text="${userPage.totalPages}">1</span>
+            </div>
+            <nav aria-label="User results pages">
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item" th:classappend="${userPage.first} ? ' disabled'">
+                        <a class="page-link"
+                           th:href="@{/auth/adm/pages/users(id=${id},username=${username},email=${email},mobile=${mobile},name=${name},surname=${surname},authProvider=${authProvider},locale=${locale},role=${role},activated=${activated},locked=${locked},blocked=${blocked},showCaptcha=${showCaptcha},emailVerified=${emailVerified},mobileVerified=${mobileVerified},page=${userPage.number - 1},size=${pageSize})}">Previous</a>
+                    </li>
+                    <li class="page-item" th:each="pageNumber : ${pageNumbers}"
+                        th:classappend="${pageNumber == userPage.number} ? ' active'">
+                        <a class="page-link"
+                           th:href="@{/auth/adm/pages/users(id=${id},username=${username},email=${email},mobile=${mobile},name=${name},surname=${surname},authProvider=${authProvider},locale=${locale},role=${role},activated=${activated},locked=${locked},blocked=${blocked},showCaptcha=${showCaptcha},emailVerified=${emailVerified},mobileVerified=${mobileVerified},page=${pageNumber},size=${pageSize})}"
+                           th:text="${pageNumber + 1}">1</a>
+                    </li>
+                    <li class="page-item" th:classappend="${userPage.last} ? ' disabled'">
+                        <a class="page-link"
+                           th:href="@{/auth/adm/pages/users(id=${id},username=${username},email=${email},mobile=${mobile},name=${name},surname=${surname},authProvider=${authProvider},locale=${locale},role=${role},activated=${activated},locked=${locked},blocked=${blocked},showCaptcha=${showCaptcha},emailVerified=${emailVerified},mobileVerified=${mobileVerified},page=${userPage.number + 1},size=${pageSize})}">Next</a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 </th:block>

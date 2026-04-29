@@ -46,5 +46,27 @@ public class Utils {
                 .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
                 .toString();
     }
+
+    public static String generateRandomNumericString(int targetStringLength){
+        int leftLimit = 48; // numeral '0'
+        int rightLimit = 57; // numeral '9'
+        Random random = new Random();
+        return random.ints(leftLimit, rightLimit + 1)
+                     .filter(i -> (i >= 48 && i <= 57))
+                     .limit(targetStringLength)
+                     .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                     .toString();
+    }
+
+    public static String generateRandomString(int targetStringLength){
+        int leftLimit = 97; // letter 'a'
+        int rightLimit = 122; // letter 'z'
+        Random random = new Random();
+        return random.ints(leftLimit, rightLimit + 1)
+                     .filter(i -> (i >= 97 && i <= 122))
+                     .limit(targetStringLength)
+                     .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+                     .toString();
+    }
 }
 

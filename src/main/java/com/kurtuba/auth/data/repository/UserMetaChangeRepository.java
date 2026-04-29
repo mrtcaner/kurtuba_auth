@@ -26,4 +26,6 @@ public interface UserMetaChangeRepository extends CrudRepository<UserMetaChange,
             "and umc.executed = false and umc.userId = :userId and umc.updatedDate >= :afterDate")
     List<UserMetaChange> getUsersFailedMobileVerificationAttemptsAfterDate(String userId, Instant afterDate);
 
+    void deleteAllByExecutedIsFalseAndUserIdAndMetaOperationTypeIn(String userId, List<MetaOperationType> metaOperationTypes);
+
 }

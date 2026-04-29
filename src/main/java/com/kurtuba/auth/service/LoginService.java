@@ -16,11 +16,10 @@ public class LoginService {
     private final UserTokenService userTokenService;
     private final AuthenticationService authenticationService;
 
-    @Transactional
     public TokensResponseDto authenticateAndGetTokens(String emailMobile, String pass,
                                                       String registeredClientId, String registeredClientSecret) {
-            return getTokensForAuthenticatedUser(authenticationService.authenticate(emailMobile, pass),
-                    registeredClientId, registeredClientSecret);
+        User user = authenticationService.authenticate(emailMobile, pass);
+        return userTokenService.validateRegisteredClientAndGetTokens(user, registeredClientId, registeredClientSecret);
     }
 
     @Transactional

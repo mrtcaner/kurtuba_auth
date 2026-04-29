@@ -9,6 +9,9 @@ import com.kurtuba.auth.error.enums.ErrorEnum;
 import com.kurtuba.auth.error.exception.BusinessLogicException;
 import com.kurtuba.auth.service.UserRoleService;
 import com.kurtuba.auth.service.UserService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,11 +23,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 @Controller
 @RequestMapping("/auth/adm/pages/users")
 @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
 public class UserAdminPageController {
+
+    private static final int DEFAULT_PAGE_SIZE = 25;
+    private static final List<Integer> PAGE_SIZE_OPTIONS = List.of(25, 50, 100);
 
     private final UserService userService;
     private final UserRoleService userRoleService;
@@ -50,7 +57,12 @@ public class UserAdminPageController {
                            @RequestParam(name = "showCaptcha", required = false, defaultValue = "all") String showCaptcha,
                            @RequestParam(name = "emailVerified", required = false, defaultValue = "all") String emailVerified,
                            @RequestParam(name = "mobileVerified", required = false, defaultValue = "all") String mobileVerified,
+                           @RequestParam(name = "page", required = false, defaultValue = "0") int page,
+                           @RequestParam(name = "size", required = false, defaultValue = "25") int size,
                            Model model) {
+        int pageSize = PAGE_SIZE_OPTIONS.contains(size) ? size : DEFAULT_PAGE_SIZE;
+        int pageNumber = Math.max(page, 0);
+
         model.addAttribute("id", id);
         model.addAttribute("username", username);
         model.addAttribute("email", email);
@@ -67,8 +79,10 @@ public class UserAdminPageController {
         model.addAttribute("emailVerified", emailVerified);
         model.addAttribute("mobileVerified", mobileVerified);
         model.addAttribute("authProviders", AuthProviderType.values());
+        model.addAttribute("pageSize", pageSize);
+        model.addAttribute("pageSizeOptions", PAGE_SIZE_OPTIONS);
 
-        List<AdmUserDto> users = userService.searchAdmUsers(UserAdminSearchCriteria.builder()
+        UserAdminSearchCriteria criteria = UserAdminSearchCriteria.builder()
                 .id(id)
                 .username(username)
                 .email(email)
@@ -84,9 +98,19 @@ public class UserAdminPageController {
                 .showCaptcha(showCaptcha)
                 .emailVerified(emailVerified)
                 .mobileVerified(mobileVerified)
-                .build());
+                .build();
 
-        model.addAttribute("users", users);
+        Page<AdmUserDto> userPage = userService.searchAdmUsers(criteria,
+                PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdDate")));
+        if (userPage.getTotalPages() > 0 && pageNumber >= userPage.getTotalPages()) {
+            pageNumber = userPage.getTotalPages() - 1;
+            userPage = userService.searchAdmUsers(criteria,
+                    PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdDate")));
+        }
+
+        model.addAttribute("userPage", userPage);
+        model.addAttribute("users", userPage.getContent());
+        model.addAttribute("pageNumbers", buildPageNumbers(userPage));
         return "adm/users/index";
     }
 
@@ -117,6 +141,14 @@ public class UserAdminPageController {
         return "redirect:/auth/adm/pages/users/" + id;
     }
 
+    @PostMapping("/usernames/generate")
+    public String generateMissingUsernames(RedirectAttributes redirectAttributes) {
+        int generatedCount = userService.generateMissingUsernames();
+        redirectAttributes.addFlashAttribute("successMessage",
+                "Generated usernames for " + generatedCount + " users.");
+        return "redirect:/auth/adm/pages/users";
+    }
+
     @PostMapping("/{id}/security")
     public String updateSecurityAndActivity(@PathVariable String id,
                                             @RequestParam("activated") boolean activated,
@@ -128,5 +160,14 @@ public class UserAdminPageController {
         userService.updateAdminSecurityAndActivity(id, activated, locked, blocked, showCaptcha, failedLoginCount);
         redirectAttributes.addFlashAttribute("successMessage", "Security and activity updated.");
         return "redirect:/auth/adm/pages/users/" + id;
+    }
+
+    private List<Integer> buildPageNumbers(Page<?> page) {
+        if (page.getTotalPages() == 0) {
+            return List.of();
+        }
+        int start = Math.max(0, page.getNumber() - 2);
+        int end = Math.min(page.getTotalPages() - 1, page.getNumber() + 2);
+        return IntStream.rangeClosed(start, end).boxed().toList();
     }
 }

@@ -181,7 +181,7 @@ public class RegistrationServiceTest {
                     .createdDate(Instant.now())
                     .build();
 
-            when(userService.saveUser(any(User.class))).then(invocationOnMock -> {
+            lenient().when(userService.saveUser(any(User.class))).then(invocationOnMock -> {
                 User usr = invocationOnMock.getArgument(0);
                 assertEquals(usr.getName(), savedUser.getName());
                 assertEquals(usr.getSurname(), savedUser.getSurname());
@@ -255,6 +255,25 @@ public class RegistrationServiceTest {
             registrationDto.setVerificationByCode(false);
             String metaChangeId = registrationService.register(registrationDto).getId();
             assertEquals(metaChangeId, emailActivationLinkUserMetaChange.getId());
+        }
+
+        @Test
+        public void createUser_whenUsernameMissing_thenGeneratesUsernameAndKeepsChangeAllowed() {
+            registrationDto.setUsername(null);
+            when(userService.generateUniqueUsername()).thenReturn("user_ab123456");
+            doNothing().when(messageJobService).sendAccountActivationCodeMail(anyString(), anyString(), anyString(),
+                    nullable(String.class));
+            when(userService.saveUser(any(User.class))).then(invocationOnMock -> {
+                User user = invocationOnMock.getArgument(0);
+                assertEquals("user_ab123456", user.getUsername());
+                assertTrue(user.getUserSetting().isCanChangeUsername());
+                user.setId("1");
+                return user;
+            });
+
+            String metaChangeId = registrationService.register(registrationDto).getId();
+
+            assertEquals(emailActivationCodeUserMetaChange.getId(), metaChangeId);
         }
 
     }
@@ -396,10 +415,13 @@ public class RegistrationServiceTest {
                             .createdDate(Instant.now())
                             .build()));
             doAnswer(invocation -> invocation.getArgument(0)).when(userService).saveUser(any(User.class));
+            when(userService.generateUniqueUsername()).thenReturn("user_cd123456");
             doAnswer(invocation -> invocation.getArgument(0)).when(userRoleService).create(any(UserRole.class));
             User returnedUser = spyRegistrationService.registerByAnotherProvider(providerDto);
 
             assertEquals(decodedRegistration.getEmail(), returnedUser.getEmail());
+            assertEquals("user_cd123456", returnedUser.getUsername());
+            assertTrue(returnedUser.getUserSetting().isCanChangeUsername());
             assertTrue(returnedUser.isEmailVerified());
             assertFalse(new BCryptPasswordEncoder().matches(decodedRegistration.getPassword(), returnedUser.getPassword()));
         }

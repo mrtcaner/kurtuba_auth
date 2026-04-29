@@ -125,7 +125,12 @@ public class RegistrationService {
 
         User user = userMapper.maptoUser(registrationDto);
         normalizeUserLocalization(user);
-        user.getUserSetting().setCanChangeUsername(!StringUtils.hasLength(user.getUsername()));
+        boolean generatedUsername = false;
+        if (!StringUtils.hasLength(user.getUsername())) {
+            user.setUsername(userService.generateUniqueUsername());
+            generatedUsername = true;
+        }
+        user.getUserSetting().setCanChangeUsername(generatedUsername);
         user.getUserSetting().setCreatedDate(Instant.now());
         user.getUserSetting().setUser(user);
 
@@ -209,11 +214,7 @@ public class RegistrationService {
             normalizeUserLocalization(user);
             user.setEmailVerified(true);
             user.setPassword(new BCryptPasswordEncoder().encode(UUID.randomUUID().toString()));
-            /*String provisionalUsername = user.getEmail().split("@")[0];
-            if (provisionalUsername.length() > 25) {
-                provisionalUsername = provisionalUsername.substring(0, 25);
-            }
-            user.setUsername(provisionalUsername + "." + generateRandomAlphanumericString(6));*/
+            user.setUsername(userService.generateUniqueUsername());
             user.getUserSetting().setCanChangeUsername(true);
             user.getUserSetting().setCreatedDate(Instant.now());
             user.getUserSetting().setUser(user);

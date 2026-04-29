@@ -78,10 +78,12 @@ The user admin pages support:
 
 - searching users by id, username, email, mobile, name, surname, auth provider, locale, and role
 - filtering by activated, locked, blocked, captcha, email-verified, and mobile-verified state
+- paging user search results with selectable page sizes
 - viewing a user detail page
 - adding roles to a user
 - removing roles from a user
 - updating user security/activity flags
+- generating usernames for existing users that do not have one
 
 Relevant files:
 

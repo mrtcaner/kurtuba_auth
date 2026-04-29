@@ -81,6 +81,7 @@ The service’s capabilities can be grouped into the following areas:
 The service currently includes support for:
 
 - User registration with email and/or mobile details
+- Automatic username generation when registration does not provide one
 - Account activation by verification code or verification link
 - Registration via external identity providers
 - User login with client-aware token issuance
@@ -92,6 +93,7 @@ The service currently includes support for:
 - Password reset by code and by link
 - Email and mobile verification flows
 - User locale and profile-related updates
+- Username update and guarded email/mobile contact deletion
 - FCM token registration and removal
 - Admin token block management
 - Localization-related administration

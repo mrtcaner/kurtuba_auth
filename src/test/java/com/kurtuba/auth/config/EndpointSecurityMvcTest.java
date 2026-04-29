@@ -10,6 +10,7 @@ import com.kurtuba.adm.controller.OAuthClientAdminPageController;
 import com.kurtuba.adm.controller.TokenAdminPageController;
 import com.kurtuba.adm.controller.TokenManagementController;
 import com.kurtuba.adm.controller.UserAdminPageController;
+import com.kurtuba.adm.data.dto.AdmUserDto;
 import com.kurtuba.adm.data.dto.UserAdminSearchCriteria;
 import com.kurtuba.auth.controller.JwksController;
 import com.kurtuba.auth.controller.LoginController;
@@ -64,6 +65,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -243,6 +245,8 @@ class EndpointSecurityMvcTest {
         when(userService.getUserByEmail(anyString())).thenReturn(Optional.of(user()));
         when(userService.getUsersByIds(any())).thenReturn(List.of(user()));
         when(userService.searchUsers(any(UserAdminSearchCriteria.class))).thenReturn(List.of(user()));
+        when(userService.searchAdmUsers(any(UserAdminSearchCriteria.class), any()))
+                .thenReturn(new PageImpl<>(List.of(admUser())));
         when(userService.updateAdminSecurityAndActivity(anyString(), anyBoolean(), anyBoolean(), anyBoolean(), anyBoolean(), anyInt()))
                 .thenReturn(user());
         when(userMapper.mapToUserDto(any(User.class))).thenReturn(userDto());
@@ -300,6 +304,7 @@ class EndpointSecurityMvcTest {
                 .thenReturn(UserMetaChange.builder().id("umc-email-link").build());
         when(userService.verifyMobileByCode(anyString(), anyString())).thenReturn(null);
         doNothing().when(userService).updateUserPersonalInfo(anyString(), any());
+        doNothing().when(userService).updateUsername(anyString(), anyString());
         doNothing().when(userService).updateUserLang(anyString(), anyString());
         doNothing().when(userService).upsertUserFcmToken(anyString(), anyString(), anyString(), anyString());
         doNothing().when(logoutService).doLogout(anyString());
@@ -314,6 +319,26 @@ class EndpointSecurityMvcTest {
         properties.setCapacity(1);
         properties.setRefill(Duration.ofMinutes(1));
         return properties;
+    }
+
+    private AdmUserDto admUser() {
+        User user = user();
+        return AdmUserDto.builder()
+                .id(user.getId())
+                .name(user.getName())
+                .surname(user.getSurname())
+                .email(user.getEmail())
+                .mobile(user.getMobile())
+                .username(user.getUsername())
+                .authProvider(user.getAuthProvider())
+                .activated(user.isActivated())
+                .locked(user.isLocked())
+                .blocked(user.isBlocked())
+                .showCaptcha(user.isShowCaptcha())
+                .emailVerified(user.isEmailVerified())
+                .mobileVerified(user.isMobileVerified())
+                .createdDate(user.getCreatedDate())
+                .build();
     }
 
     @TestConfiguration
@@ -602,6 +627,9 @@ class EndpointSecurityMvcTest {
                                 }
                                 """))
                 .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete(USER_BASE + "/email"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -646,12 +674,27 @@ class EndpointSecurityMvcTest {
                                 """))
                 .andExpect(status().isUnauthorized());
 
+        mockMvc.perform(delete(USER_BASE + "/email"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(delete(USER_BASE + "/mobile"))
+                .andExpect(status().isUnauthorized());
+
         mockMvc.perform(put(USER_BASE + "/personal-info")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "name": "Alice",
                                   "surname": "Test"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(put(USER_BASE + "/username")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "username": "alice_test"
                                 }
                                 """))
                 .andExpect(status().isUnauthorized());

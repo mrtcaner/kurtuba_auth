@@ -53,6 +53,7 @@ Important behavior:
 - at least one contact method must exist
 - preferred verification contact must be consistent with provided contact data
 - duplicate email/mobile/username is rejected
+- if `username` is omitted, the service generates a unique username and marks it as changeable once
 - locale must already exist in supported locales
 - the default `USER` role is assigned
 
@@ -283,6 +284,15 @@ Handles forgot-password form submission and sends a reset link.
 
 Initiates an email-change flow.
 
+### `DELETE /auth/user/email`
+
+Deletes the authenticated user's email contact.
+
+Important behavior:
+- the account must remain with at least one contact method
+- deleting a verified contact requires another verified contact to remain
+- pending email-change metadata is removed
+
 ### `PUT /auth/user/email/verify`
 
 Verifies email by code.
@@ -295,6 +305,15 @@ Verifies email by link when that flow is used.
 
 Initiates a mobile-change flow.
 
+### `DELETE /auth/user/mobile`
+
+Deletes the authenticated user's mobile contact.
+
+Important behavior:
+- the account must remain with at least one contact method
+- deleting a verified contact requires another verified contact to remain
+- pending mobile-change metadata is removed
+
 ### `PUT /auth/user/mobile/verify`
 
 Verifies mobile by code.
@@ -302,6 +321,19 @@ Verifies mobile by code.
 ### `PUT /auth/user/personal-info`
 
 Updates user personal/profile fields.
+
+### `PUT /auth/user/username`
+
+Updates the authenticated user's username.
+
+Request body:
+- `username`
+
+Important behavior:
+- the requested username must pass username validation
+- duplicate usernames are rejected
+- the update is allowed only when the user's settings still permit username change
+- after a successful change, the user cannot change username again unless that flag is reset administratively
 
 ### `PUT /auth/user/lang`
 

@@ -28,6 +28,9 @@ public interface UserRepository extends JpaRepository<User, String>, JpaSpecific
 
 	Optional<User> getUserByMobile(String mobile);
 
+	@Query("SELECT u FROM User u WHERE u.username IS NULL OR u.username = ''")
+	List<User> findUsersWithoutUsername();
+
     @Query("""
                 SELECT u FROM User u
                             inner join UserRole ur on ur.user.id = u.id
