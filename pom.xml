@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.kurtuba</groupId>
-	<artifactId>kurtuba_app_auth</artifactId>
+	<artifactId>kurtuba_auth</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>kurtuba_app_auth</name>
+	<name>kurtuba_auth</name>
 	<description>Kurtuba Auth Server</description>
 	<properties>
 		<java.version>21</java.version>
