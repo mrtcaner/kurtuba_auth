@@ -5,6 +5,7 @@ import com.kurtuba.auth.data.dto.SMSVerificationCheckDto;
 import com.kurtuba.auth.data.dto.SMSVerificationDeleteDto;
 import com.kurtuba.auth.data.dto.SMSVerificationRequestDto;
 import com.kurtuba.auth.service.ISMSService;
+import com.twilio.rest.verify.v2.service.Verification;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -35,23 +36,23 @@ public class SmsController {
     }
 
     @PostMapping("")
-    public ResponseEntity sendSMS(@Valid @RequestBody SMSRequestDto smsRequestDto) {
+    public ResponseEntity<Object> sendSMS(@Valid @RequestBody SMSRequestDto smsRequestDto) {
         return ResponseEntity.ok(smsService.sendSMS(smsRequestDto.getRecipient(), smsRequestDto.getSender(),
                 smsRequestDto.getMessage()));
     }
 
     @PostMapping("/verification")
-    public ResponseEntity sendVerificationSMS(@Valid @RequestBody SMSVerificationRequestDto smsRequestDto) {
+    public ResponseEntity<Verification> sendVerificationSMS(@Valid @RequestBody SMSVerificationRequestDto smsRequestDto) {
         return ResponseEntity.ok(smsService.sendVerificationSMS(smsRequestDto.getRecipient()));
     }
 
     @PutMapping("/verification")
-    public ResponseEntity checkVerification(@Valid @RequestBody SMSVerificationCheckDto smsRequestDto) {
+    public ResponseEntity<Boolean> checkVerification(@Valid @RequestBody SMSVerificationCheckDto smsRequestDto) {
         return ResponseEntity.ok(smsService.checkVerification(smsRequestDto.getRecipient(), smsRequestDto.getCode()));
     }
 
     @DeleteMapping("/verification")
-    public ResponseEntity deleteVerification(@Valid @RequestBody SMSVerificationDeleteDto smsRequestDto) {
+    public ResponseEntity<Object> deleteVerification(@Valid @RequestBody SMSVerificationDeleteDto smsRequestDto) {
         return ResponseEntity.ok(smsService.deleteVerification(smsRequestDto.getSid()));
     }
 

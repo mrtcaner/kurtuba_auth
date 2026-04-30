@@ -1,0 +1,18 @@
+spring:
+  data:
+    redis:
+      repositories:
+        enabled: false
+
+kurtuba:
+  logging:
+    aspect:
+      enabled: true
+  rate-limit:
+    enabled: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true

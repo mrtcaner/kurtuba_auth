@@ -63,6 +63,8 @@ public class TokenAdminPageController {
         }
 
         model.addAttribute("tokens", tokens);
+        model.addAttribute("tokenCount", tokens.size());
+        model.addAttribute("hasTokens", !tokens.isEmpty());
         model.addAttribute("tokenByJti", tokenByJti.orElse(null));
         model.addAttribute("jtiBlocked", jtiBlocked);
         return "adm/tokens/index";

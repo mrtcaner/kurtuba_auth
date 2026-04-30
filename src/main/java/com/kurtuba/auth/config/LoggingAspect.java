@@ -58,7 +58,8 @@ public class LoggingAspect {
         this.objectMapper = objectMapper;
     }
 
-    @Around("(execution(* com.kurtuba..service..*(..)) || execution(* com.kurtuba..controller..*(..))) && " +
+    @Around("((within(com.kurtuba..service..*) && execution(* *(..))) || " +
+            "(within(com.kurtuba..controller..*) && execution(* *(..)))) && " +
             "!within(com.kurtuba.auth.scheduled..*) && " +
             "!execution(* com.kurtuba.auth.service.MessageJobService.findByStateAndContactTypeAndSendAfterDateBefore(" +
             "..)) && " +

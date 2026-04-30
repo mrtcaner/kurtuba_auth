@@ -13,7 +13,6 @@ import com.kurtuba.auth.utils.EmailUtils;
 import com.kurtuba.auth.utils.annotation.MobileNumber;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -400,7 +399,7 @@ public class MessageJobService {
     public void sendUserMetaChangeNotificationSMS(String recipient, MetaOperationType metaOperationType, String lang,
                                                   String userMetaChangeId) {
         // todo implement send sms
-        throw new NotImplementedException("Feature incomplete. Contact assistance.");
+        throw new UnsupportedOperationException("Feature incomplete. Contact assistance.");
     }
 
     public MessageJobStateType findByUserMetaChangeIdAndUserId(String userMetaChangeId, String userId) {

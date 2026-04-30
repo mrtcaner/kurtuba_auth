@@ -114,7 +114,7 @@
                         <h5 class="card-title mb-1">Issued Tokens</h5>
                         <p class="text-muted mb-0">All tokens for the selected user after client filter and sort.</p>
                     </div>
-                    <span class="badge badge-primary" th:text="${#lists.size(tokens)}">0</span>
+                    <span class="badge badge-primary" th:text="${tokenCount}">0</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
@@ -132,7 +132,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:if="${#lists.isEmpty(tokens)}">
+                        <tr th:if="${!hasTokens}">
                             <td colspan="9" class="text-center text-muted py-4">No tokens to show.</td>
                         </tr>
                         <tr th:each="token : ${tokens}">

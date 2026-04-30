@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/auth/adm/pages/push-notifications")
 @PreAuthorize("hasAuthority('SCOPE_ADMIN')")
@@ -35,14 +37,17 @@ public class PushNotificationAdminPageController {
         model.addAttribute("firebaseInstallationId", firebaseInstallationId);
         model.addAttribute("fcmToken", fcmToken);
 
-        model.addAttribute("fcmTokens", userService.searchAdmUserFcmTokens(AdmUserFcmTokenSearchCriteria.builder()
+        List<?> fcmTokens = userService.searchAdmUserFcmTokens(AdmUserFcmTokenSearchCriteria.builder()
                 .userId(userId)
                 .userEmail(userEmail)
                 .userMobile(userMobile)
                 .userRole(userRole)
                 .firebaseInstallationId(firebaseInstallationId)
                 .fcmToken(fcmToken)
-                .build()));
+                .build());
+        model.addAttribute("fcmTokens", fcmTokens);
+        model.addAttribute("fcmTokenCount", fcmTokens.size());
+        model.addAttribute("hasFcmTokens", !fcmTokens.isEmpty());
         return "adm/push-notifications/index";
     }
 }

@@ -2,7 +2,7 @@
 
 `kurtuba-auth` is a Java 21 Spring Boot authentication server. It provides user registration, account activation, login, JWT access-token issuance, refresh-token rotation, logout/token blocking, password reset, JWKS publishing, service-client authentication, and supporting account-security flows.
 
-Technically, the service is built around Spring Security, Spring Data JPA, JWT/JWKS, persisted token state, JDBC-backed session support, relational persistence, and optional integrations for mail, SMS, Redis, and scheduled message handling.
+Technically, the service is built around Spring Security, Spring Data JPA, JWT/JWKS, persisted token state, JDBC-backed session support, relational persistence, and optional integrations for mail, SMS, Redis, and scheduled message handling. The service also has a GraalVM native-image transition path that keeps the important runtime surface active, including admin pages, Swagger UI, rate limiting, Redis integration, mail, SMS, and logging.
 
 This repository is relevant if you are looking for:
 
@@ -14,6 +14,7 @@ This repository is relevant if you are looking for:
 - service-to-service token issuance
 - JWK-based signing key storage and rotation
 - a Spring Boot auth server backed by PostgreSQL and Flyway
+- a Spring Boot auth service with a documented GraalVM native-image migration path
 
 ## Documentation
 
@@ -25,6 +26,7 @@ This repository is relevant if you are looking for:
 - [Key Management](docs/key-management.md)
 - [Configuration Reference](docs/configuration.md)
 - [PostgreSQL Setup](docs/postgresql.md)
+- [GraalVM Native Transition](docs/graalvm-transition.md)
 - [Demo Defaults vs Production Requirements](docs/demo-vs-production.md)
 - [API Reference](docs/api.md)
 
@@ -42,6 +44,7 @@ This repository is licensed under the Apache License 2.0. See [LICENSE](LICENSE)
 - Token blocking and revocation
 - RSA-oriented JWK/JWE signing-key packaging with rollover support
 - PostgreSQL-backed local, test, and deployment paths
+- GraalVM native-image build support with documented migration notes
 
 ## Notes
 

@@ -41,7 +41,7 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:if="${#lists.isEmpty(supportedLanguages)}">
+                            <tr th:if="${!hasSupportedLanguages}">
                                 <td colspan="3" class="text-center text-muted py-4">No supported languages configured.</td>
                             </tr>
                             <tr th:each="language : ${supportedLanguages}">

@@ -65,7 +65,7 @@
                 <h5 class="card-title mb-1">Registered FCM Tokens</h5>
                 <p class="text-muted mb-0">Newest updates are shown first.</p>
             </div>
-            <span class="badge badge-primary" th:text="${#lists.size(fcmTokens)}">0</span>
+            <span class="badge badge-primary" th:text="${fcmTokenCount}">0</span>
         </div>
         <div class="table-responsive">
             <table class="table table-hover mb-0">
@@ -82,7 +82,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr th:if="${#lists.isEmpty(fcmTokens)}">
+                <tr th:if="${!hasFcmTokens}">
                     <td colspan="8" class="text-center text-muted py-4">No FCM tokens found.</td>
                 </tr>
                 <tr th:each="row : ${fcmTokens}">
@@ -90,7 +90,7 @@
                     <td class="align-top" th:text="${row.userEmail != null ? row.userEmail : '-'}">user@example.com</td>
                     <td class="align-top" th:text="${row.userMobile != null ? row.userMobile : '-'}">+905...</td>
                     <td class="align-top">
-                        <span th:if="${row.userRoles == null || #lists.isEmpty(row.userRoles)}" class="text-muted">-</span>
+                        <span th:if="${!row.hasUserRoles}" class="text-muted">-</span>
                         <div th:each="role : ${row.userRoles}">
                             <span class="badge badge-light" th:text="${role}">USER</span>
                         </div>

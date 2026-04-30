@@ -57,7 +57,7 @@ public class UserController {
      * @return
      */
     @GetMapping("/info")
-    public ResponseEntity getUserInfo(JwtAuthenticationToken authentication) {
+    public ResponseEntity<UserDto> getUserInfo(JwtAuthenticationToken authentication) {
         if (authentication == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED_401).build();
         }
@@ -175,7 +175,7 @@ public class UserController {
      * @return
      */
     @PutMapping("/password")
-    public ResponseEntity changePassword(@Valid @RequestBody PasswordChangeDto passwordChangeDto, Principal principal) {
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody PasswordChangeDto passwordChangeDto, Principal principal) {
         userService.changePassword(passwordChangeDto, principal.getName());
         return ResponseEntity.status(HttpStatus.NO_CONTENT_204).build();
     }
@@ -187,7 +187,8 @@ public class UserController {
      * @return
      */
     @PostMapping("/password/reset")
-    public ResponseEntity requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto passwordResetRequestDto) {
+    public ResponseEntity<UserMetaChangeDto> requestPasswordReset(
+            @Valid @RequestBody PasswordResetRequestDto passwordResetRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED_201)
                              .body(UserMetaChangeDto.builder()
                                                     .userMetaChangeId(userService.requestResetPassword(
@@ -206,7 +207,8 @@ public class UserController {
      * @return
      */
     @PutMapping("/password/reset/code")
-    public ResponseEntity resetPasswordByCode(@Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
+    public ResponseEntity<TokensResponseDto> resetPasswordByCode(
+            @Valid @RequestBody PasswordResetByCodeDto passwordResetByCodeDto) {
         TokensResponseDto tokens = userService.resetPasswordByCode(passwordResetByCodeDto);
         if (tokens != null) {
             return ResponseEntity.status(HttpStatus.CREATED_201).body(tokens);
@@ -342,7 +344,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/email/verification")
-    public ResponseEntity requestChangeEmail(
+    public ResponseEntity<UserMetaChangeDto> requestChangeEmail(
             @Valid @RequestBody EmailVerificationRequestDto emailVerificationRequestDto, Principal principal) {
         return ResponseEntity.status(HttpStatus.CREATED_201)
                              .body(UserMetaChangeDto.builder()
@@ -362,8 +364,8 @@ public class UserController {
      * @return
      */
     @PutMapping("/email/verification/code")
-    public ResponseEntity verifyEmailByCode(@Valid @RequestBody EmailVerificationDto verificationDto,
-                                            Principal principal) {
+    public ResponseEntity<Void> verifyEmailByCode(@Valid @RequestBody EmailVerificationDto verificationDto,
+                                                  Principal principal) {
         userService.verifyEmailByCode(principal.getName(), verificationDto.getCode());
         return ResponseEntity.ok().build();
     }
@@ -409,7 +411,7 @@ public class UserController {
      * @return
      */
     @PostMapping("/mobile/verification")
-    public ResponseEntity requestChangeMobile(
+    public ResponseEntity<UserMetaChangeDto> requestChangeMobile(
             @Valid @RequestBody MobileVerificationRequestDto mobileVerificationRequestDto, Principal principal) {
         return ResponseEntity.status(HttpStatus.CREATED_201)
                              .body(UserMetaChangeDto.builder()
@@ -440,8 +442,8 @@ public class UserController {
      * @return
      */
     @PutMapping("/mobile/verification/code")
-    public ResponseEntity verifyMobileByCode(@Valid @RequestBody MobileVerificationDto verificationDto,
-                                             Principal principal) {
+    public ResponseEntity<Void> verifyMobileByCode(@Valid @RequestBody MobileVerificationDto verificationDto,
+                                                   Principal principal) {
         userService.verifyMobileByCode(principal.getName(), verificationDto.getCode());
         return ResponseEntity.ok().build();
     }
@@ -454,8 +456,8 @@ public class UserController {
      * @return
      */
     @PutMapping("/personal-info")
-    public ResponseEntity updatePersonalInfo(@Valid @RequestBody UserPersonalInfoDto userPersonalInfoDto,
-                                             Principal principal) {
+    public ResponseEntity<Void> updatePersonalInfo(@Valid @RequestBody UserPersonalInfoDto userPersonalInfoDto,
+                                                   Principal principal) {
         userService.updateUserPersonalInfo(principal.getName(), userPersonalInfoDto);
         return ResponseEntity.status(HttpStatus.OK_200).build();
 

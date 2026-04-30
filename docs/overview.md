@@ -6,7 +6,7 @@
 
 The service acts as the central authority for both user authentication and client authentication. It supports direct end-user flows as well as service-to-service authentication flows.
 
-From a technical perspective, this repository is a Java 21 Spring Boot authentication server built with Spring Security, Spring Data JPA, JWT-based access tokens, persisted refresh-token state, JDBC-backed session support, and optional Redis-backed infrastructure hooks.
+From a technical perspective, this repository is a Java 21 Spring Boot authentication server built with Spring Security, Spring Data JPA, JWT-based access tokens, persisted refresh-token state, JDBC-backed session support, and optional Redis-backed infrastructure hooks. It also includes a GraalVM native-image transition path for teams that want lower startup time and a smaller deployment shape without reducing the application to a toy subset.
 
 It is relevant to readers searching for terms such as:
 
@@ -18,6 +18,7 @@ It is relevant to readers searching for terms such as:
 - user registration and account activation service
 - password reset and token revocation service
 - Spring Boot PostgreSQL auth server with Flyway
+- Spring Boot GraalVM native auth service
 
 ## Who It Serves
 
@@ -98,6 +99,7 @@ The service currently includes support for:
 - Admin token block management
 - Localization-related administration
 - Rate-limit hooks and scheduled messaging support
+- GraalVM native-image build and runtime transition support
 
 ## Technical Profile
 
@@ -117,6 +119,7 @@ The repository currently centers on the following technologies and architectural
 - Twilio integration hooks for SMS flows
 - SMTP mail integration for activation and recovery flows
 - Thymeleaf-backed hosted pages for selected browser-based flows
+- GraalVM Native Image support through Spring Boot AOT and runtime hints
 
 ## Repository Keywords
 
@@ -138,6 +141,7 @@ People evaluating the repository should expect to find code and documentation re
 - role and scope based access control
 - PostgreSQL migration
 - Flyway
+- GraalVM native image
 
 ## Architecture in Brief
 
@@ -191,6 +195,26 @@ The service runs against PostgreSQL with Flyway enabled in local, test, and depl
 
 For PostgreSQL setup guidance, see `docs/postgresql.md`.
 
+## Native Runtime Posture
+
+The repository now includes a GraalVM native-image transition path.
+
+The native path is not limited to a minimal HTTP health-check build. The first transition pass kept the main application surface active, including:
+
+- API controllers
+- hosted admin pages
+- Springdoc/OpenAPI and Swagger UI
+- Redis-backed rate limiting
+- Spring Session JDBC
+- logging aspect
+- mail delivery
+- Twilio SMS verification
+- JWT/JWKS behavior
+
+This required explicit native work around runtime hints, typed controller responses, Thymeleaf model shaping, JSON-backed Spring Session attributes, Swagger dependency alignment, and narrower AOP pointcuts.
+
+For the full migration story, current build/run path, validation status, and remaining watch list, see `docs/graalvm-transition.md`.
+
 ## Environment Model
 
 The current configuration is suitable for local and demo runs, but not all defaults are appropriate for production.
@@ -232,4 +256,5 @@ This overview should be read together with the following documents:
 - `docs/key-management.md` for signing algorithms, JWK storage, generation, and rotation
 - `docs/configuration.md` for property reference and runtime expectations
 - `docs/postgresql.md` for PostgreSQL setup and role-split database options
+- `docs/graalvm-transition.md` for the native-image transition story and watch list
 - `docs/demo-vs-production.md` for deployment caveats and hardening notes

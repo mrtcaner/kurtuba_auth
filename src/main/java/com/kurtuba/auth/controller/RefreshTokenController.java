@@ -3,6 +3,7 @@ package com.kurtuba.auth.controller;
 
 import com.kurtuba.auth.data.dto.TokenRefreshRequestDto;
 import com.kurtuba.auth.data.dto.TokenRefreshWebRequestDto;
+import com.kurtuba.auth.data.dto.TokensResponseDto;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
 import com.kurtuba.auth.error.enums.ErrorEnum;
@@ -46,7 +47,7 @@ public class RefreshTokenController {
      * @return
      */
     @PostMapping("/token")
-    public ResponseEntity refreshTokens(@Valid @RequestBody TokenRefreshRequestDto tokenRefreshRequestDto) {
+    public ResponseEntity<TokensResponseDto> refreshTokens(@Valid @RequestBody TokenRefreshRequestDto tokenRefreshRequestDto) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(userTokenService.refreshUserTokens(tokenRefreshRequestDto));
     }
@@ -59,8 +60,9 @@ public class RefreshTokenController {
      * @return
      */
     @PostMapping("/web/token")
-    public ResponseEntity refreshWebClientWithCookieTokens(@Valid @RequestBody TokenRefreshWebRequestDto tokenRefreshWebRequestDto,
-                                                 HttpServletRequest request) {
+    public ResponseEntity<String> refreshWebClientWithCookieTokens(
+            @Valid @RequestBody TokenRefreshWebRequestDto tokenRefreshWebRequestDto,
+            HttpServletRequest request) {
         // find the jwt cookie
         String jwt = request.getCookies() == null ? null : Arrays
                 .stream(request.getCookies())

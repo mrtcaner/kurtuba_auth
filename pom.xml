@@ -15,6 +15,8 @@
 	<description>Kurtuba Auth Server</description>
 	<properties>
 		<java.version>21</java.version>
+		<native.maven.plugin.version>0.10.6</native.maven.plugin.version>
+		<springdoc.version>2.8.17</springdoc.version>
 		<maven.surefire.version>3.5.2</maven.surefire.version>
 		<maven.failsafe.version>3.5.2</maven.failsafe.version>
 		<maven.build.helper.version>3.6.0</maven.build.helper.version>
@@ -165,7 +167,7 @@
 		<dependency>
 			<groupId>org.springdoc</groupId>
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-			<version>2.5.0</version>
+			<version>${springdoc.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.googlecode.libphonenumber</groupId>
@@ -213,6 +215,7 @@
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
+                    <parameters>true</parameters>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>org.projectlombok</groupId>
@@ -414,6 +417,28 @@
 	</build>
 
 	<profiles>
+		<profile>
+			<id>native</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.graalvm.buildtools</groupId>
+						<artifactId>native-maven-plugin</artifactId>
+						<version>${native.maven.plugin.version}</version>
+						<extensions>true</extensions>
+						<executions>
+							<execution>
+								<id>build-native</id>
+								<goals>
+									<goal>compile-no-fork</goal>
+								</goals>
+								<phase>package</phase>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<profile>
 			<id>docker-image</id>
 			<build>

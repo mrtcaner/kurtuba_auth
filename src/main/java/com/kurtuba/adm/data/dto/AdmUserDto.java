@@ -35,4 +35,8 @@ public class AdmUserDto {
     private Instant lastLoginAttempt;
     private Instant createdDate;
     private Instant lastTokenCreatedDate;
+
+    public boolean hasUserRoles() {
+        return userRoles != null && !userRoles.isEmpty();
+    }
 }

@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessLogicException.class)
-    public ResponseEntity<?> businessLogicException(BusinessLogicException ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> businessLogicException(BusinessLogicException ex, WebRequest request) {
         LOGGER.warn("Business logic exception for request {} with code {}", request.getDescription(false), ex.getErrorCode(), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<?> resourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> resourceNotFoundException(ResourceNotFoundException ex, WebRequest request) {
         LOGGER.warn("Resource not found for request {}", request.getDescription(false), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({ConstraintViolationException.class})
-    public ResponseEntity<?> constraintViolationException(ConstraintViolationException ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> constraintViolationException(ConstraintViolationException ex, WebRequest request) {
         LOGGER.warn("Constraint violation for request {}", request.getDescription(false), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
@@ -71,7 +71,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({HandlerMethodValidationException.class})
-    public ResponseEntity<?> handlerMethodValidationException(HandlerMethodValidationException ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> handlerMethodValidationException(HandlerMethodValidationException ex, WebRequest request) {
         LOGGER.warn("Handler method validation failed for request {}", request.getDescription(false), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
@@ -86,7 +86,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({MethodArgumentNotValidException.class})
-    public ResponseEntity<?> methodArgumentNotValidException(MethodArgumentNotValidException ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> methodArgumentNotValidException(MethodArgumentNotValidException ex, WebRequest request) {
         LOGGER.warn("Method argument validation failed for request {}", request.getDescription(false), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()
@@ -101,7 +101,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BusinessLogicError.class)
-    public ResponseEntity<?> businessLogicError(BusinessLogicError ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> businessLogicError(BusinessLogicError ex, WebRequest request) {
         LOGGER.error("Business logic error for request {} with code {}", request.getDescription(false), ex.getErrorCode(), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()

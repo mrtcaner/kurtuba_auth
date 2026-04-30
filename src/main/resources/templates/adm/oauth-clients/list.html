@@ -27,14 +27,14 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:if="${#lists.isEmpty(clients)}">
+                    <tr th:if="${!hasClients}">
                         <td colspan="6" class="text-center text-muted py-4">No OAuth clients found.</td>
                     </tr>
                     <tr th:each="client : ${clients}">
                         <td th:text="${client.clientName}">demo-web-client</td>
                         <td><code th:text="${client.clientId}">demo-web-client</code></td>
                         <td th:text="${client.clientType}">WEB</td>
-                        <td th:text="${client.scopeEnabled and client.scopes != null and !client.scopes.isEmpty() ? #strings.arrayJoin(client.scopes.toArray(), ', ') : 'Scopes disabled'}">USER</td>
+                        <td th:text="${client.scopesDisplay}">USER</td>
                         <td th:text="${client.accessTokenTtlMinutes + ' min'}">60 min</td>
                         <td class="text-right">
                             <a class="btn btn-sm btn-outline-secondary"

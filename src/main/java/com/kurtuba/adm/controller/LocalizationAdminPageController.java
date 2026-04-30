@@ -59,7 +59,7 @@ public class LocalizationAdminPageController {
         model.addAttribute("filterLang", filterLang);
         model.addAttribute("filterKey", filterKey);
         model.addAttribute("filterMessage", filterMessage);
-        model.addAttribute("messages", resolveMessages(filterLang, filterKey, filterMessage));
+        addMessagesModel(model, resolveMessages(filterLang, filterKey, filterMessage));
         if (!model.containsAttribute("createForm")) {
             model.addAttribute("createForm", LocalizationMessageDto.builder().build());
         }
@@ -75,7 +75,7 @@ public class LocalizationAdminPageController {
                                      Model model,
                                      RedirectAttributes redirectAttributes) {
         if (bindingResult.hasErrors()) {
-            model.addAttribute("messages", resolveMessages(filterLang, filterKey, filterMessage));
+            addMessagesModel(model, resolveMessages(filterLang, filterKey, filterMessage));
             return "adm/localization/messages";
         }
 
@@ -133,7 +133,9 @@ public class LocalizationAdminPageController {
 
     @GetMapping("/languages")
     public String languagesPage(Model model) {
-        model.addAttribute("supportedLanguages", localizationSupportedLangRepository.findAllByOrderByLanguageCodeAsc());
+        List<LocalizationSupportedLang> supportedLanguages = localizationSupportedLangRepository.findAllByOrderByLanguageCodeAsc();
+        model.addAttribute("supportedLanguages", supportedLanguages);
+        model.addAttribute("hasSupportedLanguages", !supportedLanguages.isEmpty());
         return "adm/localization/languages";
     }
 
@@ -167,7 +169,9 @@ public class LocalizationAdminPageController {
 
     @GetMapping("/countries")
     public String countriesPage(Model model) {
-        model.addAttribute("supportedCountries", localizationSupportedCountryRepository.findAllByOrderByCountryCodeAsc());
+        List<LocalizationSupportedCountry> supportedCountries = localizationSupportedCountryRepository.findAllByOrderByCountryCodeAsc();
+        model.addAttribute("supportedCountries", supportedCountries);
+        model.addAttribute("hasSupportedCountries", !supportedCountries.isEmpty());
         return "adm/localization/countries";
     }
 
@@ -203,6 +207,11 @@ public class LocalizationAdminPageController {
         return localizationMessageService.search(filterLang, filterKey, filterMessage).stream()
                 .map(LocalizationMessageResponseDto::fromLocalization)
                 .toList();
+    }
+
+    private void addMessagesModel(Model model, List<LocalizationMessageResponseDto> messages) {
+        model.addAttribute("messages", messages);
+        model.addAttribute("hasMessages", !messages.isEmpty());
     }
 
     private String normalizeCode(String code) {

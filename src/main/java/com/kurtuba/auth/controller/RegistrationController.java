@@ -55,7 +55,7 @@ public class RegistrationController {
     @PostMapping("")
     @ApiResponse(responseCode = "201", description = "User created successfully", content = {@Content(mediaType =
             "application/json", schema = @Schema(implementation = RegistrationResponseDto.class))})
-    public ResponseEntity register(@Valid @RequestBody RegistrationDto newUser) {
+    public ResponseEntity<RegistrationResponseDto> register(@Valid @RequestBody RegistrationDto newUser) {
         UserMetaChange userMetaChange = registrationService.register(newUser);
         return ResponseEntity.status(HttpStatusCode.valueOf(HttpStatus.CREATED_201))
                              .body(RegistrationResponseDto.builder()
@@ -155,7 +155,7 @@ public class RegistrationController {
                     {@Content(mediaType = "application/json", schema = @Schema(implementation =
                             TokensResponseDto.class))})})
     @PutMapping("/activation")
-    public ResponseEntity activateAccountByCode(@Valid @RequestBody AccountActivationDto accountActivationDto) {
+    public ResponseEntity<TokensResponseDto> activateAccountByCode(@Valid @RequestBody AccountActivationDto accountActivationDto) {
         TokensResponseDto tokens = registrationService.activateAccountByCode(accountActivationDto.getEmailMobile(),
                                                                              accountActivationDto.getCode(),
                                                                              accountActivationDto.getClientId(),

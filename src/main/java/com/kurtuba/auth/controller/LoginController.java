@@ -33,7 +33,7 @@ public class LoginController {
     private final TokenUtils tokenUtils;
 
     @PostMapping("/login")
-    public ResponseEntity login(@Valid @RequestBody LoginCredentialsDto loginCredentials) {
+    public ResponseEntity<TokensResponseDto> login(@Valid @RequestBody LoginCredentialsDto loginCredentials) {
 
         //----------SET REGISTERED CLIENT----------
         // if no client info is present then use default client
@@ -86,7 +86,7 @@ public class LoginController {
      * @return
      */
     @PostMapping("/service/login")
-    public ResponseEntity login(@Valid @RequestBody LoginServiceCredentialsDto loginServiceCredentialsDto) {
+    public ResponseEntity<TokensResponseDto> login(@Valid @RequestBody LoginServiceCredentialsDto loginServiceCredentialsDto) {
         RegisteredClient client = registeredClientRepository.findByClientId(loginServiceCredentialsDto.getClientId())
                 .orElseThrow(() -> new BusinessLogicException(ErrorEnum.AUTH_CLIENT_INVALID));
         if(!RegisteredClientType.SERVICE.equals(client.getClientType())){

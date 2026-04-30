@@ -22,7 +22,7 @@ public class BaseExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(BaseExceptionHandler.class);
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<?> globalExceptionHandler(Exception ex, WebRequest request) {
+    public ResponseEntity<ResponseErrorDto> globalExceptionHandler(Exception ex, WebRequest request) {
         LOGGER.error("Unhandled exception for request {}", request.getDescription(false), ex);
         ResponseErrorDto errorDetails = ResponseErrorDto
                 .builder()

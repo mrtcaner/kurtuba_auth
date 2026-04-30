@@ -128,7 +128,7 @@
                             <button type="submit" class="btn btn-sm btn-primary">Add Role</button>
                         </form>
                     </div>
-                    <div th:if="${user.userRoles == null || #lists.isEmpty(user.userRoles)}" class="text-muted">No roles found.</div>
+                    <div th:if="${!hasUserRoles}" class="text-muted">No roles found.</div>
                     <div th:each="userRole : ${user.userRoles}" class="d-flex justify-content-between align-items-center mb-2">
                         <div>
                             <span class="badge badge-light mr-2" th:text="${userRole.role != null ? userRole.role.name : '-'}">USER</span>

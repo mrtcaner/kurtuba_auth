@@ -108,9 +108,9 @@ public class UserAdminPageController {
                     PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdDate")));
         }
 
-        model.addAttribute("userPage", userPage);
         model.addAttribute("users", userPage.getContent());
         model.addAttribute("pageNumbers", buildPageNumbers(userPage));
+        addPaginationModel(model, userPage);
         return "adm/users/index";
     }
 
@@ -119,6 +119,7 @@ public class UserAdminPageController {
         User user = userService.getUserById(id).orElseThrow(() ->
                 new BusinessLogicException(ErrorEnum.USER_DOESNT_EXIST));
         model.addAttribute("user", user);
+        model.addAttribute("hasUserRoles", user.getUserRoles() != null && !user.getUserRoles().isEmpty());
         model.addAttribute("availableRoles", AuthoritiesType.values());
         return "adm/users/detail";
     }
@@ -169,5 +170,23 @@ public class UserAdminPageController {
         int start = Math.max(0, page.getNumber() - 2);
         int end = Math.min(page.getTotalPages() - 1, page.getNumber() + 2);
         return IntStream.rangeClosed(start, end).boxed().toList();
+    }
+
+    private void addPaginationModel(Model model, Page<?> page) {
+        int resultCount = page.getNumberOfElements();
+        boolean hasUsers = resultCount > 0;
+
+        model.addAttribute("hasUsers", hasUsers);
+        model.addAttribute("fromResult", hasUsers ? page.getNumber() * page.getSize() + 1 : 0);
+        model.addAttribute("toResult", hasUsers ? page.getNumber() * page.getSize() + resultCount : 0);
+        model.addAttribute("totalElements", page.getTotalElements());
+        model.addAttribute("totalPages", page.getTotalPages());
+        model.addAttribute("currentPage", page.getNumber());
+        model.addAttribute("currentPageDisplay", page.getNumber() + 1);
+        model.addAttribute("previousPage", Math.max(page.getNumber() - 1, 0));
+        model.addAttribute("nextPage", page.getNumber() + 1);
+        model.addAttribute("firstPage", page.isFirst());
+        model.addAttribute("lastPage", page.isLast());
+        model.addAttribute("showPagination", page.getTotalPages() > 1);
     }
 }

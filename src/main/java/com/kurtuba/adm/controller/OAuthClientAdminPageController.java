@@ -1,6 +1,7 @@
 package com.kurtuba.adm.controller;
 
 import com.kurtuba.adm.data.dto.RegisteredClientFormDto;
+import com.kurtuba.adm.data.dto.RegisteredClientListRowDto;
 import com.kurtuba.auth.data.enums.RegisteredClientType;
 import com.kurtuba.auth.data.model.RegisteredClient;
 import com.kurtuba.auth.data.repository.RegisteredClientRepository;
@@ -42,9 +43,12 @@ public class OAuthClientAdminPageController {
 
     @GetMapping
     public String listClients(Model model) {
-        model.addAttribute("clients", StreamSupport.stream(registeredClientRepository.findAll().spliterator(), false)
+        List<RegisteredClientListRowDto> clients = StreamSupport.stream(registeredClientRepository.findAll().spliterator(), false)
                 .sorted(Comparator.comparing(RegisteredClient::getClientName, String.CASE_INSENSITIVE_ORDER))
-                .toList());
+                .map(this::toListRow)
+                .toList();
+        model.addAttribute("clients", clients);
+        model.addAttribute("hasClients", !clients.isEmpty());
         return "adm/oauth-clients/list";
     }
 
@@ -158,5 +162,19 @@ public class OAuthClientAdminPageController {
             form.setCookieSecure(false);
             form.setCookieMaxAgeSeconds(0);
         }
+    }
+
+    private RegisteredClientListRowDto toListRow(RegisteredClient client) {
+        String scopesDisplay = client.isScopeEnabled() && client.getScopes() != null && !client.getScopes().isEmpty()
+                ? String.join(", ", client.getScopes())
+                : "Scopes disabled";
+        return new RegisteredClientListRowDto(
+                client.getId(),
+                client.getClientId(),
+                client.getClientName(),
+                client.getClientType(),
+                scopesDisplay,
+                client.getAccessTokenTtlMinutes()
+        );
     }
 }

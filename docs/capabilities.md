@@ -238,6 +238,27 @@ In addition to end-user auth features, the service includes a number of operatio
 - JDBC-backed session support
 - Redis-related configuration hooks
 - rate-limit integration points
+- GraalVM native-image build support
 - scheduled job execution for message sending
 - centralized exception handling
 - PostgreSQL/Flyway-backed runtime and deployment path
+
+## GraalVM Native Image Support
+
+The service now has a documented GraalVM native-image transition path.
+
+This is a platform capability rather than an auth flow, but it matters for teams evaluating the service as deployable infrastructure. The current native path keeps the important runtime pieces active:
+
+- API controllers
+- admin pages
+- Swagger/OpenAPI documentation
+- Redis-backed rate limiting
+- Spring Session JDBC
+- logging aspect
+- mail delivery
+- Twilio SMS integration
+- JWT/JWKS behavior
+
+The transition required specific native-image work around runtime hints, controller response typing, Thymeleaf model data, Spring Session serialization, Springdoc dependency alignment, and AOP pointcut boundaries.
+
+See [graalvm-transition.md](/Users/murat/projects/kurtuba-auth/docs/graalvm-transition.md) for the migration story, validation status, build path, and remaining watch list.

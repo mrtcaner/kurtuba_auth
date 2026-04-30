@@ -21,4 +21,8 @@ public class AdmUserFcmTokenDto {
     private String fcmToken;
     private String firebaseInstallationId;
     private Instant updatedAt;
+
+    public boolean hasUserRoles() {
+        return userRoles != null && !userRoles.isEmpty();
+    }
 }

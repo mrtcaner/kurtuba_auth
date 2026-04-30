@@ -155,6 +155,8 @@ public class DefaultSecurityConfig {
                                                  .map(rateLimitProperties::getPublicApi)
                                                  .map(RateLimitProperties.PublicApiProperties::getPattern);
         Stream<String> baseMatchers = Stream.of("/auth/oauth2/jwks", "/auth/adm/login", "/auth/service/login",
+                                                "/v3/api-docs", "/v3/api-docs/**",
+                                                "/swagger-ui.html", "/swagger-ui/**", "/webjars/**",
                                                 "/favicon.ico", "/error");
         Stream<String> actuatorMatchers = isNonProdProfileActive()
                 ? Stream.of("/actuator/**")

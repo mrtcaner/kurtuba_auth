@@ -16,6 +16,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
+
 
 @Service
 @Profile("!local")
@@ -63,10 +65,10 @@ public class TwilioSMSService implements ISMSService {
             LOGGER.error("Twilio verification creation failed for recipient {}", recipient, e);
             if (e instanceof ApiException) {
                 ApiException apiException = (ApiException) e;
-                if (apiException.getCode().equals(60203)) {
+                if (Objects.equals(apiException.getCode(), 60203)) {
                     //  Max check attempts reached, status 429
                     throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_TOO_MANY_RESEND, e);
-                } else if (apiException.getCode().equals(20003)) {
+                } else if (Objects.equals(apiException.getCode(), 20003)) {
                     //  Invalid credentials
                     throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_AUTHENTICATION_ERROR, e);
                 }
@@ -87,12 +89,12 @@ public class TwilioSMSService implements ISMSService {
             return verificationCheck.getValid();
         } catch (Exception e) {
             LOGGER.error("Twilio verification check failed for mobile {}", userMobile, e);
-            if (e instanceof ApiException && ((ApiException) e).getCode().equals(60202)) {
+            if (e instanceof ApiException && Objects.equals(((ApiException) e).getCode(), 60202)) {
                 //  Max check attempts reached, status 429
                 throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_EXPIRED, e);
             }
 
-            if (e instanceof ApiException && ((ApiException) e).getStatusCode().equals(HttpStatus.NOT_FOUND_404)) {
+            if (e instanceof ApiException && Objects.equals(((ApiException) e).getStatusCode(), HttpStatus.NOT_FOUND_404)) {
                 throw new BusinessLogicException(ErrorEnum.USER_META_CHANGE_CODE_SMS_TWILIO_NOT_FOUND, e);
             }
 

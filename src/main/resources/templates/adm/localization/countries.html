@@ -41,7 +41,7 @@
                             </tr>
                             </thead>
                             <tbody>
-                            <tr th:if="${#lists.isEmpty(supportedCountries)}">
+                            <tr th:if="${!hasSupportedCountries}">
                                 <td colspan="3" class="text-center text-muted py-4">No supported countries configured.</td>
                             </tr>
                             <tr th:each="country : ${supportedCountries}">
